@@ -55,6 +55,42 @@
     @media(max-width:760px){.front-qr{font-size:clamp(7px,2vw,10px)}.front-names{max-width:75%}.back-grid .back-body{font-size:clamp(6px,1.75vw,10px)}.back-grid .back-title{font-size:clamp(8px,2.05vw,13px)}.back-qr span{font-size:clamp(7px,2vw,10px)}.back-qr small{font-size:5px}}
     @media(max-width:380px){.front-qr{top:20%;right:4%;width:24%}.back-grid .back-body{font-size:6.1px}.back-qr small{display:none}}
 
+  
+    /* 2026-11-23: QA fix. Never mirror a business card: show two normal-facing panels. */
+    .card-wrap{perspective:none}
+    .business-card,.business-card.show-back{transform:none!important;transform-style:flat;transition:none}
+    .face,.face-front,.face-back{transform:none!important;backface-visibility:visible}
+    .face-back{display:none}
+    .business-card.show-back .face-front{display:none}
+    .business-card.show-back .face-back{display:block}
+    /* Consistent Japanese calligraphic headings, compact readable contact details. */
+    .front-role,.personal-name,.kana,.back-head strong,.back-title{font-family:'Yuji Syuku','Noto Serif JP','Yu Mincho',serif}
+    .front-names{max-width:72%;position:relative}
+    .kana{letter-spacing:.16em;margin:0 0 2% 1%;white-space:nowrap}
+    .personal-name{letter-spacing:.035em;font-weight:600}
+    .front-band{overflow:hidden}
+    .front-band .logo-v{font-family:'Yuji Syuku','Noto Serif JP',serif;writing-mode:vertical-rl;text-orientation:sideways;letter-spacing:0;font-size:clamp(26px,4.3vw,60px);line-height:1;position:absolute;right:7%;top:50%;transform:translateY(-50%)}
+    .front-band .kana-v{font-family:'Noto Serif JP',serif;left:7%;top:50%;transform:translateY(-50%);font-size:clamp(6px,.82vw,12px);letter-spacing:.05em;white-space:nowrap}
+    /* QR white quiet zone must be tight, not a tall rectangular panel. */
+    .front-qr,.back-qr{gap:3px}
+    .front-qr img,.back-qr img{width:100%;height:auto;aspect-ratio:1/1;padding:3%;background:#fff;object-fit:contain;flex:none}
+    .front-qr{top:22%;right:3.8%;width:21%}
+    .front-qr span{display:block}
+    @media(max-width:760px){
+      .front-band .logo-v{font-size:clamp(22px,7.6vw,48px);right:4%}
+      .front-band .kana-v{font-size:clamp(5px,1.4vw,9px);left:4%}
+      .front-qr{top:21%;right:3%;width:21%}
+      .front-names{max-width:72%}
+      .personal-name{font-size:clamp(25px,7.4vw,45px)}
+      .kana{font-size:clamp(7px,1.9vw,11px)}
+    }
+    @media(max-width:380px){
+      .front-qr{top:21%;right:3%;width:21%}
+      .front-band .logo-v{font-size:25px}
+      .front-band .kana-v{font-size:5px}
+      .personal-name{font-size:25px}
+    }
+
   </style>
 </head>
 <body>
