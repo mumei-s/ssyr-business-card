@@ -1,0 +1,18 @@
+{
+  "name": "S's-YR | デジタル名刺",
+  "short_name": "S's-YR",
+  "description": "S's-YR（川合伸次）のデジタル名刺",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#11191c",
+  "theme_color": "#11191c",
+  "icons": [
+    {
+      "src": "./assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
