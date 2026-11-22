@@ -1,4 +1,4 @@
-name: Check business card QR destinations and site structure
+name: Check actual QR scan results and site structure
 on:
   push:
     branches: [main]
@@ -9,10 +9,13 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Verify source, contact, QR roles and references
+      - name: Install QR decoding/rendering libraries
+        run: python -m pip install --disable-pip-version-check cairosvg opencv-python-headless
+      - name: Scan all three QR SVGs and validate business card content
         run: python tools/verify_site.py
