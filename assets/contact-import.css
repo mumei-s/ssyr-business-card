@@ -1,44 +1,48 @@
-#contact-import {
+a.contact-retry {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: .55rem auto;
+  padding: .65rem .9rem;
+  border-radius: 3px;
+  background: #e9edf2;
+  color: #19263d;
+  font: 600 .9rem/1.45 system-ui, sans-serif;
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+.contact-page {
   box-sizing: border-box;
-  color-scheme: dark;
-  position: fixed;
-  inset: 0;
-  width: min(24rem, calc(100% - 2rem));
-  max-height: calc(100% - 2rem);
-  overflow: auto;
-  margin: auto;
-  padding: 1.4rem;
-  background: #1b2225;
-  color: #f2f4f4;
-  border: 1px solid #778189;
-  border-radius: 5px;
-  text-align: start;
+  display: grid;
+  min-height: 100vh;
+  min-height: 100svh;
+  margin: 0;
+  place-items: center;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  background: #16191e;
+  color: #202631;
   font: 1rem/1.65 system-ui, sans-serif;
 }
-#contact-import:not([open]) { display: none; }
-#contact-import::backdrop { background: rgb(4 8 10 / 82%); }
-#contact-import h2 { margin: 0; color: inherit; font: 600 1.3rem/1.5 system-ui, sans-serif; }
-#contact-import .import-name { margin: .3rem 0 .8rem; color: #d6dfe2; font-weight: 600; }
-#contact-import .import-help { margin: 0 0 1rem; color: #e1e7e8; font: 1rem/1.65 system-ui, sans-serif; }
-#contact-import a.import-file, #contact-import form button {
-  display: block;
-  width: 100%;
-  min-height: 46px;
-  padding: .65rem .5rem;
-  border: 1px solid #bbc8cc;
-  border-radius: 3px;
-  background: #e2e9eb;
-  color: #142027;
-  text-align: center;
-  text-decoration: none;
-  font: 600 .95rem/1.55 system-ui, sans-serif;
+.contact-page *, .contact-page *::before, .contact-page *::after { box-sizing: border-box; }
+.contact-options {
+  width: min(100%, 27rem);
+  padding: clamp(1.25rem, 5vw, 2.2rem);
+  background: linear-gradient(115deg, #cbd0d7, #f0f1f3 42%, #d6dae0);
+  border-top: .24rem solid #71809a;
+  box-shadow: 0 1.2rem 3rem #0005;
 }
-#contact-import form { margin: .45rem 0 0; }
-#contact-import form button { margin: 0; background: transparent; color: #f5f7f8; border-color: transparent; cursor: pointer; }
-#contact-import :focus-visible { outline: 2px solid #bce9ed; outline-offset: 2px; }
-#contact-import details { margin: .8rem 0; font: 1rem/1.65 system-ui, sans-serif; }
-#contact-import summary { min-height: 44px; padding-block: .6rem; cursor: pointer; font-size: .94rem; color: #e2e9eb; }
-#contact-import details p { color: #e1e7e8; margin: 0 0 .45rem; font-size: .93rem; }
-#contact-import [data-import-download] { display: inline-block; color: #f2f5f5; padding: .55rem 0; text-decoration: underline; text-underline-offset: .22em; }
-#contact-import .import-scan-card { display: block; width: min(100%, 15rem); margin: .4rem auto; }
-#contact-import .import-scan-card img { display: block; width: 100%; height: auto; max-width: none; max-height: none; margin: 0; background: #fff; }
+.contact-options h1 { margin: 0; font-size: 1.08rem; font-weight: 550; }
+.contact-name { margin: .1rem 0 .85rem; font-size: clamp(1.8rem, 8vw, 2.5rem); font-weight: 750; line-height: 1.2; }
+.contact-hint, .contact-note { margin: .75rem 0; }
+.contact-note { color: #384252; font-size: .9rem; }
+.contact-methods { display: grid; gap: .55rem; }
+.contact-methods a, .contact-back { display: block; min-height: 44px; padding: .6rem .8rem; text-align: center; color: #202c42; }
+.contact-methods a { background: #edf1f5; border: 1px solid #687687; font-weight: 650; text-decoration: none; }
+.contact-methods a:first-child { background: #202d44; border-color: #202d44; color: #fff; }
+.contact-methods [hidden] { display: none; }
+.contact-fields { margin: 1.25rem 0 0; border-top: 1px solid #939da9; }
+.contact-fields div { display: grid; grid-template-columns: 4em minmax(0,1fr); padding: .42rem 0; border-bottom: 1px solid #a8b0bb; }
+.contact-fields dt { font-weight: 650; }
+.contact-fields dd { margin: 0; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
+.contact-back { width: fit-content; margin: .5rem auto 0; text-underline-offset: .22em; }
+.contact-page :focus-visible, .contact-retry:focus-visible { outline: 3px solid #1d58a8; outline-offset: 2px; }

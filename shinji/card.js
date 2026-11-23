@@ -32,11 +32,3 @@ card.addEventListener('touchend', event => {
   origin = undefined;
   if (Math.abs(dx) > 42 && Math.abs(dx) > 1.5 * Math.abs(dy)) setSide(dx < 0);
 }, {passive: true});
-
-const contactDialog = document.getElementById('contact-dialog');
-document.getElementById('open-qr').addEventListener('click', () => contactDialog.showModal());
-contactDialog.addEventListener('click', event => {
-  if (event.target !== contactDialog) return;
-  const bounds = contactDialog.getBoundingClientRect();
-  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) contactDialog.close();
-});

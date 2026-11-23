@@ -10,11 +10,11 @@ import re
 import shutil
 import subprocess
 from threading import Thread
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from PIL import Image
 from playwright.sync_api import expect, sync_playwright
-from verify_personal import check_identity, check_printed_qr, check_routes
+from verify_personal import EMAIL, check_identity, check_routes, check_viewport
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,7 +82,6 @@ def check_wordmark(face):
 def check_card(page):
     front, back = page.locator("#frontFace"), page.locator("#backFace")
     check_face(front)
-    check_printed_qr(front, "qr-contact.svg", ROOT / "contact.vcf")
     check_wordmark(front)
     expect(back).to_be_hidden()
     lettering = front.locator('img[src*="lettering/"]')
@@ -92,7 +91,6 @@ def check_card(page):
     expect(front).to_be_hidden()
     check_face(back)
     expect(back.locator('a[href$="works.html"]')).to_be_visible()
-    expect(back.locator('img[src*="qr" i]')).to_have_count(0)
     check_wordmark(back)
     page.locator("#frontBtn").click()
     expect(front).to_be_visible()
@@ -105,7 +103,7 @@ def check_page(page):
     assert not re.search(r"Unsplash|Pexels", body.inner_text(), re.I)
     assert body.locator('a[href*="unsplash.com"], a[href*="pexels.com"]').count() == 0
     assert page.get_by_role("button", name=re.compile("名刺を共有")).count() == 0
-    assert page.get_by_role("link", name=re.compile("名刺を共有|QRコードを表示|QR画像を保存")).count() == 0
+    assert page.get_by_role("link", name=re.compile("名刺を共有")).count() == 0
     gallery = page.locator(".media-grid")
     thumbnails = gallery.locator("img")
     assert thumbnails.count() and thumbnails.evaluate_all("imgs => imgs.every(i => i.loading === 'lazy')"), (
@@ -142,48 +140,103 @@ def check_video(video):
     print(f"Validated {video.stat().st_size:,}-byte reel: {titles}")
 
 
-def check_contact_imports(browser, base):
+def check_android_intent(href, name, phone, fallback):
+    assert href.startswith('intent:#Intent;') and href.endswith(';end'), href
+    fields = dict(part.split('=', 1) for part in href.split(';')[1:-1] if '=' in part)
+    fields = {key: unquote(value) for key, value in fields.items()}
+    assert fields['action'] == 'android.intent.action.INSERT'
+    assert fields['type'] in {'vnd.android.cursor.dir/contact', 'vnd.android.cursor.dir/raw_contact'}
+    assert fields['S.name'] == name and fields['S.email'] == EMAIL
+    if phone:
+        assert re.sub(r'\D', '', fields['S.phone']) == re.sub(r'\D', '', phone)
+    else:
+        assert 'S.phone' not in fields
+    assert fields['S.company'] == "S's-YR" and fields['S.job_title'] == '代表'
+    assert fields['S.browser_fallback_url'] == fallback
+
+
+def check_contact_routes(browser, base):
     platforms = {
         'iOS': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1',
         'Android': 'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/131.0.0.0 Mobile Safari/537.36',
+        'Android Firefox': 'Mozilla/5.0 (Android 15; Mobile; rv:138.0) Gecko/138.0 Firefox/138.0',
+        'no-js': '',
     }
-    for os_name, user_agent in platforms.items():
-        context = browser.new_context(user_agent=user_agent, viewport={'width': 360, 'height': 800})
+    for platform, user_agent in platforms.items():
+        context = browser.new_context(user_agent=user_agent, java_script_enabled=platform != 'no-js',
+                                      viewport={'width': 320, 'height': 780})
+        context.route('https://**/*', lambda route: route.abort())
         page = context.new_page()
-        for edition, name in (('', '川合 伸次'), ('shinji/', 'SHINJI')):
-            vcf = base + edition + 'contact.vcf'
+        for edition, name, phone in (('', '川合 伸次', '080-9119-0044'), ('shinji/', 'SHINJI', None)):
+            contact_url = base + edition + 'contact.html'
+            vcard_url = base + edition + 'contact.vcf'
+            vcard = page.request.get(vcard_url)
+            assert vcard.ok and vcard.body() == (ROOT / edition / 'contact.vcf').read_bytes()
+
             for route in ('index.html', 'works.html'):
                 page.goto(base + edition + route)
-                actions = page.get_by_role('link', name='電話帳に登録', exact=True).all()
-                assert actions, f'Contact registration action missing from {page.url}'
+                actions = page.locator('a[data-add-contact]').all()
+                assert actions, f'No contact action on {page.url}'
                 for action in actions:
                     expect(action).to_be_visible()
-                    action.click()
-                    dialog = page.locator('#contact-import')
-                    expect(dialog).to_be_visible()
-                    file_link = dialog.locator('[data-import-file]')
-                    assert file_link.evaluate('a => a.href') == vcf
-                    assert file_link.get_attribute('download') is None, 'Prefer the device vCard handler'
-                    fallback = dialog.locator('[data-import-download]')
-                    if os_name == 'Android':
-                        dialog.get_by_text('ファイルから登録する', exact=True).click()
-                        expect(fallback).to_be_visible()
-                        with page.expect_download() as pending:
-                            fallback.click()
-                        download = pending.value
-                        assert download.suggested_filename == name + '.vcf'
-                        assert download.path().read_bytes() == (ROOT / edition / 'contact.vcf').read_bytes()
+                    assert action.get_attribute('download') is None
+                    href = action.evaluate('a => a.href')
+                    if platform == 'Android':
+                        check_android_intent(href, name, phone, contact_url)
+                    elif platform == 'iOS':
+                        assert href == vcard_url
                     else:
-                        expect(fallback).to_have_count(0)
-                    dialog.get_by_role('button', name='閉じる').click()
-                    expect(dialog).to_be_hidden()
+                        assert href == contact_url
+
+                # Verify ordinary navigation on click. A synthetic HTML response observes the
+                # iPhone handoff URL without asking desktop Chromium to download the file.
+                if platform == 'iOS':
+                    page.route(vcard_url, lambda r: r.fulfill(content_type='text/html', body='vCard handoff'))
+                    actions[0].click()
+                    expect(page).to_have_url(vcard_url)
+                    page.unroute(vcard_url)
+                elif platform == 'Android':
+                    # Desktop Chromium has no external contact handler. Suppress only the
+                    # external navigation, then exercise the same recovery link a recipient sees.
+                    page.evaluate("document.addEventListener('click', e => e.preventDefault(), {once: true})")
+                    actions[0].click()
+                    recovery = page.get_by_role('link', name='電話帳が開かないときの登録方法')
+                    expect(recovery).to_be_visible()
+                    recovery.click()
+                    expect(page).to_have_url(contact_url)
+                else:
+                    actions[0].click()
+                    expect(page).to_have_url(contact_url)
+
+            response = page.goto(contact_url)
+            assert response.ok
+            check_viewport(page)
+            google = page.locator('a[href^="https://contacts.google.com/"]')
+            expect(google).to_be_visible()
+            url = urlsplit(google.get_attribute('href'))
+            assert url.path.endswith('/new')
+            fields = parse_qs(url.query)
+            assert fields['givenname'] == [name.split()[-1]]
+            assert fields['email'] == [EMAIL] and fields.get('phone') == ([phone] if phone else None)
+            assert fields.get('familyname') == (['川合'] if phone else None)
+            if platform.startswith('Android'):
+                expect(page.locator('a[href$=".vcf"]:visible')).to_have_count(0)
+            elif platform == 'no-js':
+                expect(page.locator('a[href$=".vcf"]')).to_be_visible()
         context.close()
+
+
+def check_no_qr():
+    files = [p for folder in ('assets', 'shinji') for p in (ROOT / folder).rglob('*') if p.is_file()]
+    assert not any('qr' in p.name.lower() for p in files), 'A public QR asset is still present'
+    for path in [*ROOT.glob('*.html'), *(ROOT / 'shinji').glob('*.html')]:
+        assert not re.search(r'QRコード|連絡先QR|QRを|(?:contact|introduction)-qr|qr-(?:contact|introduction)',
+                             path.read_text(), re.I), f'QR control remains in {path.name}'
 
 
 def main():
     check_identity(ROOT)
-    qr_files = {p.name for p in (ROOT / "assets").rglob("qr-*") if p.is_file()}
-    assert qr_files == {"qr-contact.svg"}, f"Unexpected public QR assets: {qr_files}"
+    check_no_qr()
     vcard = (ROOT / "contact.vcf").read_text(encoding="utf-8")
     for field in ("BEGIN:VCARD", "FN:川合 伸次", "TEL;TYPE=CELL:080-9119-0044", "EMAIL:ss526s-syr@yahoo.co.jp", "END:VCARD"):
         assert field in vcard.splitlines(), f"Missing contact field {field}"
@@ -206,10 +259,10 @@ def main():
         assert movie == check_page(page), "The two pages serve different showreels"
         check_routes(page, base, PUBLIC_URL)
         assert not page_errors, page_errors
-        check_contact_imports(browser, base)
+        check_contact_routes(browser, base)
         browser.close()
     check_video(movie)
-    print("Validated card switching, readable contact vCards, gallery originals and tap-to-load video")
+    print("Validated card switching, device-specific registration, gallery originals and tap-to-load video")
 
 
 if __name__ == "__main__":

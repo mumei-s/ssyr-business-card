@@ -44,19 +44,8 @@
 .front-rule { flex: 1; height: 1px; background: var(--foil); }
 .front-names {
   position: absolute;
-  top: 28%; left: 7.4%;
-  width: 40cqw; height: auto;
-}
-.front-qr {
-  display: flex; flex-direction: column; align-items: center;
-  color: var(--ink); text-decoration: none; text-align: center; gap: 1cqw;
-  font: 650 2.3cqw/1.25 system-ui, sans-serif;
-  position: absolute;
-  top: 20.5%; right: 4.5%;
-  width: 23cqw;
-}
-.front-qr img {
-  display: block; width: 100%; height: auto; aspect-ratio: 1;
+  top: 25%; left: 7.5%;
+  width: 53cqw; height: auto;
 }
 .front-btm { position: absolute; left: 7.5%; right: 7%; bottom: 7%; }
 .front-desc {

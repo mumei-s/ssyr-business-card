@@ -17,7 +17,7 @@ jobs:
           python-version: '3.12'
       - name: Install media and browser checks
         run: |
-          python -m pip install Pillow playwright zxing-cpp
+          python -m pip install Pillow playwright
           if ! command -v ffprobe >/dev/null; then
             sudo apt-get update -qq
             sudo apt-get install -y ffmpeg
@@ -25,5 +25,5 @@ jobs:
           if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
             python -m playwright install --with-deps chromium
           fi
-      - name: Test both sides, published QR destinations, galleries and showreel
+      - name: Test card faces, contact registration, galleries and showreel
         run: python tools/verify_site.py
