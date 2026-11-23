@@ -14,132 +14,45 @@
   <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
   
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="preconnect" href="https://images.unsplash.com">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800&family=Noto+Serif+JP:wght@400;600;700;800&family=Yuji+Syuku&family=Yuji+Boku&family=Permanent+Marker&display=swap" rel="stylesheet">
   <title>S's-YR | 川合 伸次 ― デジタル名刺</title>
   <style>
     :root { --bg:#101417; --bg2:#181d20; --line:rgba(240,240,236,.15); --line2:rgba(240,240,236,.24); --silver:#e8e9e7; --text:#f6f5f1; --muted:#abb1b2; --brass:#bda484; --brass2:#d1c0a7; --max:1180px; }
     *,*::before,*::after{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;color:var(--text);background:var(--bg);font-family:'Noto Sans JP',system-ui,-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased} button,a{-webkit-tap-highlight-color:transparent}button{font:inherit}a{color:inherit}a:focus-visible,button:focus-visible{outline:3px solid #e0c39a;outline-offset:4px}img,video{max-width:100%;display:block} .wrap{width:min(calc(100% - 44px),var(--max));margin:auto} .sr-only{position:absolute;overflow:hidden;clip:rect(0 0 0 0);width:1px;height:1px;white-space:nowrap}
     .topbar{height:77px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:18px;background:rgba(9,14,18,.92);position:relative;z-index:5}.wordmark{font-weight:800;font-size:23px;letter-spacing:.07em;line-height:1.05}.wordmark span{display:block;font-size:8px;font-weight:500;letter-spacing:.29em;color:#b6bab6;margin-top:7px}.top-right{display:flex;align-items:center;gap:20px}.top-right a{font-size:12px;text-decoration:none;letter-spacing:.15em;color:#d8ddd9}.top-right a:hover{color:var(--brass2)}.top-pill{border:1px solid var(--line2);padding:8px 15px;border-radius:100px}
     .hero{position:relative;overflow:hidden;background:radial-gradient(ellipse at 82% 17%,rgba(118,133,132,.12),transparent 45%),linear-gradient(150deg,#111619,#1d2224 60%,#121619);padding:74px 0 87px}.hero::before{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent 96%,rgba(255,255,255,.018) 96%),linear-gradient(0deg,transparent 96%,rgba(255,255,255,.018) 96%);background-size:78px 78px;mask-image:linear-gradient(to bottom,#000,transparent 92%)}.hero-top{display:grid;grid-template-columns:.83fr 1.25fr;gap:62px;align-items:center}.eyebrow{font-size:11px;color:var(--brass2);font-weight:700;letter-spacing:.29em;display:flex;align-items:center;gap:12px}.eyebrow::before{content:'';width:27px;height:1px;background:var(--brass)} .intro h1{font-weight:600;font-family:'Noto Serif JP',serif;font-size:clamp(35px,4.45vw,65px);line-height:1.53;letter-spacing:.095em;margin:25px 0}.intro p{color:#bfc5c4;font-size:14px;line-height:2.4;margin:0 0 27px}.intro .small-roman{font-size:11px;color:#a5aba8;letter-spacing:.2em}.intro .small-roman strong{color:var(--brass2);font-size:12px;font-weight:600}.hero-line{width:100%;height:1px;background:linear-gradient(90deg,var(--brass),transparent);margin:30px 0 24px}
-    .stage-label{display:flex;align-items:center;justify-content:space-between;color:#bdc2be;font-size:11px;letter-spacing:.21em;margin-bottom:19px}.stage-label em{font-style:normal;color:#838c8b;letter-spacing:.09em}.card-wrap{perspective:1400px}.business-card{position:relative;aspect-ratio:91/55;width:100%;transform-style:preserve-3d;transition:transform .68s cubic-bezier(.22,.67,.12,1);filter:drop-shadow(0 24px 38px rgba(0,0,0,.39))}.business-card.show-back{transform:none}.face{position:absolute;inset:0;backface-visibility:hidden;overflow:hidden;display:block;transform:translateZ(1px)}.face-front{background:#e3e4e3;color:#202324;display:flex}.face-back{transform:none;background:#17191a;color:#f2f2ee;border:1px solid #8d8071}.paper{position:absolute;inset:0;pointer-events:none;opacity:.28;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' seed='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.11'/%3E%3C/svg%3E")}.front-main{position:relative;width:79%;padding:4.7% 5.6% 3.8%;display:flex;flex-direction:column;justify-content:space-between}.front-upper{display:flex;justify-content:space-between;align-items:center}.front-role{font-family:'Noto Serif JP',serif;font-size:clamp(11px,1.35vw,19px);font-weight:700;letter-spacing:.2em}.front-rule{height:1px;flex:1;margin-left:17px;background:#ae9474;max-width:46%}.front-names{margin-top:auto;margin-bottom:auto}.kana{font-size:clamp(8px,.96vw,13px);letter-spacing:.26em;margin:0 0 2% 1.3%}.personal-name{font-family:'Yuji Syuku','Noto Serif JP',serif;font-size:clamp(29px,4vw,61px);font-weight:600;line-height:1.4;letter-spacing:.08em;white-space:nowrap}.front-btm{max-width:95%}.front-desc{font-size:clamp(7px,.82vw,12px);font-weight:800;letter-spacing:.025em;white-space:nowrap;margin-bottom:2%;padding-bottom:3%;border-bottom:1px solid #af9575}.front-contact{font-size:clamp(7px,1.18vw,17px);font-weight:800;line-height:1.7;letter-spacing:.03em;white-space:nowrap}.front-contact b{display:inline-block;width:3.6em;letter-spacing:.03em;font-weight:600}.front-band{position:relative;flex:1;background:#272a2a;color:#e5e5e2;border-left:2px solid #b9a282;display:flex;align-items:center;justify-content:center}.front-band .logo-v{font-family:'Yuji Syuku','Noto Serif JP',serif;writing-mode:vertical-rl;text-orientation:mixed;font-weight:900;font-size:clamp(36px,5.4vw,83px);line-height:1.06;letter-spacing:-.065em;white-space:nowrap}.front-band .kana-v{position:absolute;left:11%;top:15%;font-family:'Noto Serif JP',serif;font-size:clamp(8px,1.14vw,17px);writing-mode:vertical-rl;letter-spacing:.12em}
-    .back-inner{position:absolute;inset:0;padding:5% 5.5% 4.2%;display:flex;flex-direction:column;justify-content:space-between}.back-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #b99d7c;padding-bottom:2%}.back-head strong{letter-spacing:.11em;font-size:clamp(12px,2.3vw,29px)}.back-head span{font-size:clamp(12px,2.5vw,30px);font-weight:800;letter-spacing:.055em}.back-services{display:grid;grid-template-columns:1fr;flex:1}.back-row{display:grid;grid-template-columns:24% 1fr;align-items:center;border-bottom:1px solid rgba(200,182,151,.45);min-height:0}.back-title{font-size:clamp(9px,1.27vw,17px);font-weight:800;letter-spacing:.015em}.back-title small{display:block;color:var(--brass2);font:italic 600 clamp(8px,1.03vw,13px) Georgia,serif;margin-bottom:1%}.back-body{font-size:clamp(8px,1.25vw,16px);line-height:1.7;border-left:1px solid rgba(200,182,151,.48);padding-left:5%;font-weight:500}
+    .stage-label{display:flex;align-items:center;justify-content:space-between;color:#bdc2be;font-size:11px;letter-spacing:.21em;margin-bottom:19px}.stage-label em{font-style:normal;color:#838c8b;letter-spacing:.09em}
+
     .flip-controls{display:flex;justify-content:center;align-items:center;gap:11px;margin:24px auto 0}.flip-tab{min-width:119px;padding:10px 20px;border:1px solid var(--line2);background:transparent;color:#aab1ae;font-size:12px;letter-spacing:.13em;cursor:pointer;transition:.2s}.flip-tab[aria-pressed="true"]{background:#e9e8e3;border-color:#e9e8e3;color:#212424;font-weight:800}.swipe-hint{margin:11px 0 0;text-align:center;font-size:10px;letter-spacing:.12em;color:#909b99}
     .quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin:25px 0 0}.action{min-height:53px;border:1px solid var(--line2);display:flex;gap:9px;align-items:center;justify-content:center;background:rgba(239,236,231,.04);font-size:13px;font-weight:700;text-decoration:none;color:#f2f3f0;cursor:pointer;transition:.2s}.action svg{width:17px;height:17px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}.action.primary{background:#bfa888;color:#101417;border-color:#bfa888}.action:hover{border-color:var(--brass2);background:rgba(240,230,210,.11)}.action.primary:hover{background:#d1bb9c}
     .marquee-line{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:17px 0;color:#b2b8b5;font-size:10px;letter-spacing:.23em;display:flex;justify-content:space-between;gap:10px;white-space:nowrap;overflow:hidden}.marquee-line span:nth-child(2){color:var(--brass2)}
     section.block{padding:95px 0} .section-head{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:42px}.number{color:var(--brass2);font-size:12px;letter-spacing:.15em;font-weight:700}.section-head h2{font-family:'Noto Serif JP',serif;font-weight:600;letter-spacing:.09em;font-size:clamp(27px,3.1vw,43px);margin:9px 0}.section-head p{color:var(--muted);font-size:13px;margin:0;max-width:440px}.section-head .index{font-family:Georgia,serif;font-size:72px;line-height:1;color:rgba(217,224,221,.08);font-style:italic}
     .service-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.service{padding:32px 28px 30px;border:1px solid var(--line);background:linear-gradient(135deg,rgba(255,255,255,.027),rgba(255,255,255,.008));position:relative;min-height:368px}.service::before{content:'';position:absolute;top:-1px;left:28px;width:40px;height:2px;background:var(--brass)}.service .icon-row{display:flex;justify-content:space-between;align-items:center;color:#bda587;font-size:10px;letter-spacing:.21em}.service .svc-no{font:italic 25px Georgia,serif;color:#676c69}.service h3{font-size:19px;line-height:1.5;margin:20px 0 17px;letter-spacing:.035em}.service p{margin:0;color:#b8beba;font-size:12px;line-height:2.1}.service ul{padding:0;margin:21px 0 0;list-style:none}.service li{padding:9px 0 9px 17px;position:relative;border-top:1px solid rgba(255,255,255,.065);font-size:12px;color:#e2e3e0}.service li::before{content:'';position:absolute;left:1px;top:18px;width:5px;height:5px;background:#bda484;transform:rotate(45deg)}
     .portfolio{background:#1a2023}.media-grid{display:grid;grid-template-columns:1.15fr 1fr 1fr;grid-template-rows:255px 255px;gap:13px}.media-tile{position:relative;overflow:hidden;background:#242b2e;cursor:zoom-in;border:0;padding:0;color:white;text-align:left}.media-tile.wide{grid-row:span 2}.media-tile img{height:100%;width:100%;object-fit:cover;transition:transform .45s;filter:saturate(.84)}.media-tile:hover img{transform:scale(1.045)}.media-tile::after{content:'';position:absolute;inset:34% 0 0;background:linear-gradient(transparent,rgba(0,0,0,.78));pointer-events:none}.tile-name{position:absolute;bottom:21px;left:22px;right:20px;z-index:1}.tile-name small{display:block;color:#d6bd96;font-size:10px;letter-spacing:.2em;margin-bottom:6px}.tile-name strong{font-size:17px;font-weight:700;letter-spacing:.07em}.media-note{margin:20px 0 0;font-size:11px;color:#aab2b2;line-height:1.9}.media-note a{color:inherit;text-underline-offset:3px}
-    .movie-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:38px;align-items:center;margin-top:60px;border-top:1px solid var(--line);padding-top:48px}.movie-grid h3{font-family:'Noto Serif JP',serif;font-size:30px;margin:12px 0}.movie-grid p{color:#b6bebc;font-size:12px;line-height:2}.movie-grid video{width:100%;aspect-ratio:16/9;object-fit:cover;background:#0d1115;border:1px solid #3e4648}.technical{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}.technical span{border:1px solid var(--line);padding:7px 11px;font-size:10px;color:#babfba;letter-spacing:.07em}
-    .qr-section{background:#dcdeda;color:#212729;padding:74px 0}.qr-layout{display:grid;grid-template-columns:1.25fr .75fr;align-items:center;gap:45px}.qr-section .eyebrow{color:#78654c}.qr-section h2{font-family:'Noto Serif JP',serif;font-size:clamp(29px,3.8vw,47px);line-height:1.65;margin:16px 0}.qr-section p{font-size:13px;line-height:2.25;color:#5d6565}.qr-wrap{display:flex;justify-content:center;align-items:center;gap:18px}.qr-white{padding:14px;background:#fff;box-shadow:0 8px 40px #10141724}.qr-white img{width:180px;aspect-ratio:1}.qr-meta{font-size:11px;color:#5d6463}.qr-meta a{display:block;color:#2f3939;text-decoration:none;line-height:2;margin:12px 0;border-bottom:1px solid #a1aaa7;word-break:break-word}.qr-meta .qr-download{display:inline-flex;padding:8px 0;border:0;font-weight:700;letter-spacing:.04em}
+    .movie-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:38px;align-items:center;margin-top:60px;border-top:1px solid var(--line);padding-top:48px}.movie-grid h3{font-family:'Noto Serif JP',serif;font-size:30px;margin:12px 0}.movie-grid p{color:#b6bebc;font-size:12px;line-height:2}.movie-grid video{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;background:#0d1115;border:1px solid #3e4648}.technical{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}.technical span{border:1px solid var(--line);padding:7px 11px;font-size:10px;color:#babfba;letter-spacing:.07em}
     footer{padding:40px 0 50px}.footer-grid{display:flex;justify-content:space-between;gap:20px}.footer-grid h3{margin:0 0 9px;font-size:23px;letter-spacing:.09em}.footer-grid p{font-size:11px;color:#899391;margin:0}.footer-grid a{color:#b9c2bd;font-size:12px;text-decoration:none;border-bottom:1px solid #50585b}.footer-right{text-align:right;display:flex;gap:19px;align-items:start}
-    dialog{border:1px solid #626d6c;background:#141a1c;color:white;max-height:calc(100dvh - 30px);box-shadow:0 30px 100px #0009;padding:0}.lightbox{max-width:min(960px,calc(100vw - 25px));width:100%}.lightbox img{width:100%;height:auto;max-height:75dvh;object-fit:contain;background:#1f2729}.modal-bar{padding:12px 17px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px}.modal-bar button{background:transparent;border:1px solid #727f7b;color:white;padding:8px 13px;cursor:pointer}.notice{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translate(-50%,18px);background:#e2d2b4;color:#181f20;border:1px solid #b9a17b;box-shadow:0 12px 30px #0008;padding:12px 18px;font-size:13px;font-weight:700;z-index:30;opacity:0;visibility:hidden;transition:.2s;white-space:nowrap}.notice.show{opacity:1;visibility:visible;transform:translate(-50%,0)}
-    @media(max-width:1050px){.hero-top{gap:26px}.intro h1{font-size:clamp(30px,4.3vw,45px)}.front-contact{font-size:clamp(6px,1.34vw,13px)}.front-desc{font-size:clamp(6px,1vw,10px)}.front-band .logo-v{font-size:clamp(35px,5.1vw,60px)}.service{padding:30px 22px}.service li{font-size:11px}}
-    @media(max-width:760px){.wrap{width:min(calc(100% - 30px),580px)}.topbar{height:65px}.top-right{gap:11px}.top-right .top-pill{display:none}.hero{padding:30px 0 58px}.hero-top{display:flex;flex-direction:column;gap:27px;align-items:stretch}.intro{order:2}.card-stage{order:1}.eyebrow{font-size:10px}.intro h1{font-size:28px;line-height:1.58;margin:14px 0}.intro p{font-size:12px;line-height:2}.intro .small-roman{font-size:10px}.hero-line{margin:16px 0}.stage-label{font-size:10px;margin-bottom:12px}.front-main{padding:4.4% 5.3% 4.1%}.front-role{font-size:clamp(10px,3vw,16px)}.front-names{margin-top:auto;margin-bottom:auto}.kana{font-size:clamp(8px,2.3vw,12px)}.personal-name{font-size:clamp(30px,8.1vw,50px)}.front-desc{font-size:clamp(6px,1.79vw,10px)}.front-contact{font-size:clamp(8px,2.55vw,14px)}.front-contact b{width:3.8em}.front-band .logo-v{font-size:clamp(35px,10.3vw,64px)}.front-band .kana-v{font-size:clamp(8px,2.2vw,14px)}.back-inner{padding:5%}.back-head strong{font-size:clamp(12px,3.1vw,19px)}.back-head span{font-size:clamp(12px,3.6vw,21px)}.back-title{font-size:clamp(9px,2.45vw,13px)}.back-title small{font-size:clamp(7px,1.8vw,10px)}.back-body{font-size:clamp(8px,2.25vw,12px);padding-left:4%}.flip-controls{margin-top:17px}.flip-tab{min-width:112px;font-size:11px;padding:9px 14px}.quick-actions{margin:23px 0 0;gap:7px}.action{font-size:11px;min-height:46px;gap:5px}.action svg{width:15px;height:15px}.marquee-line{padding:14px 0}.marquee-line span:nth-child(3){display:none}section.block{padding:62px 0}.section-head{margin-bottom:24px}.section-head h2{font-size:30px}.section-head .index{font-size:52px}.service-grid{grid-template-columns:1fr;gap:10px}.service{min-height:unset;padding:23px}.service h3{margin:11px 0}.service p{font-size:12px}.service ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;margin-top:14px}.service li{font-size:11px;padding-top:7px;padding-bottom:7px}.service li::before{top:16px}.media-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:185px 180px 180px;gap:8px}.media-tile.wide{grid-column:span 2;grid-row:span 1}.tile-name{bottom:12px;left:13px;right:10px}.tile-name strong{font-size:14px}.tile-name small{font-size:8px}.movie-grid{display:flex;flex-direction:column;align-items:stretch;gap:17px;padding-top:34px;margin-top:36px}.movie-grid h3{font-size:24px}.qr-section{padding:58px 0}.qr-layout{display:flex;flex-direction:column;align-items:stretch;gap:18px}.qr-section h2{font-size:29px}.qr-wrap{justify-content:start;gap:15px}.qr-white img{width:145px}.footer-grid{flex-direction:column}.footer-right{text-align:left}}
-    @media(max-width:380px){.wrap{width:calc(100% - 22px)}.personal-name{font-size:28px}.front-contact{font-size:7.8px}.front-desc{font-size:6.1px}.front-band .logo-v{font-size:34px}.back-body{font-size:7.5px}.quick-actions{grid-template-columns:repeat(3,1fr)}.action{font-size:10px}.action svg{display:none}}
+    dialog{border:1px solid #626d6c;background:#141a1c;color:white;max-height:calc(100dvh - 30px);box-shadow:0 30px 100px #0009;padding:0}.lightbox{max-width:min(960px,calc(100vw - 25px));width:100%}.lightbox img{width:100%;height:auto;max-height:75dvh;object-fit:contain;background:#1f2729}.modal-bar{padding:12px 17px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px}.modal-bar button{background:transparent;border:1px solid #727f7b;color:white;padding:8px 13px;cursor:pointer}
+    @media(max-width:1050px){.hero-top{gap:26px}.intro h1{font-size:clamp(30px,4.3vw,45px)}.service{padding:30px 22px}.service li{font-size:11px}}
+    @media(max-width:760px){.wrap{width:min(calc(100% - 30px),580px)}.topbar{height:65px}.top-right{gap:11px}.top-right .top-pill{display:none}.hero{padding:30px 0 58px}.hero-top{display:flex;flex-direction:column;gap:27px;align-items:stretch}.intro{order:2}.card-stage{order:1}.eyebrow{font-size:10px}.intro h1{font-size:28px;line-height:1.58;margin:14px 0}.intro p{font-size:12px;line-height:2}.intro .small-roman{font-size:10px}.hero-line{margin:16px 0}.stage-label{font-size:10px;margin-bottom:12px}.flip-controls{margin-top:17px}.flip-tab{min-width:112px;font-size:11px;padding:9px 14px}.quick-actions{margin:23px 0 0;gap:7px}.action{font-size:11px;min-height:46px;gap:5px}.action svg{width:15px;height:15px}.marquee-line{padding:14px 0}.marquee-line span:nth-child(3){display:none}section.block{padding:62px 0}.section-head{margin-bottom:24px}.section-head h2{font-size:30px}.section-head .index{font-size:52px}.service-grid{grid-template-columns:1fr;gap:10px}.service{min-height:unset;padding:23px}.service h3{margin:11px 0}.service p{font-size:12px}.service ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;margin-top:14px}.service li{font-size:11px;padding-top:7px;padding-bottom:7px}.service li::before{top:16px}.media-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:185px 180px 180px;gap:8px}.media-tile.wide{grid-column:span 2;grid-row:span 1}.tile-name{bottom:12px;left:13px;right:10px}.tile-name strong{font-size:14px}.tile-name small{font-size:8px}.movie-grid{display:flex;flex-direction:column;align-items:stretch;gap:17px;padding-top:34px;margin-top:36px}.movie-grid h3{font-size:24px}.footer-grid{flex-direction:column}.footer-right{text-align:left}}
+    @media(max-width:380px){.wrap{width:calc(100% - 22px)}.quick-actions{grid-template-columns:repeat(3,1fr)}.action{font-size:10px}.action svg{display:none}}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}
   
-    /* Three QR roles: card entry is separate; FRONT = contact vCard; BACK = introduction. */
-    .front-qr{position:absolute;top:21%;right:4.8%;width:24%;z-index:3;display:flex;flex-direction:column;align-items:center;gap:3px;text-decoration:none;color:#202425;font-size:clamp(8px,1.09vw,13px);line-height:1.1;font-weight:800;white-space:nowrap}
-    .front-qr img,.back-qr img{width:100%;aspect-ratio:1;display:block;padding:4%;background:white;object-fit:contain}
-    .front-names{max-width:75%}
-    .back-grid{display:grid;grid-template-columns:minmax(0,1fr) 23%;gap:2.1%;flex:1;min-height:0;align-items:stretch}
-    .back-grid .back-services{min-width:0;display:grid;grid-template-rows:repeat(3,1fr)}
-    .back-grid .back-row{grid-template-columns:30% minmax(0,1fr);min-height:0}
-    .back-grid .back-body{font-size:clamp(7px,1.02vw,13px);padding-left:3%;line-height:1.43;overflow-wrap:anywhere}
-    .back-qr{align-self:center;display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center;color:#f5f3ef;text-decoration:none;min-width:0;border-left:1px solid #bba27d;padding-left:8%}
-    .back-qr span{font-size:clamp(8px,1.2vw,15px);font-weight:800;white-space:nowrap}
-    .back-qr small{font-size:clamp(6px,.75vw,9px);color:#ceb895;letter-spacing:.02em;white-space:nowrap}
-    @media(max-width:760px){.front-qr{font-size:clamp(7px,2vw,10px)}.front-names{max-width:75%}.back-grid .back-body{font-size:clamp(6px,1.75vw,10px)}.back-grid .back-title{font-size:clamp(8px,2.05vw,13px)}.back-qr span{font-size:clamp(7px,2vw,10px)}.back-qr small{font-size:5px}}
-    @media(max-width:380px){.front-qr{top:20%;right:4%;width:24%}.back-grid .back-body{font-size:6.1px}.back-qr small{display:none}}
-
-  
-    /* 2026-11-23: QA fix. Never mirror a business card: show two normal-facing panels. */
-    .card-wrap{perspective:none}
-    .business-card,.business-card.show-back{transform:none!important;transform-style:flat;transition:none}
-    .face,.face-front,.face-back{transform:none!important;backface-visibility:visible}
-    .face-back{display:none}
-    .business-card.show-back .face-front{display:none}
-    .business-card.show-back .face-back{display:block}
-    /* Consistent Japanese calligraphic headings, compact readable contact details. */
-    .front-role,.personal-name,.kana,.back-head strong,.back-title{font-family:'Yuji Syuku','Noto Serif JP','Yu Mincho',serif}
-    .front-names{max-width:72%;position:relative}
-    .kana{letter-spacing:.16em;margin:0 0 2% 1%;white-space:nowrap}
-    .personal-name{letter-spacing:.035em;font-weight:600}
-    .front-band{overflow:hidden}
-    .front-band .logo-v{font-family:'Yuji Syuku','Noto Serif JP',serif;writing-mode:vertical-rl;text-orientation:sideways;letter-spacing:0;font-size:clamp(26px,4.3vw,60px);line-height:1;position:absolute;right:7%;top:50%;transform:translateY(-50%)}
-    .front-band .kana-v{font-family:'Noto Serif JP',serif;left:7%;top:50%;transform:translateY(-50%);font-size:clamp(6px,.82vw,12px);letter-spacing:.05em;white-space:nowrap}
-    /* QR white quiet zone must be tight, not a tall rectangular panel. */
-    .front-qr,.back-qr{gap:3px}
-    .front-qr img,.back-qr img{width:100%;height:auto;aspect-ratio:1/1;padding:3%;background:#fff;object-fit:contain;flex:none}
-    .front-qr{top:22%;right:3.8%;width:21%}
-    .front-qr span{display:block}
-    @media(max-width:760px){
-      .front-band .logo-v{font-size:clamp(22px,7.6vw,48px);right:4%}
-      .front-band .kana-v{font-size:clamp(5px,1.4vw,9px);left:4%}
-      .front-qr{top:21%;right:3%;width:21%}
-      .front-names{max-width:72%}
-      .personal-name{font-size:clamp(25px,7.4vw,45px)}
-      .kana{font-size:clamp(7px,1.9vw,11px)}
-    }
-    @media(max-width:380px){
-      .front-qr{top:21%;right:3%;width:21%}
-      .front-band .logo-v{font-size:25px}
-      .front-band .kana-v{font-size:5px}
-      .personal-name{font-size:25px}
-    }
-
-  
-/* Quality Gate 2026-11-23 — no mirrored/rotated card text, ever */
-.card-wrap{perspective:none!important;touch-action:pan-y}
-.business-card,.business-card.show-back{transform:none!important;transform-style:flat!important;transition:none!important;container-type:inline-size}
-.face,.face-back{transform:none!important;backface-visibility:visible!important}
-.face-front{display:flex!important;z-index:1}.face-back{display:none!important;z-index:2}
-.business-card.show-back .face-front{display:none!important}.business-card.show-back .face-back{display:block!important}
-.front-main{position:relative;width:79%;padding:0}
-.front-upper{position:absolute;top:7.4%;left:6%;right:27%;display:flex;align-items:center}
-.front-role{font-family:'Yuji Boku','Yuji Syuku','Noto Serif JP',serif!important;font-size:4.1cqw;font-weight:400;letter-spacing:.12em}
-.front-rule{background:#ba9a6e;margin-left:4cqw;max-width:55%}
-.front-names{position:absolute!important;top:27%;left:6%;right:28%;width:auto;max-width:none!important;margin:0!important;z-index:1}
-.kana{font-family:'Yuji Boku','Yuji Syuku','Noto Serif JP',serif!important;font-size:2.7cqw!important;line-height:1.1;letter-spacing:.18em;margin:0 0 1.2cqw 1.1cqw!important}
-.personal-name{font-family:'Yuji Boku','Yuji Syuku','Noto Serif JP',serif!important;font-size:9cqw!important;font-weight:400!important;line-height:1.25;letter-spacing:.035em;white-space:nowrap}
-.front-btm{position:absolute;left:6%;right:4%;bottom:6%;max-width:none!important}
-.front-desc{font-family:'Noto Sans JP',sans-serif;font-size:2.1cqw!important;line-height:1.45;letter-spacing:0!important;margin:0 0 1.5cqw!important;padding-bottom:1cqw!important}
-.front-contact{font-family:'Noto Sans JP',sans-serif;font-size:2.38cqw!important;line-height:1.45;letter-spacing:0!important}
-.front-contact b{width:4.6em}
-.front-band{position:relative;flex:0 0 21%;border-left:1px solid #bda17d;background:#202527;overflow:hidden}
-.front-band .logo-v{position:absolute!important;top:50%!important;right:8%!important;left:auto!important;transform:translateY(-50%);font-family:'Permanent Marker','Yuji Boku',cursive!important;font-weight:400!important;writing-mode:vertical-rl!important;text-orientation:sideways!important;font-size:8cqw!important;line-height:1!important;letter-spacing:-.015em!important;white-space:nowrap}
-.front-band .kana-v{position:absolute!important;top:50%!important;left:10%!important;transform:translateY(-50%);writing-mode:vertical-rl!important;text-orientation:upright!important;font-family:'Yuji Boku','Yuji Syuku',serif!important;font-size:2cqw!important;line-height:1.15!important;letter-spacing:.01em!important;white-space:nowrap}
-/* QR SVG already has its four-module quiet zone: no extra white rectangular padding */
-.front-qr{position:absolute!important;top:28%!important;right:5%!important;width:22%!important;max-height:none!important;height:auto!important;min-height:0!important;gap:.9cqw!important;background:transparent!important;padding:0!important;box-shadow:none!important;font-family:'Noto Sans JP',sans-serif!important;font-size:2.1cqw!important;line-height:1.05!important;font-weight:700}
-.front-qr img,.back-qr img{width:100%!important;height:auto!important;aspect-ratio:1!important;display:block!important;padding:0!important;margin:0!important;background:white!important;border:0!important;border-radius:0!important;box-shadow:none!important;object-fit:contain!important}
-.back-inner{padding:4.2% 5.1% 4.0%}
-.back-head strong{font-family:'Yuji Boku','Yuji Syuku',serif;font-weight:500!important;font-size:5cqw!important;line-height:1.25!important;letter-spacing:.06em}
-.back-head span{font-family:'Permanent Marker','Yuji Syuku',serif;font-weight:400!important;font-size:4.1cqw!important;letter-spacing:0}
-.back-grid{grid-template-columns:minmax(0,1fr) 22%;gap:2%;align-items:stretch}
-.back-grid .back-row{grid-template-columns:30% minmax(0,1fr)}
-.back-grid .back-title{font-family:'Yuji Boku','Noto Serif JP',serif;font-weight:500!important;font-size:3cqw!important;line-height:1.2}
-.back-grid .back-title small{font:italic 600 1.55cqw Georgia,serif;margin:0}
-.back-grid .back-body{font-family:'Noto Sans JP',sans-serif;font-size:2.11cqw!important;font-weight:500!important;line-height:1.4!important;overflow-wrap:anywhere;padding-left:3%}
-.back-qr{border-left:1px solid #bda484;padding-left:5%;max-height:100%;align-self:stretch;justify-content:center;gap:.9cqw!important}
-.back-qr span{font-size:2.5cqw!important;font-weight:700!important}
-.back-qr small{font-size:1.3cqw!important;white-space:normal;text-align:center}
-@media(max-width:760px){.front-btm{bottom:5%}.front-names{top:26%}.front-qr{top:28%!important}.back-grid .back-body{font-size:2.0cqw!important}}
-@media(max-width:380px){.back-qr small{display:none!important}}
-
-/* Six complete premium tiles. AI artwork includes its own editorial captions. */
-.media-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,265px)}
+    /* Six complete premium tiles. AI artwork includes its own editorial captions. */
+.media-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:none}
+.media-tile{aspect-ratio:1;min-width:0}
 .media-tile.wide{grid-row:span 1}
 .media-tile.art::after,.media-tile.art .tile-name{display:none!important}
-.media-tile.art img{filter:none!important;object-fit:cover}
-@media(max-width:760px){.media-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,184px)}.media-tile.wide{grid-column:span 1!important;grid-row:span 1!important}}
+.media-tile.art img{filter:none;object-fit:contain;transform:none}
+@media(max-width:760px){.media-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:none}.media-tile.wide{grid-column:span 1!important;grid-row:span 1!important}}
+@media(min-width:761px) {
+  .intro { container-type: inline-size; }
+  .intro h1 { font-size: min(9.3cqw, 54px); letter-spacing: .055em; }
+}
 </style>
+  <link rel="stylesheet" href="./assets/card.css">
 </head>
 <body>
   <header class="topbar wrap">
-    <div class="wordmark">S's-YR<span>エスズ ワイアール</span></div>
+    <div class="wordmark"><img src="./assets/lettering/wordmark.svg" width="361" height="89" alt="S's-YR"><img class="brand-reading" src="./assets/lettering/wordmark-kana.svg" width="289" height="37" alt="エスズ ワイアール"></div>
     <nav class="top-right" aria-label="メインナビゲーション"><a href="#services">事業内容</a><a href="#works">制作・事例</a><a class="top-pill" href="#contact">お問い合わせ</a></nav>
   </header>
   <main>
@@ -156,20 +69,21 @@
           <div class="stage-label"><span>DIGITAL BUSINESS CARD</span><em>91 : 55 RATIO</em></div>
           <div class="card-wrap" id="cardSwipeZone" aria-label="名刺表示領域。左右のボタンかスワイプで切替">
             <div class="business-card" id="businessCard">
-              <div class="face face-front" id="frontFace">
-                <div class="paper" aria-hidden="true"></div>
+              <div class="face face-front" id="frontFace" aria-hidden="false">
                 <div class="front-main">
-                  <div class="front-upper"><span class="front-role">代表</span><span class="front-rule" aria-hidden="true"></span></div>
+                  <div class="front-upper"><img class="front-role" src="./assets/lettering/title.svg" width="83" height="45" alt="代表"><span class="front-rule" aria-hidden="true"></span></div>
                   <a class="front-qr" href="./contact.vcf" download="Ss-YR_川合伸次.vcf" aria-label="連絡先登録QR／タップで連絡先を保存"><img src="./assets/qr-contact.svg" alt="川合伸次の連絡先登録QR" width="130" height="130"><span>連絡先登録</span></a>
-                  <div class="front-names"><p class="kana">かわい　しんじ</p><div class="personal-name">川合 伸次</div></div>
-                  <div class="front-btm"><div class="front-desc">工事・施工 ／ 業務支援 ／ AI・デジタル制作</div><div class="front-contact"><div><b>TEL</b>080-9119-0044</div><div><b>MAIL</b>ss526s-syr@yahoo.co.jp</div></div></div>
+                  <img class="front-names" src="./assets/lettering/name.svg" width="252" height="92" alt="かわい しんじ　川合 伸次">
+                  <div class="front-btm"><div class="front-desc">工事・施工 ／ 業務支援 ／ AI・デジタル制作</div><div class="front-contact">
+                    <a href="tel:08091190044" aria-label="電話 080-9119-0044"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="2" width="11" height="20" rx="2"/><path d="M10 18.5h4"/></svg><img src="./assets/lettering/phone.svg" width="204" height="27" alt="080-9119-0044"></a>
+                    <a href="mailto:ss526s-syr@yahoo.co.jp" aria-label="メール ss526s-syr@yahoo.co.jp"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4.5" width="20" height="15" rx="1"/><path d="m2.5 6 9.5 7 9.5-7"/></svg><img class="email-art" src="./assets/lettering/email.svg" width="283" height="31" alt="ss526s-syr@yahoo.co.jp"></a>
+                  </div></div>
                 </div>
-                <div class="front-band"><div class="kana-v">エスズ ワイアール</div><div class="logo-v">S's-YR</div></div>
+                <div class="front-band"><div class="front-lockup"><img src="./assets/lettering/wordmark.svg" width="361" height="89" alt="S's-YR"><img class="brand-reading" src="./assets/lettering/wordmark-kana.svg" width="289" height="37" alt="エスズ ワイアール"></div></div>
               </div>
               <div class="face face-back" id="backFace" aria-hidden="true">
-                <div class="paper" aria-hidden="true"></div>
                 <div class="back-inner">
-                  <div class="back-head"><strong>営業品目</strong><span>S's-YR</span></div>
+                  <div class="back-head"><strong>営業品目</strong><img src="./assets/lettering/wordmark.svg" width="361" height="89" alt="S's-YR"></div>
                   <div class="back-grid"><div class="back-services">
                     <div class="back-row"><div class="back-title"><small>01</small>工事・施工</div><div class="back-body">工場内設備・営繕／溶接・鉄骨<br>住宅・店舗工事／塗装・解体</div></div>
                     <div class="back-row"><div class="back-title"><small>02</small>業務・施設<br>サポート</div><div class="back-body">業務請負・現場応援・人材支援<br>施設・ハウスクリーニング</div></div>
@@ -186,9 +100,6 @@
             <a class="action" href="mailto:ss526s-syr@yahoo.co.jp?subject=S%27s-YR%E3%81%B8%E3%81%AE%E3%81%8A%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m3 6 9 7 9-7"/></svg>メール</a>
             <a class="action" href="./contact.vcf" download="Ss-YR_川合伸次.vcf"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v4h16v-4"/></svg>連絡先を保存</a>
           </div>
-          <div class="quick-actions" style="margin-top:10px;grid-template-columns:1fr 1fr">
-            <button class="action" id="shareButton" type="button">この名刺を共有</button><a class="action" href="#qr">QRコードを表示</a>
-          </div>
         </div>
       </div>
     </section>
@@ -204,24 +115,28 @@
     <section class="block portfolio" id="works"><div class="wrap">
       <div class="section-head"><div><div class="number">02 — VISUAL GALLERY</div><h2>仕事と制作のイメージ</h2><p>写真で伝える現場の空気感と、イラストによる表現の可能性。</p></div><span class="index" aria-hidden="true">02</span></div>
       <div class="media-grid">
-        <button class="media-tile" data-full="https://images.unsplash.com/photo-1738162837389-3b02d6dd507b?auto=format&amp;fit=crop&amp;w=1700&amp;q=85" data-caption="鉄骨・溶接関連業務のイメージ写真（Unsplash）" type="button"><img loading="lazy" src="https://images.unsplash.com/photo-1738162837389-3b02d6dd507b?auto=format&amp;fit=crop&amp;w=900&amp;q=76" alt="溶接作業のイメージ写真。実績写真ではありません"><div class="tile-name"><small>01 / PHOTO IMAGE</small><strong>鉄骨・溶接・施工</strong></div></button>
-        <button class="media-tile" data-full="https://images.unsplash.com/photo-1711296168555-ea2526321306?auto=format&amp;fit=crop&amp;w=1500&amp;q=82" data-caption="建物の改修・施工のイメージ写真（Unsplash）" type="button"><img loading="lazy" src="https://images.unsplash.com/photo-1711296168555-ea2526321306?auto=format&amp;fit=crop&amp;w=900&amp;q=72" alt="改修中の建築空間のイメージ写真。実績写真ではありません"><div class="tile-name"><small>02 / PHOTO IMAGE</small><strong>建築・営繕</strong></div></button>
-        <button class="media-tile art" data-full="./assets/portfolio-fantasy-hd.webp" data-caption="オリジナルのデジタルイラスト表現サンプル" type="button"><img loading="lazy" src="./assets/portfolio-fantasy-hd.webp" alt="幻想的な水晶都市を描くデジタルイラストのサンプル"><div class="tile-name"><small>03 / ILLUSTRATION</small><strong>幻想イラスト</strong></div></button>
-        <button class="media-tile art" data-full="./assets/portfolio-graphic-hd.webp" data-caption="オリジナルのグラフィック・広告表現サンプル" type="button"><img loading="lazy" src="./assets/portfolio-graphic-hd.webp" alt="青と朱色を使った近未来都市のグラフィックイラスト"><div class="tile-name"><small>04 / ILLUSTRATION</small><strong>グラフィック表現</strong></div></button>
-        <button class="media-tile art" data-full="./assets/portfolio-app-hd.webp" data-caption="ツール・アプリ制作の画面デザイン例" type="button"><img loading="lazy" src="./assets/portfolio-app-hd.webp" alt="業務管理ツールの画面構成イメージ"><div class="tile-name"><small>05 / TOOL &amp; APP</small><strong>ツール・アプリ</strong></div></button>
-         <button class="media-tile art" data-full="./assets/portfolio-film-hd.webp" data-caption="映像・動画制作の表現コンセプト（イメージ）" type="button"><img loading="lazy" src="./assets/portfolio-film-hd.webp" alt="実写撮影・編集機器を使った高精細な映像制作のイメージ"><div class="tile-name"><small>06 / MOVIE</small><strong>動画・映像制作</strong></div></button>
+        <button class="media-tile" data-full="./assets/photo-welding-large.webp" data-caption="鉄骨・溶接関連業務のイメージ写真（Unsplash）" type="button"><img loading="lazy" decoding="async" width="480" height="480" src="./assets/photo-welding.webp" alt="溶接作業のイメージ写真。実績写真ではありません"><div class="tile-name"><small>01 / PHOTO IMAGE</small><strong>鉄骨・溶接・施工</strong></div></button>
+        <button class="media-tile" data-full="./assets/photo-architecture-large.webp" data-caption="建物の改修・施工のイメージ写真（Unsplash）" type="button"><img loading="lazy" decoding="async" width="480" height="480" src="./assets/photo-architecture.webp" alt="改修中の建築空間のイメージ写真。実績写真ではありません"><div class="tile-name"><small>02 / PHOTO IMAGE</small><strong>建築・営繕</strong></div></button>
+        <button class="media-tile art" data-full="./assets/portfolio-fantasy-hd.webp" data-caption="オリジナルのデジタルイラスト表現サンプル" type="button"><img loading="lazy" decoding="async" width="480" height="480" src="./assets/portfolio-fantasy.webp" alt="幻想的な水晶都市を描くデジタルイラストのサンプル"><div class="tile-name"><small>03 / ILLUSTRATION</small><strong>幻想イラスト</strong></div></button>
+        <button class="media-tile art" data-full="./assets/portfolio-graphic-hd.webp" data-caption="オリジナルのグラフィック・広告表現サンプル" type="button"><img loading="lazy" decoding="async" width="480" height="480" src="./assets/portfolio-graphic.webp" alt="青と朱色を使った近未来都市のグラフィックイラスト"><div class="tile-name"><small>04 / ILLUSTRATION</small><strong>グラフィック表現</strong></div></button>
+        <button class="media-tile art" data-full="./assets/portfolio-app-hd.webp" data-caption="ツール・アプリ制作の画面デザイン例" type="button"><img loading="lazy" decoding="async" width="480" height="480" src="./assets/portfolio-app.webp" alt="業務管理ツールの画面構成イメージ"><div class="tile-name"><small>05 / TOOL &amp; APP</small><strong>ツール・アプリ</strong></div></button>
+         <button class="media-tile art" data-full="./assets/portfolio-film-hd.webp" data-caption="映像・動画制作の表現コンセプト（イメージ）" type="button"><img loading="lazy" decoding="async" width="480" height="480" src="./assets/portfolio-film.webp" alt="実写撮影・編集機器を使った高精細な映像制作のイメージ"><div class="tile-name"><small>06 / MOVIE</small><strong>動画・映像制作</strong></div></button>
       </div>
       <p class="media-note">※ 写真はイメージ素材であり、S's-YRの施工実績ではありません。オリジナルイラスト・画面デザインは表現サンプルです。写真素材：<a href="https://unsplash.com/photos/welder-working-on-a-piece-of-metal-in-a-factory-JpzMc-FMUes" target="_blank" rel="noopener noreferrer">Cemrecan Yurtman / Unsplash</a>、<a href="https://unsplash.com/photos/a-room-that-is-under-construction-with-concrete-walls-pBZBbCqyW8M" target="_blank" rel="noopener noreferrer">Steffen Lemmerzahl / Unsplash</a>。</p>
-      <div class="movie-grid"><div><div class="number">LIVE ACTION / WELDING &amp; CONSTRUCTION</div><h3>溶接・建築の現場イメージを映像で。</h3><p>火花が散る溶接と、建築現場の動きを収めた実写映像を編集。名刺・QRコード・電話番号・メールアドレスは動画に出しません。</p><p class="media-note">※ Pexelsの素材映像を編集した業務イメージです。S&#39;s-YR自身の施工記録・実績映像ではありません。 <a href="https://www.pexels.com/video/man-doing-welding-work-14314645/" target="_blank" rel="noopener noreferrer">溶接素材</a> / <a href="https://www.pexels.com/video/modern-apartment-building-under-construction-38942459/" target="_blank" rel="noopener noreferrer">建築素材</a></p><div class="technical"><span>溶接・鉄骨工事</span><span>建築・設備工事</span><span>実写映像</span><span>無音</span></div></div><video controls preload="metadata" playsinline poster="./assets/showreel-poster.jpg"><source src="./assets/showreel-demo.mp4?v=20261123-weld" type="video/mp4">動画の再生に対応していません。</video></div>
-    </div></section>
-    <section class="qr-section" id="qr"><div class="wrap qr-layout">
-      <div><div class="eyebrow">SCAN / CONNECT / SAVE</div><h2>名刺を、<br>スマホでも届ける。</h2><p>このQRコードを読み込むと、直接このデジタル名刺が開きます。電話・メール・連絡先保存もワンタップ。入口用のQRです。名刺の表は連絡先登録、裏は業務紹介を開く別々のQRです。</p></div>
-      <div class="qr-wrap"><div class="qr-white"><img src="./assets/qr-business-card.svg" alt="S's-YRのデジタル名刺ページを開くQRコード" width="180" height="180"></div><div class="qr-meta">S's-YR / DIGITAL CARD<a href="https://mumei-s.github.io/ssyr-business-card/" id="cardUrl">mumei-s.github.io/<br>ssyr-business-card/</a><a href="./assets/qr-business-card.svg" download="S-s-YR_QR.svg" class="qr-download">QR画像を保存 ↘</a></div></div>
+      <div class="movie-grid">
+        <div>
+          <div class="number">BUSINESS FILM</div>
+          <h3>映像で見るS's-YRの仕事</h3>
+          <p>溶接と住宅・店舗の施工、工場の現場応援と施設清掃。後半では、AIイラスト、広告、業務アプリ、動画編集の制作例をご覧いただけます。</p>
+          <p class="media-note">溶接・建築は参考映像を使用しています。現場支援・清掃はアニメーション、デジタル制作は作品サンプルです。<br>映像素材　<a href="https://www.pexels.com/video/man-doing-welding-work-14314645/" target="_blank" rel="noopener noreferrer">溶接</a>・<a href="https://www.pexels.com/video/modern-apartment-building-under-construction-38942459/" target="_blank" rel="noopener noreferrer">建築</a>（Pexels）</p>
+          <div class="technical"><span>23秒・無音</span></div>
+        </div>
+        <video controls playsinline preload="none" width="832" height="468" aria-label="S's-YRの事業紹介・無音" poster="./assets/showreel-poster.webp"><source src="./assets/showreel-demo.mp4?v=20261123-all" type="video/mp4">動画を再生できません。</video>
+      </div>
     </div></section>
   </main>
   <footer><div class="wrap footer-grid"><div><h3>S's-YR</h3><p>© <span id="year"></span> S's-YR. All rights reserved.</p></div><div class="footer-right"><a href="tel:08091190044">電話</a><a href="mailto:ss526s-syr@yahoo.co.jp">メール</a><a href="#card">トップへ ↑</a></div></div></footer>
-  <dialog id="mediaDialog" class="lightbox" aria-label="作品の拡大表示"><div class="modal-bar"><span id="modalCaption">作品の拡大表示</span><button type="button" id="closeDialog">閉じる ×</button></div><img id="modalImage" src="./assets/portfolio-fantasy-hd.webp" alt=""></dialog>
-  <div id="toast" class="notice" role="status" aria-live="polite"></div>
+  <dialog id="mediaDialog" class="lightbox" aria-label="作品の拡大表示"><div class="modal-bar"><span id="modalCaption">作品の拡大表示</span><button type="button" id="closeDialog">閉じる ×</button></div><img id="modalImage" alt=""></dialog>
   <script>
     (()=>{
       const card=document.getElementById('businessCard'), frontBtn=document.getElementById('frontBtn'),backBtn=document.getElementById('backBtn'),backFace=document.getElementById('backFace'),frontFace=document.getElementById('frontFace');
@@ -229,8 +144,6 @@
       function showBack(value){back=Boolean(value);card.classList.toggle('show-back',back);frontBtn.setAttribute('aria-pressed',String(!back));backBtn.setAttribute('aria-pressed',String(back));frontFace.setAttribute('aria-hidden',String(back));backFace.setAttribute('aria-hidden',String(!back));}
       frontBtn.addEventListener('click',()=>showBack(false));backBtn.addEventListener('click',()=>showBack(true));
       let startX=0,startY=0;const swipe=document.getElementById('cardSwipeZone');swipe.addEventListener('touchstart',e=>{startX=e.changedTouches[0].screenX;startY=e.changedTouches[0].screenY;},{passive:true});swipe.addEventListener('touchend',e=>{const dx=e.changedTouches[0].screenX-startX,dy=e.changedTouches[0].screenY-startY;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.4)showBack(dx<0);},{passive:true});
-      const toast=document.getElementById('toast');let toastTimeout;function notify(message){toast.textContent=message;toast.classList.add('show');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>toast.classList.remove('show'),2700)}
-      document.getElementById('shareButton').addEventListener('click',async()=>{const url=location.href.split('#')[0].split('?')[0];try{if(navigator.share){await navigator.share({title:"S's-YR | 川合 伸次の名刺",url});return;}if(navigator.clipboard){await navigator.clipboard.writeText(url);notify('名刺のURLをコピーしました');return;}const textArea=document.createElement('textarea');textArea.value=url;document.body.append(textArea);textArea.select();document.execCommand('copy');textArea.remove();notify('URLをコピーしました');}catch(err){if(err.name!=='AbortError')notify('共有できませんでした');}});
       const dialog=document.getElementById('mediaDialog');const modalImg=document.getElementById('modalImage');const modalCaption=document.getElementById('modalCaption');document.querySelectorAll('.media-tile').forEach(tile=>tile.addEventListener('click',()=>{modalImg.src=tile.dataset.full;modalImg.alt=tile.dataset.caption;modalCaption.textContent=tile.dataset.caption;dialog.showModal();}));document.getElementById('closeDialog').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});document.getElementById('year').textContent=new Date().getFullYear();
     })();
   </script>

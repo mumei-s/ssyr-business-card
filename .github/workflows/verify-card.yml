@@ -1,4 +1,4 @@
-name: Check actual QR scan results and site structure
+name: Verify digital business card
 on:
   push:
     branches: [main]
@@ -15,7 +15,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install QR decoding/rendering libraries
-        run: python -m pip install --disable-pip-version-check cairosvg opencv-python-headless
-      - name: Scan all three QR SVGs and validate business card content
+      - name: Install media and browser checks
+        run: |
+          python -m pip install Pillow playwright zxing-cpp
+          if ! command -v ffprobe >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+          if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
+            python -m playwright install --with-deps chromium
+          fi
+      - name: Test both sides, published QR destinations, galleries and showreel
         run: python tools/verify_site.py
