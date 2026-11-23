@@ -14,12 +14,11 @@ from urllib.parse import urlsplit
 
 from PIL import Image
 from playwright.sync_api import expect, sync_playwright
-import zxingcpp
+from verify_personal import check_identity, check_printed_qr, check_routes
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_URL = "https://mumei-s.github.io/ssyr-business-card/"
-QR_DESTINATIONS = {"qr-contact.svg": "contact.vcf", "qr-introduction.svg": "works.html"}
 ART = {f"portfolio-{kind}-hd.webp" for kind in ("fantasy", "graphic", "app", "film")}
 PREVIOUS_REEL_BYTES = 1_384_814
 
@@ -42,12 +41,8 @@ def serve():
             thread.join()
 
 
-def check_face(face, destination):
+def check_face(face):
     expect(face).to_be_visible()
-    link = face.locator(f'a[href$="{destination}"]').filter(has=face.page.locator("img")).first
-    qr_image = link.locator("img")
-    qr = zxingcpp.read_barcode(Image.open(BytesIO(qr_image.screenshot())))
-    assert qr and qr.text == PUBLIC_URL + destination, f"Bad rendered QR on {destination} face"
     # Sample the unprinted top margin on each stock and the page just outside the card.
     box = face.bounding_box()
     view = Image.open(BytesIO(face.page.screenshot(scale="css"))).convert("RGB")
@@ -86,7 +81,8 @@ def check_wordmark(face):
 
 def check_card(page):
     front, back = page.locator("#frontFace"), page.locator("#backFace")
-    check_face(front, "contact.vcf")
+    check_face(front)
+    check_printed_qr(front, "qr-contact.svg", ROOT / "contact.vcf")
     check_wordmark(front)
     expect(back).to_be_hidden()
     lettering = front.locator('img[src*="lettering/"]')
@@ -94,7 +90,9 @@ def check_card(page):
     assert lettering.evaluate_all("imgs => imgs.every(img => img.complete && img.naturalWidth > 0)")
     page.locator("#backBtn").click()
     expect(front).to_be_hidden()
-    check_face(back, "works.html")
+    check_face(back)
+    expect(back.locator('a[href$="works.html"]')).to_be_visible()
+    expect(back.locator('img[src*="qr" i]')).to_have_count(0)
     check_wordmark(back)
     page.locator("#frontBtn").click()
     expect(front).to_be_visible()
@@ -144,12 +142,48 @@ def check_video(video):
     print(f"Validated {video.stat().st_size:,}-byte reel: {titles}")
 
 
-def main():
-    from verify_personal import check_identity, check_routes
+def check_contact_imports(browser, base):
+    platforms = {
+        'iOS': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1',
+        'Android': 'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/131.0.0.0 Mobile Safari/537.36',
+    }
+    for os_name, user_agent in platforms.items():
+        context = browser.new_context(user_agent=user_agent, viewport={'width': 360, 'height': 800})
+        page = context.new_page()
+        for edition, name in (('', '川合 伸次'), ('shinji/', 'SHINJI')):
+            vcf = base + edition + 'contact.vcf'
+            for route in ('index.html', 'works.html'):
+                page.goto(base + edition + route)
+                actions = page.get_by_role('link', name='電話帳に登録', exact=True).all()
+                assert actions, f'Contact registration action missing from {page.url}'
+                for action in actions:
+                    expect(action).to_be_visible()
+                    action.click()
+                    dialog = page.locator('#contact-import')
+                    expect(dialog).to_be_visible()
+                    file_link = dialog.locator('[data-import-file]')
+                    assert file_link.evaluate('a => a.href') == vcf
+                    assert file_link.get_attribute('download') is None, 'Prefer the device vCard handler'
+                    fallback = dialog.locator('[data-import-download]')
+                    if os_name == 'Android':
+                        dialog.get_by_text('ファイルから登録する', exact=True).click()
+                        expect(fallback).to_be_visible()
+                        with page.expect_download() as pending:
+                            fallback.click()
+                        download = pending.value
+                        assert download.suggested_filename == name + '.vcf'
+                        assert download.path().read_bytes() == (ROOT / edition / 'contact.vcf').read_bytes()
+                    else:
+                        expect(fallback).to_have_count(0)
+                    dialog.get_by_role('button', name='閉じる').click()
+                    expect(dialog).to_be_hidden()
+        context.close()
 
+
+def main():
     check_identity(ROOT)
     qr_files = {p.name for p in (ROOT / "assets").rglob("qr-*") if p.is_file()}
-    assert qr_files == set(QR_DESTINATIONS), f"Unexpected public QR assets: {qr_files}"
+    assert qr_files == {"qr-contact.svg"}, f"Unexpected public QR assets: {qr_files}"
     vcard = (ROOT / "contact.vcf").read_text(encoding="utf-8")
     for field in ("BEGIN:VCARD", "FN:川合 伸次", "TEL;TYPE=CELL:080-9119-0044", "EMAIL:ss526s-syr@yahoo.co.jp", "END:VCARD"):
         assert field in vcard.splitlines(), f"Missing contact field {field}"
@@ -172,9 +206,10 @@ def main():
         assert movie == check_page(page), "The two pages serve different showreels"
         check_routes(page, base, PUBLIC_URL)
         assert not page_errors, page_errors
+        check_contact_imports(browser, base)
         browser.close()
     check_video(movie)
-    print("Validated card switching, two readable QR codes, gallery originals and tap-to-load video")
+    print("Validated card switching, readable contact vCards, gallery originals and tap-to-load video")
 
 
 if __name__ == "__main__":

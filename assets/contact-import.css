@@ -1,0 +1,44 @@
+#contact-import {
+  box-sizing: border-box;
+  color-scheme: dark;
+  position: fixed;
+  inset: 0;
+  width: min(24rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  overflow: auto;
+  margin: auto;
+  padding: 1.4rem;
+  background: #1b2225;
+  color: #f2f4f4;
+  border: 1px solid #778189;
+  border-radius: 5px;
+  text-align: start;
+  font: 1rem/1.65 system-ui, sans-serif;
+}
+#contact-import:not([open]) { display: none; }
+#contact-import::backdrop { background: rgb(4 8 10 / 82%); }
+#contact-import h2 { margin: 0; color: inherit; font: 600 1.3rem/1.5 system-ui, sans-serif; }
+#contact-import .import-name { margin: .3rem 0 .8rem; color: #d6dfe2; font-weight: 600; }
+#contact-import .import-help { margin: 0 0 1rem; color: #e1e7e8; font: 1rem/1.65 system-ui, sans-serif; }
+#contact-import a.import-file, #contact-import form button {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  padding: .65rem .5rem;
+  border: 1px solid #bbc8cc;
+  border-radius: 3px;
+  background: #e2e9eb;
+  color: #142027;
+  text-align: center;
+  text-decoration: none;
+  font: 600 .95rem/1.55 system-ui, sans-serif;
+}
+#contact-import form { margin: .45rem 0 0; }
+#contact-import form button { margin: 0; background: transparent; color: #f5f7f8; border-color: transparent; cursor: pointer; }
+#contact-import :focus-visible { outline: 2px solid #bce9ed; outline-offset: 2px; }
+#contact-import details { margin: .8rem 0; font: 1rem/1.65 system-ui, sans-serif; }
+#contact-import summary { min-height: 44px; padding-block: .6rem; cursor: pointer; font-size: .94rem; color: #e2e9eb; }
+#contact-import details p { color: #e1e7e8; margin: 0 0 .45rem; font-size: .93rem; }
+#contact-import [data-import-download] { display: inline-block; color: #f2f5f5; padding: .55rem 0; text-decoration: underline; text-underline-offset: .22em; }
+#contact-import .import-scan-card { display: block; width: min(100%, 15rem); margin: .4rem auto; }
+#contact-import .import-scan-card img { display: block; width: 100%; height: auto; max-width: none; max-height: none; margin: 0; background: #fff; }

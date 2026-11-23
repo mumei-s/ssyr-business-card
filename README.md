@@ -1,17 +1,12 @@
 # S's-YR デジタル名刺
 
-スマートフォンで閲覧できるS's-YRのデジタル名刺。GitHub Pages上の静的サイトです。
+GitHub Pagesで配信する、S's-YRの仕事用デジタル名刺です。
 
-## 名刺のQRコード
+| 名刺 | 名刺ページ | 事業内容 | 電話帳登録用ファイル |
+| --- | --- | --- | --- |
+| 川合 伸次 | `index.html` | `works.html` | `contact.vcf` |
+| SHINJI | `shinji/index.html` | `shinji/works.html` | `shinji/contact.vcf` |
 
-- **名刺・表面QR**：`contact.vcf` のURLを開き、川合伸次 / S's-YR の連絡先を登録
-- **名刺・裏面QR**：`https://mumei-s.github.io/ssyr-business-card/works.html` を開く
+各名刺の表面にあるQRコードには、対面で電話帳に登録するための連絡先情報が入っています。川合 伸次版は名前・電話・メール、SHINJI版は名前・メールを使います。名刺を表示中の端末では、電話帳登録ボタンから各名刺のvCardを開けます。
 
-## 主要ページ
-
-- `index.html`：名刺の表裏切り替え、連絡先登録、ギャラリー、紹介動画。
-- `works.html`：工事・業務支援・AIイラスト・ツール制作の業務紹介。
-- `contact.vcf`：連絡先登録。
-- `assets/qr-*.svg`：用途別のQRコード。画像生成ではなく正しいデータから生成し、CIでQRの読取結果を検証。
-
-写真はイメージ素材であり施工実績写真ではありません。公開前にGitHubのSettings → Pages を有効化し、実機のQR読取・ページ表示を確認してください。
+裏面の「事業内容を見る」から、同じ端末で仕事や作品の紹介へ進めます。掲載している写真・映像は業務イメージです。
