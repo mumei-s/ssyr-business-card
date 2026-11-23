@@ -20,6 +20,10 @@ jobs:
           sudo apt-get install -y -qq fonts-noto-cjk ffmpeg
       - name: Produce real moving welding/construction showreel
         run: python tools/build_stock_showreel.py
+      - name: Produce poster frame from actual welding footage
+        run: |
+          ffmpeg -y -hide_banner -loglevel error -ss 1.5 -i assets/showreel-demo.mp4 -frames:v 1 -q:v 4 assets/showreel-poster.jpg
+          test $(stat -c%s assets/showreel-poster.jpg) -gt 3000
       - name: Validate dimensions, duration and no audio
         shell: bash
         run: |
@@ -32,7 +36,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/showreel-demo.mp4
+          git add assets/showreel-demo.mp4 assets/showreel-poster.jpg
           if git diff --cached --quiet; then echo "No change"; exit 0; fi
           git commit -m "Publish licensed welding and construction motion footage (no QR or private info)"
           git push
