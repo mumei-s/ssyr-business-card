@@ -54,9 +54,9 @@ def check_face(face, destination):
     y = round(box["y"] + box["height"] * 0.03)
     surround = view.getpixel((round(box["x"]) - 5, y))
     silver = view.getpixel((round(box["x"] + box["width"] * 0.15), y))
-    gold = view.getpixel((round(box["x"] + box["width"] * 0.88), y))
+    band = view.getpixel((round(box["x"] + box["width"] * 0.88), y))
     assert max(surround) < 90 and min(silver) > 150, "The silver card should stand out against the dark page"
-    assert gold[0] - gold[2] > 25 and gold[0] > 140, "The card should have a visible gold panel"
+    assert min(band) > 145 and max(band) - min(band) < 12, "The wordmark backing should be neutral silver"
     # A reversed ancestor mirrors all of its children, including readable text.
     mirrored = face.evaluate("""element => {
         for (let node = element; node; node = node.parentElement) {

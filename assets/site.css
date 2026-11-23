@@ -22,7 +22,7 @@ header {
   min-height: 78px; display: flex; align-items: center; justify-content: space-between;
   gap: 20px; padding-block: 12px;
 }
-header .wordmark img { filter: brightness(0) invert(84%) sepia(29%) saturate(585%) hue-rotate(355deg); }
+header .wordmark img { filter: brightness(0) invert(80%); }
 header a { text-decoration: none; font-size: .875rem; }
 .top-right, .footer-right { display: flex; align-items: center; gap: 22px; }
 .top-right a:hover, .footer-right a:hover, header a:hover { color: var(--gold); }
