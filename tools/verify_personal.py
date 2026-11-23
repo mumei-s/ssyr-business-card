@@ -2,10 +2,14 @@
 
 from html import unescape
 from io import BytesIO
+import json
+from pathlib import Path
 import re
+import subprocess
 from urllib.parse import unquote, urljoin, urlsplit
 
 from PIL import Image
+from playwright.sync_api import expect
 import zxingcpp
 
 EMAIL = 'ss526s-syr@yahoo.co.jp'
@@ -32,6 +36,93 @@ def check_identity(root):
     assert not any(re.match(r'(TEL|URL)(:|;)', line, re.I) for line in contact)
 
 
+def check_viewport(page):
+    width, content = page.locator('html').evaluate(
+        '(el) => [el.clientWidth, el.scrollWidth]'
+    )
+    assert content <= width + 1, f'{page.url} overflows horizontally: {content}px in {width}px'
+
+
+def check_printed_qr(face, asset, expected):
+    qr = face.locator(f'img[src$="{asset}"]')
+    expect(qr).to_be_visible()
+    href = qr.evaluate('img => img.closest("a")?.href')
+    assert href == urljoin(face.page.url, expected.rsplit('/', 1)[1]), f'{asset} links to the wrong destination'
+    # Decode the visible card itself, preserving its actual size, clipping and overlays.
+    rect = qr.bounding_box()
+    bounds = face.bounding_box()
+    assert (rect['x'] >= bounds['x'] - 1 and rect['y'] >= bounds['y'] - 1
+            and rect['x'] + rect['width'] <= bounds['x'] + bounds['width'] + 1
+            and rect['y'] + rect['height'] <= bounds['y'] + bounds['height'] + 1), f'{asset} is cropped'
+    code = zxingcpp.read_barcode(Image.open(BytesIO(face.screenshot())))
+    assert code and code.text == expected, f'{asset} is not readable on the displayed card'
+
+
+def check_card_controls(page, public_url):
+    front, back = page.locator('#front'), page.locator('#back')
+    expect(front).to_be_visible()
+    expect(back).to_be_hidden()
+    light = page.locator('#light-button')
+    initial = light.get_attribute('aria-pressed')
+    assert initial in {'true', 'false'}, 'The light button must expose its state'
+    light.click()
+    expect(light).to_have_attribute('aria-pressed', 'false' if initial == 'true' else 'true')
+    light.click()
+    expect(light).to_have_attribute('aria-pressed', initial)
+
+    page.emulate_media(reduced_motion='reduce')
+    original = page.viewport_size
+    for width in (320, 360):
+        page.set_viewport_size({'width': width, 'height': original['height']})
+        check_viewport(page)
+        check_printed_qr(front, 'introduction-qr.svg', urljoin(public_url, 'shinji/works.html'))
+        page.locator('#back-button').click()
+        expect(front).to_be_hidden()
+        expect(page.locator('#back-button')).to_have_attribute('aria-pressed', 'true')
+        expect(back.locator('a[href^="mailto:"]')).to_be_visible()
+        check_viewport(page)
+        check_printed_qr(back, 'contact-qr.svg', urljoin(public_url, 'shinji/contact.vcf'))
+        back.locator('#open-qr').click()
+        dialog = page.locator('#contact-dialog')
+        expect(dialog).to_be_visible()
+        expect(dialog.locator('img')).to_be_visible()
+        check_viewport(page)
+        dialog.get_by_role('button', name=re.compile('閉じる')).click()
+        expect(dialog).to_be_hidden()
+        page.locator('#front-button').click()
+        expect(front).to_be_visible()
+        expect(back).to_be_hidden()
+    page.set_viewport_size(original)
+    page.emulate_media(reduced_motion='no-preference')
+
+
+def check_gallery_controls(page):
+    player = page.locator('video')
+    expect(player).to_have_count(1)
+    src = player.get_attribute('src') or player.locator('source').get_attribute('src')
+    assert urlsplit(urljoin(page.url, src)).path == '/shinji/field-film.mp4'
+    film = Path(__file__).resolve().parents[1] / 'shinji' / 'field-film.mp4'
+    chapters = json.loads(subprocess.check_output([
+        'ffprobe', '-v', 'error', '-show_chapters', '-of', 'json', str(film)
+    ]))['chapters']
+    titles = [c.get('tags', {}).get('title', '') for c in chapters if float(c['end_time']) > float(c['start_time'])]
+    assert all(any(name in title for title in titles) for name in ('ポスティング', '洗車')), 'Field film chapters are missing'
+
+    for filename in ('work-posting.webp', 'work-carwash.webp'):
+        tile = page.locator(f'button[data-full$="{filename}"]')
+        expect(tile).to_have_count(1)
+        full = tile.get_attribute('data-full')
+        tile.click()
+        dialog = page.get_by_role('dialog')
+        expect(dialog).to_be_visible()
+        displayed = dialog.locator('img')
+        displayed.evaluate('img => img.decode()')
+        assert displayed.evaluate('img => img.currentSrc') == urljoin(page.url, full)
+        check_viewport(page)
+        dialog.get_by_role('button', name=re.compile('閉じる')).click()
+        expect(dialog).to_be_hidden()
+
+
 def check_routes(page, base, public_url):
     codes = {}
     destinations = {
@@ -41,6 +132,11 @@ def check_routes(page, base, public_url):
     for name, next_paths in destinations.items():
         page.goto(base + 'shinji/' + name)
         assert 'SHINJI' in page.title().upper()
+        check_viewport(page)
+        if name == 'index.html':
+            check_card_controls(page, public_url)
+        else:
+            check_gallery_controls(page)
         links = page.locator('a[href]').evaluate_all('(links) => links.map(a => a.href)')
         site_links = [url.replace(public_url, base, 1) if url.startswith(public_url) else url for url in links]
         paths = {urlsplit(url).path for url in site_links if url.startswith(base)}
