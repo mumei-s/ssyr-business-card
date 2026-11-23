@@ -81,20 +81,30 @@ def check_wordmark(face):
 
 def check_card(page):
     front, back = page.locator("#frontFace"), page.locator("#backFace")
+    front_button = page.get_by_role("button", name="表", exact=True)
+    back_button = page.get_by_role("button", name="裏", exact=True)
+    expect(front_button).to_have_attribute("aria-pressed", "true")
+    expect(back_button).to_have_attribute("aria-pressed", "false")
+    for face in (front, back):
+        expect(face.locator('a[href*="works.html"], a[href="#services"], a[href="#works"]')).to_have_count(0)
+        assert not re.search(r"事業内容\s*を\s*見る", face.text_content())
     check_face(front)
     check_wordmark(front)
     expect(back).to_be_hidden()
     lettering = front.locator('img[src*="lettering/"]')
     assert lettering.count() > 0, "Original card lettering is missing"
     assert lettering.evaluate_all("imgs => imgs.every(img => img.complete && img.naturalWidth > 0)")
-    page.locator("#backBtn").click()
+    back_button.click()
     expect(front).to_be_hidden()
     check_face(back)
-    expect(back.locator('a[href$="works.html"]')).to_be_visible()
+    expect(back_button).to_have_attribute("aria-pressed", "true")
     check_wordmark(back)
-    page.locator("#frontBtn").click()
+    front_button.click()
     expect(front).to_be_visible()
     expect(back).to_be_hidden()
+    for item in (page.locator("#services h2"), page.locator("#works .media-grid img").first, page.locator("video")):
+        item.scroll_into_view_if_needed()
+        expect(item).to_be_in_viewport()
 
 
 def check_page(page):
