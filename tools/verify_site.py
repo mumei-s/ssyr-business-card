@@ -145,6 +145,9 @@ def check_video(video):
 
 
 def main():
+    from verify_personal import check_identity, check_routes
+
+    check_identity(ROOT)
     qr_files = {p.name for p in (ROOT / "assets").rglob("qr-*") if p.is_file()}
     assert qr_files == set(QR_DESTINATIONS), f"Unexpected public QR assets: {qr_files}"
     vcard = (ROOT / "contact.vcf").read_text(encoding="utf-8")
@@ -167,6 +170,7 @@ def main():
         movie = check_page(page)
         page.goto(base + "works.html")
         assert movie == check_page(page), "The two pages serve different showreels"
+        check_routes(page, base, PUBLIC_URL)
         assert not page_errors, page_errors
         browser.close()
     check_video(movie)

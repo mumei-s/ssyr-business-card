@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f1eee9">
+  <meta name="robots" content="noindex,nofollow">
+  <title>SHINJI | Personal Card</title>
+  <meta name="description" content="SHINJIのパーソナル名刺。メール、連絡先の保存、S's-YRの仕事と作品。">
+  <meta property="og:title" content="SHINJI | Personal Card">
+  <meta property="og:description" content="SHINJIの連絡先と、S's-YRの仕事・作品。">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://mumei-s.github.io/ssyr-business-card/shinji/art.webp">
+  <meta property="og:image:alt" content="ボルドーのカラーと銀色の曲線">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./personal.css">
+  <script src="./card.js" defer></script>
+</head>
+<body>
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="mail" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/></symbol>
+    <symbol id="save" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4"/></symbol>
+    <symbol id="qr" viewBox="0 0 24 24"><path d="M3 3h6v6H3zm12 0h6v6h-6zM3 15h6v6H3zm10-3h3v4h-3zm4 6h4v3h-4zM20 12v2M12 20v1"/></symbol>
+  </svg>
+  <header class="mast frame">
+    <a class="brand" href="./" aria-label="S's-YR　SHINJIの名刺"><img src="../assets/lettering/wordmark.svg" alt="S's-YR" width="361" height="89"></a>
+    <nav aria-label="メインナビゲーション"><a href="./works.html">仕事と作品</a><a href="#contact">連絡先</a></nav>
+  </header>
+  <main class="frame">
+    <section class="hero" aria-labelledby="title">
+      <div class="intro">
+        <h1 id="title" lang="en">Personal <em>Card<span>.</span></em></h1>
+      </div>
+      <div class="exhibit">
+        <div class="card" id="card" aria-label="SHINJIの名刺">
+          <section class="face front" id="front" aria-label="名刺の表面">
+            <img class="still-life" src="./art.webp" width="1500" height="1000" fetchpriority="high" alt="一輪の深紅のカラーを、細い銀の弧が取り巻く。">
+            <img class="ink-logo" src="../assets/lettering/wordmark.svg" alt="S's-YR" width="361" height="89">
+            <p class="card-name" lang="en">SHINJI</p>
+            <a class="card-email" href="mailto:ss526s-syr@yahoo.co.jp">ss526s-syr@yahoo.co.jp</a>
+            <button class="qr-toggle" id="open-qr" type="button" aria-haspopup="dialog" aria-controls="contact-dialog" aria-label="連絡先登録用QRを表示"><svg class="icon" aria-hidden="true"><use href="#qr"/></svg><span>連絡先QR</span></button>
+          </section>
+          <section class="face back" id="back" aria-label="名刺の裏面" hidden>
+            <div class="back-heading"><div><span lang="en">S's-YR</span><strong>事業内容</strong></div><span class="back-signature">代表 SHINJI</span></div>
+            <div class="back-content">
+              <ul><li>工事・施工</li><li>業務・施設サポート</li><li>AI・デジタル制作</li></ul>
+              <a class="back-qr" href="./works.html"><img src="./introduction-qr.svg" width="144" height="144" alt="仕事と作品の紹介用QRコード"><span>仕事と作品を見る</span></a>
+            </div>
+          </section>
+        </div>
+        <div class="card-foot">
+          <div class="tabs" role="group" aria-label="名刺の表裏を切り替え">
+            <button type="button" id="front-button" aria-controls="front" aria-pressed="true">表面</button>
+            <button type="button" id="back-button" aria-controls="back" aria-pressed="false">裏面・事業内容</button>
+          </div>
+          <span class="swipe">左右にスワイプ</span>
+        </div>
+      </div>
+      <div class="connection" id="contact">
+        <p>工事・施工から、イラストや映像の制作まで。<br>S's-YRの仕事と作品を紹介しています。</p>
+        <div class="actions">
+          <a class="primary" href="mailto:ss526s-syr@yahoo.co.jp"><svg class="icon" aria-hidden="true"><use href="#mail"/></svg>メールを送る</a>
+          <a href="./contact.vcf" download="SHINJI.vcf"><svg class="icon" aria-hidden="true"><use href="#save"/></svg>連絡先を保存</a>
+        </div>
+      </div>
+    </section>
+    <section class="work-strip" aria-labelledby="work-title">
+      <h2 id="work-title" lang="en">Works<span>.</span></h2>
+      <div class="work-links">
+        <a href="./works.html#gallery"><img src="../assets/portfolio-fantasy.webp" width="480" height="480" loading="lazy" decoding="async" alt=""><span><small lang="en">Gallery</small><strong>写真とイラスト</strong></span></a>
+        <a href="./works.html#film"><img src="../assets/showreel-poster.webp" width="832" height="468" loading="lazy" decoding="async" alt=""><span><small lang="en">Film</small><strong>映像で見る仕事</strong></span></a>
+      </div>
+    </section>
+  </main>
+  <footer class="frame"><span>© S's-YR</span><a href="./works.html#services">事業内容</a></footer>
+  <dialog id="contact-dialog" aria-labelledby="qr-heading">
+    <h2 id="qr-heading">SHINJIの連絡先</h2>
+    <p>カメラで読み取ると連絡先を保存できます。</p>
+    <a class="dialog-qr" href="./contact.vcf" download="SHINJI.vcf"><img src="./contact-qr.svg" height="224" width="224" alt="SHINJIの連絡先登録用QRコード"></a>
+    <a class="download" href="./contact.vcf" download="SHINJI.vcf">この端末に連絡先を保存</a>
+    <form method="dialog"><button type="submit" autofocus>閉じる</button></form>
+  </dialog>
+</body>
+</html>
