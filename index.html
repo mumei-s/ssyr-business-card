@@ -128,6 +128,13 @@
 .back-qr small{font-size:1.18cqw!important;white-space:normal;text-align:center}
 @media(max-width:760px){.front-btm{bottom:5%}.front-names{top:26%}.front-qr{top:28%!important}.back-grid .back-body{font-size:1.53cqw!important}}
 @media(max-width:380px){.back-qr small{display:none!important}}
+
+/* Six complete premium tiles. AI artwork includes its own editorial captions. */
+.media-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,265px)}
+.media-tile.wide{grid-row:span 1}
+.media-tile.art::after,.media-tile.art .tile-name{display:none!important}
+.media-tile.art img{filter:none!important;object-fit:cover}
+@media(max-width:760px){.media-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,184px)}.media-tile.wide{grid-column:span 1!important;grid-row:span 1!important}}
 </style>
 </head>
 <body>
@@ -197,11 +204,12 @@
     <section class="block portfolio" id="works"><div class="wrap">
       <div class="section-head"><div><div class="number">02 — VISUAL GALLERY</div><h2>仕事と制作のイメージ</h2><p>写真で伝える現場の空気感と、イラストによる表現の可能性。</p></div><span class="index" aria-hidden="true">02</span></div>
       <div class="media-grid">
-        <button class="media-tile wide" data-full="https://images.unsplash.com/photo-1738162837389-3b02d6dd507b?auto=format&amp;fit=crop&amp;w=1700&amp;q=85" data-caption="鉄骨・溶接関連業務のイメージ写真（Unsplash）" type="button"><img loading="lazy" src="https://images.unsplash.com/photo-1738162837389-3b02d6dd507b?auto=format&amp;fit=crop&amp;w=900&amp;q=76" alt="溶接作業のイメージ写真。実績写真ではありません"><div class="tile-name"><small>01 / PHOTO IMAGE</small><strong>鉄骨・溶接・施工</strong></div></button>
+        <button class="media-tile" data-full="https://images.unsplash.com/photo-1738162837389-3b02d6dd507b?auto=format&amp;fit=crop&amp;w=1700&amp;q=85" data-caption="鉄骨・溶接関連業務のイメージ写真（Unsplash）" type="button"><img loading="lazy" src="https://images.unsplash.com/photo-1738162837389-3b02d6dd507b?auto=format&amp;fit=crop&amp;w=900&amp;q=76" alt="溶接作業のイメージ写真。実績写真ではありません"><div class="tile-name"><small>01 / PHOTO IMAGE</small><strong>鉄骨・溶接・施工</strong></div></button>
         <button class="media-tile" data-full="https://images.unsplash.com/photo-1711296168555-ea2526321306?auto=format&amp;fit=crop&amp;w=1500&amp;q=82" data-caption="建物の改修・施工のイメージ写真（Unsplash）" type="button"><img loading="lazy" src="https://images.unsplash.com/photo-1711296168555-ea2526321306?auto=format&amp;fit=crop&amp;w=900&amp;q=72" alt="改修中の建築空間のイメージ写真。実績写真ではありません"><div class="tile-name"><small>02 / PHOTO IMAGE</small><strong>建築・営繕</strong></div></button>
-        <button class="media-tile" data-full="./assets/ai-illustration-01.svg" data-caption="オリジナルのデジタルイラスト表現サンプル" type="button"><img loading="lazy" src="./assets/ai-illustration-01.svg" alt="幻想的な水晶都市を描くデジタルイラストのサンプル"><div class="tile-name"><small>03 / ILLUSTRATION</small><strong>幻想イラスト</strong></div></button>
-        <button class="media-tile" data-full="./assets/ai-illustration-02.svg" data-caption="オリジナルのグラフィック・広告表現サンプル" type="button"><img loading="lazy" src="./assets/ai-illustration-02.svg" alt="青と朱色を使った近未来都市のグラフィックイラスト"><div class="tile-name"><small>04 / ILLUSTRATION</small><strong>グラフィック表現</strong></div></button>
-        <button class="media-tile" data-full="./assets/ui-creation.svg" data-caption="ツール・アプリ制作の画面デザイン例" type="button"><img loading="lazy" src="./assets/ui-creation.svg" alt="業務管理ツールの画面構成イメージ"><div class="tile-name"><small>05 / TOOL &amp; APP</small><strong>ツール・アプリ</strong></div></button>
+        <button class="media-tile art" data-full="./assets/portfolio-fantasy-hd.webp" data-caption="オリジナルのデジタルイラスト表現サンプル" type="button"><img loading="lazy" src="./assets/portfolio-fantasy-hd.webp" alt="幻想的な水晶都市を描くデジタルイラストのサンプル"><div class="tile-name"><small>03 / ILLUSTRATION</small><strong>幻想イラスト</strong></div></button>
+        <button class="media-tile art" data-full="./assets/portfolio-graphic-hd.webp" data-caption="オリジナルのグラフィック・広告表現サンプル" type="button"><img loading="lazy" src="./assets/portfolio-graphic-hd.webp" alt="青と朱色を使った近未来都市のグラフィックイラスト"><div class="tile-name"><small>04 / ILLUSTRATION</small><strong>グラフィック表現</strong></div></button>
+        <button class="media-tile art" data-full="./assets/portfolio-app-hd.webp" data-caption="ツール・アプリ制作の画面デザイン例" type="button"><img loading="lazy" src="./assets/portfolio-app-hd.webp" alt="業務管理ツールの画面構成イメージ"><div class="tile-name"><small>05 / TOOL &amp; APP</small><strong>ツール・アプリ</strong></div></button>
+         <button class="media-tile art" data-full="./assets/portfolio-film-hd.webp" data-caption="映像・動画制作の表現コンセプト（イメージ）" type="button"><img loading="lazy" src="./assets/portfolio-film-hd.webp" alt="実写撮影・編集機器を使った高精細な映像制作のイメージ"><div class="tile-name"><small>06 / MOVIE</small><strong>動画・映像制作</strong></div></button>
       </div>
       <p class="media-note">※ 写真はイメージ素材であり、S's-YRの施工実績ではありません。オリジナルイラスト・画面デザインは表現サンプルです。写真素材：<a href="https://unsplash.com/photos/welder-working-on-a-piece-of-metal-in-a-factory-JpzMc-FMUes" target="_blank" rel="noopener noreferrer">Cemrecan Yurtman / Unsplash</a>、<a href="https://unsplash.com/photos/a-room-that-is-under-construction-with-concrete-walls-pBZBbCqyW8M" target="_blank" rel="noopener noreferrer">Steffen Lemmerzahl / Unsplash</a>。</p>
       <div class="movie-grid"><div><div class="number">LIVE ACTION / WELDING &amp; CONSTRUCTION</div><h3>溶接・建築の現場イメージを映像で。</h3><p>火花が散る溶接と、建築現場の動きを収めた実写映像を編集。名刺・QRコード・電話番号・メールアドレスは動画に出しません。</p><p class="media-note">※ Pexelsの素材映像を編集した業務イメージです。S&#39;s-YR自身の施工記録・実績映像ではありません。 <a href="https://www.pexels.com/video/man-doing-welding-work-14314645/" target="_blank" rel="noopener noreferrer">溶接素材</a> / <a href="https://www.pexels.com/video/modern-apartment-building-under-construction-38942459/" target="_blank" rel="noopener noreferrer">建築素材</a></p><div class="technical"><span>溶接・鉄骨工事</span><span>建築・設備工事</span><span>実写映像</span><span>無音</span></div></div><video controls preload="metadata" playsinline poster="./assets/showreel-poster.jpg"><source src="./assets/showreel-demo.mp4?v=20261123-weld" type="video/mp4">動画の再生に対応していません。</video></div>
@@ -212,7 +220,7 @@
     </div></section>
   </main>
   <footer><div class="wrap footer-grid"><div><h3>S's-YR</h3><p>© <span id="year"></span> S's-YR. All rights reserved.</p></div><div class="footer-right"><a href="tel:08091190044">電話</a><a href="mailto:ss526s-syr@yahoo.co.jp">メール</a><a href="#card">トップへ ↑</a></div></div></footer>
-  <dialog id="mediaDialog" class="lightbox" aria-label="作品の拡大表示"><div class="modal-bar"><span id="modalCaption">作品の拡大表示</span><button type="button" id="closeDialog">閉じる ×</button></div><img id="modalImage" src="./assets/ai-illustration-01.svg" alt=""></dialog>
+  <dialog id="mediaDialog" class="lightbox" aria-label="作品の拡大表示"><div class="modal-bar"><span id="modalCaption">作品の拡大表示</span><button type="button" id="closeDialog">閉じる ×</button></div><img id="modalImage" src="./assets/portfolio-fantasy-hd.webp" alt=""></dialog>
   <div id="toast" class="notice" role="status" aria-live="polite"></div>
   <script>
     (()=>{
