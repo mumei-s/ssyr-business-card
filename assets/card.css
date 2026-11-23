@@ -13,18 +13,19 @@
   --ink: #252423;
   --gold-ink: #5e4929;
   --foil: linear-gradient(105deg, #79633e, #c0a168 28%, #f3e1af 48%, #a1814b 76%, #715f40);
-  --silver-stock: linear-gradient(117deg, #dfdfdd, #e6e6e4 31%, #d1d1cf 69%, #c6c6c5);
+  --silver-stock: linear-gradient(117deg, #d4d5d4, #ececea 32%, #d8d9d8 59%, #bfc1c0);
+  --gold-stock: linear-gradient(115deg, #b59859, #d1b574 23%, #f0dcaa 42%, #d5bb80 61%, #b49759);
   position: relative;
   width: 100%;
   aspect-ratio: 91 / 55;
   container-type: inline-size;
   color-scheme: light;
-  box-shadow: 0 2px 0 #8b877e, 0 13px 22px -10px #45444170;
+  box-shadow: 0 1px 0 #f4e6c1, 0 3px 0 #766648, 0 16px 30px -12px #0009;
 }
 .face {
   position: absolute; inset: 0; overflow: hidden;
   color: var(--ink);
-  border: 1px solid #9b9588;
+  border: 1px solid #b69e69;
 }
 .face-front {
   display: grid;
@@ -78,16 +79,16 @@
 .front-contact img { height: 3.8cqw; width: auto; }
 .front-contact .email-art { height: 3.9cqw; }
 
-.front-band {
-  position: relative; overflow: hidden;
+.front-band, .face-back::before {
   background:
-    repeating-linear-gradient(0deg, transparent 0 2px, #ffffff16 2px 3px),
-    linear-gradient(113deg, #adadab, #d0d0ce 23%, #e2e2e0 43%, #c6c6c4 69%, #b1b1af);
+    repeating-linear-gradient(0deg, transparent 0 2px, #fff6dd21 2px 3px),
+    var(--gold-stock);
 }
+.front-band { position: relative; overflow: hidden; }
 .front-band::before {
   content: ''; position: absolute; inset: 0 auto 0 0;
-  width: .55cqw; background: var(--foil);
-  box-shadow: 1px 0 0 #ffffffa8;
+  width: .55cqw;
+  background: linear-gradient(90deg, #806a3c, #f7e9c6 55%, #9e854d);
 }
 .front-band::after {
   content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -102,12 +103,14 @@
 .front-lockup img { width: 100%; height: auto; }
 .front-lockup .brand-reading { width: 80%; }
 
-.face-back {
-  background:
-    linear-gradient(90deg, transparent 74%, #ffffff20 74%),
-    var(--silver-stock);
+.face-back { background: var(--silver-stock); }
+.face-back::before {
+  content: ''; position: absolute; inset: 0 0 0 75%;
+  border-left: 1px solid #957d48;
+  box-shadow: inset 1px 0 #f6e7c0; pointer-events: none;
 }
 .back-inner {
+  position: relative;
   height: 100%; padding: 4.1% 5%;
   display: flex; flex-direction: column;
 }
@@ -135,4 +138,4 @@
 .back-title small { display: block; margin-bottom: .4cqw; font: italic 1.7cqw Georgia, serif; color: var(--gold-ink); }
 .back-body { padding-left: 1.6cqw; border-left: 1px solid #aaa393; font-size: 2.72cqw; line-height: 1.38; }
 .back-qr { align-self: center; }
-.back-qr small { font-size: 1.35cqw; color: var(--gold-ink); }
+.back-qr small { font-size: 1.35cqw; color: #372a17; }

@@ -48,6 +48,15 @@ def check_face(face, destination):
     qr_image = link.locator("img")
     qr = zxingcpp.read_barcode(Image.open(BytesIO(qr_image.screenshot())))
     assert qr and qr.text == PUBLIC_URL + destination, f"Bad rendered QR on {destination} face"
+    # Sample the unprinted top margin on each stock and the page just outside the card.
+    box = face.bounding_box()
+    view = Image.open(BytesIO(face.page.screenshot(scale="css"))).convert("RGB")
+    y = round(box["y"] + box["height"] * 0.03)
+    surround = view.getpixel((round(box["x"]) - 5, y))
+    silver = view.getpixel((round(box["x"] + box["width"] * 0.15), y))
+    gold = view.getpixel((round(box["x"] + box["width"] * 0.88), y))
+    assert max(surround) < 90 and min(silver) > 150, "The silver card should stand out against the dark page"
+    assert gold[0] - gold[2] > 25 and gold[0] > 140, "The card should have a visible gold panel"
     # A reversed ancestor mirrors all of its children, including readable text.
     mirrored = face.evaluate("""element => {
         for (let node = element; node; node = node.parentElement) {
