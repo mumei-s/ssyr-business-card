@@ -93,6 +93,10 @@ def check_card(page):
 
 
 def check_page(page):
+    body = page.locator("body")
+    assert not re.search(r"91\s*[:：]\s*55\s*RATIO", body.inner_text(), re.I)
+    assert not re.search(r"Unsplash|Pexels", body.inner_text(), re.I)
+    assert body.locator('a[href*="unsplash.com"], a[href*="pexels.com"]').count() == 0
     assert page.get_by_role("button", name=re.compile("名刺を共有")).count() == 0
     assert page.get_by_role("link", name=re.compile("名刺を共有|QRコードを表示|QR画像を保存")).count() == 0
     gallery = page.locator(".media-grid")

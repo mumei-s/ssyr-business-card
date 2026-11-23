@@ -1,30 +1,39 @@
-/* The letterforms on the supplied paper card are artwork, shared by both faces. */
+/* Both sides use the original lettering from the printed card. */
 .wordmark {
   display: grid;
   justify-items: center;
   gap: 4px;
   width: 96px;
 }
-.wordmark img { width: 100%; height: auto; filter: invert(1); }
+.wordmark img { width: 100%; height: auto; }
 .wordmark img + img { width: 87%; }
 
 .card-wrap { touch-action: pan-y; }
 .business-card {
+  --ink: #252423;
+  --gold-ink: #5e4929;
+  --foil: linear-gradient(105deg, #79633e, #c0a168 28%, #f3e1af 48%, #a1814b 76%, #715f40);
+  --silver-stock: linear-gradient(117deg, #dfdfdd, #e6e6e4 31%, #d1d1cf 69%, #c6c6c5);
   position: relative;
   width: 100%;
   aspect-ratio: 91 / 55;
   container-type: inline-size;
-  box-shadow: 0 12px 36px #06090b55;
+  color-scheme: light;
+  box-shadow: 0 2px 0 #8b877e, 0 13px 22px -10px #45444170;
 }
-.face { position: absolute; inset: 0; overflow: hidden; }
+.face {
+  position: absolute; inset: 0; overflow: hidden;
+  color: var(--ink);
+  border: 1px solid #9b9588;
+}
 .face-front {
   display: grid;
   grid-template-columns: 74% 26%;
-  background: #f3f1eb;
-  color: #191819;
+  background: var(--silver-stock);
 }
 .face-back, .show-back .face-front { display: none; }
 .show-back .face-back { display: block; }
+
 .front-main { position: relative; }
 .front-upper {
   position: absolute;
@@ -32,7 +41,7 @@
   display: flex; align-items: center; gap: 3cqw;
 }
 .front-role { width: 9.3cqw; height: auto; }
-.front-rule { flex: 1; height: 1px; background: #b9b0a0; }
+.front-rule { flex: 1; height: 1px; background: var(--foil); }
 .front-names {
   position: absolute;
   top: 28%; left: 7.4%;
@@ -40,7 +49,7 @@
 }
 .front-qr, .back-qr {
   display: flex; flex-direction: column; align-items: center;
-  text-decoration: none; text-align: center; gap: 1cqw;
+  color: var(--ink); text-decoration: none; text-align: center; gap: 1cqw;
   font: 650 2.3cqw/1.25 system-ui, sans-serif;
 }
 .front-qr {
@@ -54,21 +63,36 @@
 .front-btm { position: absolute; left: 7.5%; right: 7%; bottom: 7%; }
 .front-desc {
   padding-bottom: 1.1cqw; margin-bottom: 1.6cqw;
-  border-bottom: 1px solid #b9b0a0;
+  border-bottom: 1px solid #9a8b71;
   font: 650 2.22cqw/1.5 system-ui, sans-serif;
 }
 .front-contact { display: grid; gap: 1.15cqw; }
 .front-contact a {
   display: flex; align-items: center; gap: 1.6cqw;
-  width: fit-content; color: #191819; text-decoration: none;
+  width: fit-content; color: var(--ink); text-decoration: none;
 }
-.front-contact svg { width: 2.7cqw; height: 2.7cqw; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.front-contact svg {
+  width: 2.7cqw; height: 2.7cqw;
+  fill: none; stroke: var(--gold-ink); stroke-width: 1.7;
+}
 .front-contact img { height: 3.8cqw; width: auto; }
 .front-contact .email-art { height: 3.9cqw; }
+
 .front-band {
   position: relative; overflow: hidden;
-  border-left: 1px solid #a3acae;
-  background: linear-gradient(145deg, #dde2e2, #c8d1d2);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 2px, #ffffff16 2px 3px),
+    linear-gradient(113deg, #adadab, #d0d0ce 23%, #e2e2e0 43%, #c6c6c4 69%, #b1b1af);
+}
+.front-band::before {
+  content: ''; position: absolute; inset: 0 auto 0 0;
+  width: .55cqw; background: var(--foil);
+  box-shadow: 1px 0 0 #ffffffa8;
+}
+.front-band::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-radial-gradient(ellipse at 120% 110%, transparent 0 5px, #7c756330 5px 5.6px, transparent 5.6px 8px);
+  mask-image: linear-gradient(155deg, transparent 65%, #000);
 }
 .front-lockup {
   position: absolute; left: 50%; top: 50%;
@@ -77,28 +101,38 @@
 }
 .front-lockup img { width: 100%; height: auto; }
 .front-lockup .brand-reading { width: 80%; }
+
 .face-back {
-  background: #212729; color: #f7f4e9;
-  border: 1px solid #a89980;
+  background:
+    linear-gradient(90deg, transparent 74%, #ffffff20 74%),
+    var(--silver-stock);
 }
 .back-inner {
   height: 100%; padding: 4.1% 5%;
   display: flex; flex-direction: column;
 }
 .back-head {
+  position: relative;
   display: flex; align-items: center; justify-content: space-between;
-  padding-bottom: 1.4cqw; border-bottom: 1px solid #ad987a;
+  padding-bottom: 1.4cqw;
 }
-.back-head strong { font: 600 4.1cqw/1.4 'Yu Mincho', 'Hiragino Mincho ProN', serif; letter-spacing: .09em; }
-.back-head img { width: 15cqw; height: auto; filter: invert(1); }
+.back-head::after {
+  content: ''; position: absolute; inset: auto 0 0; height: .35cqw;
+  background: var(--foil);
+}
+.back-head strong {
+  font: 600 4.1cqw/1.4 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  letter-spacing: .09em;
+}
+.back-head img { width: 15cqw; height: auto; }
 .back-grid { display: grid; grid-template-columns: minmax(0, 1fr) 20%; gap: 3cqw; flex: 1; min-height: 0; }
 .back-services { display: grid; grid-template-rows: repeat(3, 1fr); }
 .back-row {
   display: grid; grid-template-columns: 34% 1fr; align-items: center; gap: 1cqw;
-  border-bottom: 1px solid #837b69;
+  border-bottom: 1px solid #aaa69e;
 }
 .back-title { font-size: 3.05cqw; font-weight: 650; line-height: 1.25; }
-.back-title small { display: block; margin-bottom: .4cqw; font: italic 1.7cqw Georgia, serif; color: #dcc8a6; }
-.back-body { padding-left: 1.6cqw; border-left: 1px solid #857c6a; font-size: 2.72cqw; line-height: 1.38; }
-.back-qr { align-self: center; color: #fff; }
-.back-qr small { font-size: 1.35cqw; color: #d1c3aa; }
+.back-title small { display: block; margin-bottom: .4cqw; font: italic 1.7cqw Georgia, serif; color: var(--gold-ink); }
+.back-body { padding-left: 1.6cqw; border-left: 1px solid #aaa393; font-size: 2.72cqw; line-height: 1.38; }
+.back-qr { align-self: center; }
+.back-qr small { font-size: 1.35cqw; color: var(--gold-ink); }
