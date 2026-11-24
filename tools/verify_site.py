@@ -225,6 +225,8 @@ def main():
         check_contact_routes(browser, base)
         from verify_notices import check_notices
         check_notices(browser, base)
+        from verify_owner_install import check_owner_install
+        check_owner_install(browser, base)
         browser.close()
     check_video(movie)
     print("Validated card switching, device-specific registration, gallery originals and tap-to-load video")

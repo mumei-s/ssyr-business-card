@@ -68,3 +68,10 @@ footer{display:flex;flex-wrap:wrap;gap:.65rem 1rem;justify-content:center;paddin
 #owner-push-state{font-size:.7rem;display:inline-block;margin-left:.35rem}
 #history-panel{border-top:0;margin-top:.6rem;padding-top:.4rem}
 #send-panel{margin-top:.4rem;padding-top:.4rem}
+
+/* Owner installation entry remains available before and after authentication. */
+.owner-install-panel{display:grid;gap:.7rem;padding:.85rem 1rem;margin:.8rem 0 1rem;border:1px solid #84929a;background:linear-gradient(130deg,#24323b,#172127);border-radius:4px}
+.owner-install-copy{display:flex;align-items:center;gap:.7rem}.owner-install-copy img{flex:none;border-radius:8px}.owner-install-copy strong{font-size:.92rem;color:#f0e3cc}.owner-install-copy p{font-size:.76rem;line-height:1.55;margin:.15rem 0 0}
+.owner-install-panel #owner-install-button,.owner-install-panel #owner-app-link{width:100%}
+.owner-install-panel .owner-install-status{color:#e5d3af;font-size:.82rem}
+.owner-install-panel .auth-options{margin:0;padding-top:.5rem}

@@ -31,7 +31,7 @@
    $('owner-push-on').disabled=busy||!access||!canPush||!ownerWorker||!ownerKey||registered;
    $('owner-push-off').disabled=busy||!access||!ownerEnabled;
    $('owner-push-test').disabled=busy||!registered;
-   $('owner-push-guide').textContent=canPush?'相手からのチャットをこの端末に通知します。':'通知を使う場合は管理者アプリをホーム画面に追加して開いてください。';
+   $('owner-push-guide').textContent=registered?'相手からのチャットをこの端末に通知します。テストで受信を確認できます。':canPush?'管理者通知をONにして、端末の通知を許可してください。':'通知を使う場合は管理者アプリをホーム画面に追加して開いてください。';
  }
  function renderContacts(){
    const q=$('search').value.toLowerCase().trim(),list=$('contacts');
@@ -242,6 +242,6 @@
      feedback('通知サービス受付 '+accepted+'件 ／ 送信済み '+duplicates+'件 ／ その他 '+other+'件');if(selectedId)await history();
    });
  });
- $('owner-app-link').href=new URL('owner/',ROOT).href;
- if(location.pathname.endsWith('/owner/')||location.pathname.endsWith('/owner/index.html'))$('owner-app-link').hidden=true;
+ const appLink=$('owner-app-link');
+ if(appLink)appLink.href=new URL('owner/?v=owner-home-1',ROOT).href;
 })();
