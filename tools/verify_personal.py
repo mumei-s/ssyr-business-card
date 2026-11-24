@@ -51,16 +51,11 @@ def check_role(face):
 
 def check_card_controls(page):
     front, back = page.locator('#front'), page.locator('#back')
+    light = page.locator('#light-button')
     expect(front).to_be_visible()
     expect(back).to_be_hidden()
+    expect(light).to_be_hidden()
     expect(page.locator('#front-button')).to_have_attribute('aria-pressed', 'true')
-    light = page.locator('#light-button')
-    initial = light.get_attribute('aria-pressed')
-    assert initial in {'true', 'false'}, 'The light button must expose its state'
-    light.click()
-    expect(light).to_have_attribute('aria-pressed', 'false' if initial == 'true' else 'true')
-    light.click()
-    expect(light).to_have_attribute('aria-pressed', initial)
 
     page.emulate_media(reduced_motion='reduce')
     original = page.viewport_size
@@ -73,16 +68,17 @@ def check_card_controls(page):
         lettering.evaluate('img => img.decode()')
         assert lettering.get_attribute('alt') == "S's-YR"
         brand, name = lettering.bounding_box(), front.locator('.front-person b').bounding_box()
-        assert brand['width'] >= front.bounding_box()['width'] * .59
+        assert brand['width'] >= front.bounding_box()['width'] * .70
         assert brand['width'] > name['width'] * 1.8
         assert brand['height'] > name['height']
         assert front.evaluate('(el) => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1')
-        expect(front.locator('.front-emblem img')).to_be_visible()
-        front.locator('.front-emblem img').evaluate('img => img.decode()')
+        expect(front.locator('img')).to_have_count(1)
+        expect(front.locator('.front-engraving')).to_have_count(1)
         check_role(front)
         expect(front.locator('[data-add-contact]')).to_have_count(0)
         expect(page.locator('[data-add-contact]')).to_have_count(1)
         expect(page.locator('#contact [data-add-contact]')).to_be_visible()
+        expect(light).to_be_hidden()
         front_box = front.bounding_box()
         assert abs(front_box['width'] / front_box['height'] - 91/55) < .035, front_box
 
@@ -90,73 +86,90 @@ def check_card_controls(page):
         expect(front).to_be_hidden()
         expect(back).to_be_visible()
         expect(page.locator('#back-button')).to_have_attribute('aria-pressed', 'true')
+        expect(light).to_be_visible()
+        expect(light).to_be_disabled()
+        expect(light).to_have_attribute('aria-pressed', 'false')
         check_viewport(page)
-        expect(back.locator('a[href$="works.html"]')).to_be_visible()
-        check_role(back)
+        expect(back.locator('a, button, .person, .back-brand')).to_have_count(0)
+        assert 'SHINJI' not in back.inner_text() and '代表' not in back.inner_text()
+        assert back.locator('.service-brief li').all_inner_texts() == ['工事・施工', '現場支援', 'ポスティング', '洗車', 'AI・デジタル制作']
         back_box = back.bounding_box()
         assert abs(back_box['width'] - front_box['width']) < 1
         assert abs(back_box['height'] - front_box['height']) < 1
-        assert back.evaluate('(el) => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1')
+        assert back.evaluate('(el) => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1'), width
+        assert back.locator('.service-brief').evaluate("""el => {
+            const r = el.getBoundingClientRect(), b = el.closest('.face').getBoundingClientRect();
+            return r.top >= b.top && r.bottom <= b.bottom && r.right <= b.right;
+        }"""), width
         images = back.locator('.foil-logo img')
         expect(images).to_have_count(3)
         images.evaluate_all('imgs => Promise.all(imgs.map(i => i.decode()))')
         assert images.evaluate_all('imgs => imgs.every(i => i.complete && i.naturalWidth >= 256)')
-        assert back.locator('.logo-color').evaluate("el => getComputedStyle(el).animationName") == 'none'
-        assert back.locator('.logo-color').evaluate("el => getComputedStyle(el).opacity") == '1'
-        light.click()
-        assert back.locator('.logo-fixed').evaluate("el => getComputedStyle(el).opacity") == '1'
-        assert back.locator('.logo-cycle').evaluate("el => getComputedStyle(el).opacity") == '0'
-        light.click()
+        assert back.locator('.logo-silver').evaluate("el => getComputedStyle(el).animationName") == 'none'
+        expect(back.locator('.logo-fixed')).to_have_css('opacity', '1')
+        expect(back.locator('.logo-effects')).to_have_css('opacity', '0')
         page.locator('#front-button').click()
         expect(front).to_be_visible()
         expect(back).to_be_hidden()
+        expect(light).to_be_hidden()
+
     page.set_viewport_size(original)
     page.emulate_media(reduced_motion='no-preference')
     page.locator('#back-button').click()
-    # Seek the real infinite CSS animation to verify both supplied logo phases.
+    expect(light).to_be_enabled()
+    expect(light).to_have_attribute('aria-pressed', 'true')
+    fixed = back.locator('.logo-fixed')
+    expect(fixed).to_have_css('opacity', '0', timeout=5000)
     states = page.evaluate("""() => {
-        const color = document.querySelector('.logo-color');
-        const silver = document.querySelector('.logo-silver');
-        const ca = color.getAnimations()[0], sa = silver.getAnimations()[0];
-        if (!ca || !sa) return null;
-        if (ca.effect.getTiming().iterations !== Infinity || sa.effect.getTiming().iterations !== Infinity) return null;
-        ca.pause(); sa.pause();
-        return [0, 3500, 6000, 12000].map(t => {
-            ca.currentTime = t; sa.currentTime = t;
+        const silver = document.querySelector('.logo-silver'), color = document.querySelector('.logo-color');
+        const anim = silver.getAnimations()[0];
+        if (!anim || anim.effect.getTiming().iterations !== Infinity) return null;
+        const d = anim.effect.getTiming().duration;
+        anim.pause();
+        const values = [0,d*.29,d*.5,d*.71,d].map(t => {
+            anim.currentTime=t;
             return [Number(getComputedStyle(color).opacity), Number(getComputedStyle(silver).opacity)];
         });
+        anim.play();
+        return {duration:d,values};
     }""")
-    assert states and states[0] == [1, 0] and states[2] == [0, 1] and states[3] == [1, 0], states
-    assert all(0 < value < 1 for value in states[1]), states
-    # CSS transition must interpolate in BOTH directions without disabling the loop.
-    for locked in (True, False):
+    assert states and states['duration'] == 14000, states
+    values = states['values']
+    assert values[0] == [1,0] and values[2] == [1,1] and values[-1] == [1,0], values
+    assert 0 < values[1][1] < 1 and 0 < values[3][1] < 1, values
+    assert all(v[0] == 1 for v in values)
+
+    # Both directions must interpolate instead of swapping an image abruptly.
+    for enabled in (False, True):
         light.click()
-        expect(light).to_have_attribute('aria-pressed', str(locked).lower())
-        result = page.evaluate("""() => {
+        expect(light).to_have_attribute('aria-pressed', str(enabled).lower())
+        transition = page.evaluate("""() => {
             const fixed = document.querySelector('.logo-fixed');
-            const cycle = document.querySelector('.logo-cycle');
+            getComputedStyle(fixed).opacity;
             const a = fixed.getAnimations().find(a => a.transitionProperty === 'opacity');
-            const b = cycle.getAnimations().find(a => a.transitionProperty === 'opacity');
-            if (!a || !b) return null;
+            if (!a) return null;
             const duration = a.effect.getTiming().duration;
-            a.pause(); b.pause();
+            a.pause();
             const values = [0,duration/2,duration].map(t => {
-                a.currentTime = t; b.currentTime = t;
-                return [Number(getComputedStyle(fixed).opacity),Number(getComputedStyle(cycle).opacity)];
+                a.currentTime = t;
+                return Number(getComputedStyle(fixed).opacity);
             });
-            a.finish(); b.finish();
-            return {duration, values, loop: getComputedStyle(document.querySelector('.logo-color')).animationName};
+            a.finish();
+            return {duration, values};
         }""")
-        assert result and result['duration'] >= 1500 and result['loop'] == 'foil-color', result
-        start, middle, end = result['values']
-        assert all(0.1 < v < 0.9 for v in middle), result
-        assert start == ([0,1] if locked else [1,0]) and end == ([1,0] if locked else [0,1]), result
-    assert back.evaluate("el => getComputedStyle(el,'::after').animationName") == 'surface-light'
+        assert transition and transition['duration'] >= 1500, transition
+        start, mid, end = transition['values']
+        assert .1 < mid < .9, transition
+        assert abs(start-(1 if enabled else 0)) < .05 and abs(end-(0 if enabled else 1)) < .05, transition
+        expect(fixed).to_have_css('opacity', '0' if enabled else '1', timeout=5000)
+        expect(back.locator('.logo-effects')).to_have_css('opacity', '1' if enabled else '0', timeout=5000)
+        assert back.locator('.logo-silver').evaluate("el => getComputedStyle(el).animationPlayState") == ('running' if enabled else 'paused')
     page.locator('#front-button').click()
+    expect(light).to_be_hidden()
     assert front.locator('.brand-foil').evaluate("el => getComputedStyle(el,'::after').animationName") == 'surface-light'
-    assert front.locator('.front-emblem img').evaluate("el => getComputedStyle(el).animationName") == 'emblem-breathe'
+    assert front.evaluate("el => getComputedStyle(el,'::after').animationName") == 'surface-light'
     assert page.locator('.jobs img').first.evaluate("el => getComputedStyle(el).animationName") == 'photo-light'
-    print('PASS SHINJI brand hierarchy, both landscape faces, continuous foil cycle, gradual light switch, ambient motion and reduced motion')
+    print('PASS SHINJI: brand-first front, no front emblem, business-only back, gradual logo ON/OFF, responsive layout and reduced motion')
 
 
 def check_gallery_controls(page):

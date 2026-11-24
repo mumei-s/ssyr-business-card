@@ -5,13 +5,29 @@ const backButton = document.getElementById('back-button');
 const card = document.getElementById('card');
 
 const lightButton = document.getElementById('light-button');
+const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let logoEnabled = true;
+function syncLogo() {
+  const active = logoEnabled && !motion.matches;
+  card.classList.toggle('logo-off', !active);
+  lightButton.setAttribute('aria-pressed', String(active));
+  lightButton.querySelector('.light-state').textContent = active ? 'ON' : 'OFF';
+  lightButton.disabled = motion.matches;
+  lightButton.title = motion.matches ? '端末設定によりロゴ演出を停止しています' : 'ロゴ演出を切替';
+}
 lightButton.addEventListener('click', () => {
-  lightButton.setAttribute('aria-pressed', String(card.classList.toggle('lit')));
+  if (back.hidden || motion.matches) return;
+  logoEnabled = !logoEnabled;
+  syncLogo();
 });
+if (motion.addEventListener) motion.addEventListener('change', syncLogo);
+else if (motion.addListener) motion.addListener(syncLogo);
+syncLogo();
 
 function setSide(showBack) {
   front.hidden = showBack;
   back.hidden = !showBack;
+  lightButton.hidden = !showBack;
   frontButton.setAttribute('aria-pressed', String(!showBack));
   backButton.setAttribute('aria-pressed', String(showBack));
 }

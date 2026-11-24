@@ -13,10 +13,10 @@
   <meta property="og:image" content="https://mumei-s.github.io/ssyr-business-card/shinji/shinji-lettering.webp">
   <meta property="og:image:alt" content="プラチナシルバーと群青の刷り模様に描いたSHINJIのレタリング">
   <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./personal.css?v=foil-card-2">
+  <link rel="stylesheet" href="./personal.css?v=foil-card-3">
   <link rel="stylesheet" href="../assets/contact-import.css?v=direct-4">
   <script src="../assets/contact-import.js?v=direct-4" defer data-contact-name="SHINJI" data-contact-edition="shinji"></script>
-  <script src="./card.js?v=signature-role" defer></script>
+  <script src="./card.js?v=foil-card-3" defer></script>
 </head>
 <body>
   <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -29,12 +29,12 @@
     <section class="exhibit" aria-label="S's-YR　SHINJIの仕事名刺">
       <div class="card" id="card">
         <section class="face contact-face" id="front" aria-label="名刺の表面・名前と連絡先">
+          <div class="front-engraving" aria-hidden="true"></div>
           <div class="contact-brand">
             <h1 class="wordmark">
               <span class="brand-foil"><img src="../assets/lettering/wordmark.svg" width="361" height="89" alt="S's-YR" fetchpriority="high"></span>
               <span class="brand-kana">エスズ ワイアール</span>
             </h1>
-            <div class="front-emblem" aria-hidden="true"><img src="./logo-silver.webp" width="256" height="256" alt=""></div>
           </div>
           <div class="contact-info">
             <div class="front-person"><strong class="role">代表</strong><b lang="en">SHINJI</b></div>
@@ -48,22 +48,30 @@
               <img class="logo-silver" src="./logo-silver.webp" width="256" height="256" alt="" decoding="async">
             </div>
             <img class="logo-fixed" src="./logo-silver.webp" width="256" height="256" alt="" decoding="async" aria-hidden="true">
-            <span class="logo-sweep" aria-hidden="true"></span>
-            <span class="glint glint-one" aria-hidden="true"></span>
-            <span class="glint glint-two" aria-hidden="true"></span>
-            <span class="glint glint-three" aria-hidden="true"></span>
+            <div class="logo-effects" aria-hidden="true">
+              <span class="logo-sweep"></span>
+              <span class="glint glint-one"></span>
+              <span class="glint glint-two"></span>
+              <span class="glint glint-three"></span>
+            </div>
           </div>
           <div class="back-copy">
-            <div class="back-brand">S's-YR<span>エスズ ワイアール</span></div>
-            <div class="person"><strong class="role">代表</strong><b lang="en">SHINJI</b></div>
-            <div class="service-brief"><p>工事・施工／現場支援<br>ポスティング／洗車<br>AI・デジタル制作</p></div>
-            <a class="open-work" href="./works.html">事業内容を見る <span aria-hidden="true">↗</span></a>
+            <div class="service-brief">
+              <h2>業務内容</h2>
+              <ul>
+                <li>工事・施工</li>
+                <li>現場支援</li>
+                <li>ポスティング</li>
+                <li>洗車</li>
+                <li>AI・デジタル制作</li>
+              </ul>
+            </div>
           </div>
         </section>
       </div>
       <div class="switches">
         <div class="tabs" role="group" aria-label="名刺の表裏を切り替え"><button type="button" id="front-button" aria-pressed="true" aria-controls="front">表・連絡先</button><button type="button" id="back-button" aria-pressed="false" aria-controls="back">裏・業務案内</button></div>
-        <button class="light" id="light-button" type="button" aria-pressed="false" aria-controls="card" title="光をゆっくり切替（裏面は銀白色へ／解除で色彩ループ）"><svg class="icon" aria-hidden="true"><use href="#light"/></svg>光を切替</button>
+        <button class="light" id="light-button" type="button" aria-pressed="true" aria-controls="back" title="ロゴ演出を切替" hidden><svg class="icon" aria-hidden="true"><use href="#light"/></svg><span>ロゴ演出</span><span class="light-state">ON</span></button>
       </div>
     </section>
     <div class="directory">
