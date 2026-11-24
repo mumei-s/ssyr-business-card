@@ -79,10 +79,14 @@
    // The chat must not wait for the browser's PushManager to respond.
    if(worker){const reg=worker;void N.wait(reg.pushManager.getSubscription(),4000).then(sub=>{if(worker===reg&&accept()){localSub=sub;render()}}).catch(()=>{})}
  }
- async function ensureContact(){
+ function registrationName(){
    if(inviteCode||$('invite').value.trim())throw Error('個別リンクは「チャットを開く」で受け取ってください。');
+   return contact?'':N.readVisitorName($('visitor-name'));
+ }
+ async function ensureContact(){
+   const name=registrationName();
    if(contact)return contact;
-   const result=await N.startReceiving(N.readVisitorName($('visitor-name')),$('news').checked,device);
+   const result=await N.startReceiving(name,$('news').checked,device);
    device=result.device;contact=result.contact;render();return contact;
  }
  function clearInvite(){
@@ -182,9 +186,7 @@
  })});
  $('enable').addEventListener('click',()=>{
    if(busy||!supported||preparing)return;
-   if(!contact){
-     try{N.readVisitorName($('visitor-name'))}catch(e){feedback(e.message,true);return}
-   }
+   try{registrationName()}catch(e){feedback(e.message,true);return}
    const permission=N.wait(Notification.requestPermission(),15000,'通知の許可画面が応答しません。ブラウザーの通知設定をご確認ください。');
    void run(async()=>{
      if(await permission!=='granted')throw Error('ブラウザの通知設定から許可してください。');
