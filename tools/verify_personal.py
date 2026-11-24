@@ -221,6 +221,29 @@ def check_card_controls(page):
     page.unroute(config_url)
     page.reload()
     expect(intro.locator('#muumei-official')).to_have_attribute('href', 'https://mumei-s.github.io/muumei-public/')
+    # A transfer is not represented as playable before actual game deployment.
+    panel = page.locator('#straight-ring-showcase')
+    link = panel.locator('#straight-ring-play')
+    expect(panel).to_be_hidden()
+    assert link.get_attribute('href') is None
+    release_url = urljoin(page.url, './games/straight-ring/release.json')
+    game_url = urljoin(page.url, './games/straight-ring/index.html')
+    ready_release = {'version':1, 'ready':True, 'entry':'index.html', 'verifiedCommit':'a'*40}
+    page.route(release_url, lambda route: route.fulfill(json=ready_release))
+    page.route(game_url, lambda route: route.fulfill(status=404))
+    page.reload()
+    expect(panel).to_be_hidden()
+    assert link.get_attribute('href') is None
+    page.unroute(game_url)
+    page.route(game_url, lambda route: route.fulfill(status=200, headers={'content-type':'text/html; charset=utf-8'}))
+    page.reload()
+    expect(panel).to_be_visible()
+    expect(link).to_have_attribute('href', game_url)
+    check_viewport(page)
+    page.unroute(game_url)
+    page.unroute(release_url)
+    page.reload()
+    expect(panel).to_be_hidden()
     manifest_url = page.locator('link[rel="manifest"]').evaluate('el => el.href')
     manifest = page.request.get(manifest_url).json()
     assert manifest['scope'] == './' and manifest['start_url'] == './' and manifest['display'] == 'standalone'
