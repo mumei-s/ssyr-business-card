@@ -13,7 +13,9 @@
    $('settings-panel').hidden=!initial||!!inviteCode;$('messages').hidden=!initial||!!inviteCode;
    $('claim-title').textContent=inviteCode?'個別チャットへの招待':'SHINJIとの個別チャット';
    $('claim-info').textContent=inviteCode?'「チャットを開く」を押すと、相手からのメッセージを読めます。':'連絡を受け取りたい方は、下のボタンを押してください。メッセージの送信やメールアドレスの入力は不要です。';
-   $('visitor-name-label').hidden=!!inviteCode;$('invite-options').hidden=!!inviteCode;$('dismiss-invite').hidden=!inviteCode;
+   const privateInvite=!!(inviteCode||$('invite').value.trim());
+   $('visitor-name-label').hidden=privateInvite;$('visitor-name').required=!privateInvite;
+   $('invite-options').hidden=!!inviteCode;$('dismiss-invite').hidden=!inviteCode;
    const saved=N.getThreads().map(t=>t.device);
    if(saved.join()!==threadChoices.join()){
      threadChoices=saved;
@@ -80,7 +82,7 @@
  async function ensureContact(){
    if(inviteCode||$('invite').value.trim())throw Error('個別リンクは「チャットを開く」で受け取ってください。');
    if(contact)return contact;
-   const result=await N.startReceiving($('visitor-name').value.trim(),$('news').checked,device);
+   const result=await N.startReceiving(N.readVisitorName($('visitor-name')),$('news').checked,device);
    device=result.device;contact=result.contact;render();return contact;
  }
  function clearInvite(){
@@ -180,6 +182,9 @@
  })});
  $('enable').addEventListener('click',()=>{
    if(busy||!supported||preparing)return;
+   if(!contact){
+     try{N.readVisitorName($('visitor-name'))}catch(e){feedback(e.message,true);return}
+   }
    const permission=N.wait(Notification.requestPermission(),15000,'通知の許可画面が応答しません。ブラウザーの通知設定をご確認ください。');
    void run(async()=>{
      if(await permission!=='granted')throw Error('ブラウザの通知設定から許可してください。');
