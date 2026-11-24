@@ -25,5 +25,7 @@ jobs:
           if ! command -v google-chrome >/dev/null && ! command -v chromium >/dev/null; then
             python -m playwright install --with-deps chromium
           fi
+      - name: Test live notification connection and authorization
+        run: python tools/verify_notice_live.py
       - name: Test card faces, contact registration, galleries and showreel
         run: python tools/verify_site.py

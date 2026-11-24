@@ -204,6 +204,8 @@ def main():
         check_routes(page, base, PUBLIC_URL)
         assert not page_errors, page_errors
         check_contact_routes(browser, base)
+        from verify_notices import check_notices
+        check_notices(browser, base)
         browser.close()
     check_video(movie)
     print("Validated card switching, device-specific registration, gallery originals and tap-to-load video")

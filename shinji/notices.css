@@ -1,0 +1,51 @@
+
+:root{color-scheme:dark;--ink:#eaf0f2;--muted:#b2c2ca;--line:#53656e;--accent:#dbc7a5;--bg:#10161a;font-family:"Helvetica Neue",Arial,"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;min-height:100svh;background:radial-gradient(ellipse at 15% 0,#293945,transparent 33rem),#10161a}
+[hidden]{display:none!important}
+.sheet{max-width:38rem;margin:auto;padding:max(1rem,env(safe-area-inset-top)) max(1rem,env(safe-area-inset-right)) max(2rem,env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left))}
+.owner-sheet{max-width:50rem}
+a{color:inherit;text-underline-offset:.22em}
+.home{font-size:.84rem;color:var(--muted);display:inline-flex;align-items:center;min-height:44px;text-decoration:none}
+.masthead{margin-bottom:1rem}
+.signature{display:flex;align-items:center;gap:1rem;padding:.8rem 0 1rem;border-bottom:1px solid #aa94735f}
+.signature img{border-radius:50%;border:1px solid #c0cbd247}
+.eyebrow{display:block;letter-spacing:.16em;font-size:.63rem;color:var(--accent);font-weight:700;margin-bottom:.25rem}
+h1,h2,h3,p{margin:0}
+h1{font-size:clamp(1.6rem,5.4vw,2.3rem);letter-spacing:.02em;font-weight:700}
+.signature p,.muted,p{font-size:.84rem;line-height:1.7;color:var(--muted)}
+.panel{min-width:0;margin:1rem 0;padding:1rem;border:1px solid var(--line);border-radius:3px;background:linear-gradient(135deg,#223039,#121b21);box-shadow:0 9px 26px -20px #000}
+h2{font-size:1.06rem;color:#f1f4f6;margin:0 0 .6rem;line-height:1.4;overflow-wrap:anywhere}
+h3{font-size:.95rem;line-height:1.5;color:#f0f3f4;margin:0 0 .25rem;overflow-wrap:anywhere}
+form{display:grid;gap:.72rem;margin:.9rem 0}
+label{display:grid;gap:.35rem;font-size:.82rem;font-weight:600;line-height:1.4;color:var(--ink);min-width:0}
+input:not([type=checkbox]),textarea{width:100%;min-height:44px;font:inherit;font-size:16px;color:var(--ink);background:#0f171d;border:1px solid #687b87;border-radius:2px;padding:.66rem .7rem;min-width:0}
+textarea{resize:vertical;line-height:1.5}
+input::placeholder{color:#92a6b1}
+.check{display:flex;align-items:flex-start;gap:.55rem;margin:.9rem 0;font-size:.8rem;font-weight:500}
+.check input{width:1.15rem;height:1.15rem;flex:none;accent-color:#c8b38b}
+button,.button{font:inherit;font-size:.84rem;font-weight:650;display:inline-flex;align-items:center;justify-content:center;min-height:44px;max-width:100%;padding:.55rem .8rem;gap:.4rem;border:1px solid #687e89;border-radius:2px;background:#18242c;color:var(--ink);text-decoration:none;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
+button.primary,.button.primary{background:linear-gradient(125deg,#e6d9bd,#bca27b);border-color:#d6bd94;color:#1f2629;box-shadow:inset 0 0 0 1px #f0e2c780}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #f1cd92;outline-offset:3px}
+.actions{display:flex;gap:.5rem;flex-wrap:wrap;margin:.75rem 0}
+.actions>*{flex:1 1 auto}
+.between{display:flex;justify-content:space-between;align-items:flex-start;gap:.65rem}
+.between>*{min-width:0}
+.state{font-size:.74rem;color:#c2cbd0;border:1px solid #6a7e88;padding:.23rem .52rem;white-space:nowrap;align-self:center}
+.state.on{color:#e1d3b7;border-color:#c4aa82;background:#a98b4022}
+.feedback{min-height:1.3em;color:#e7d4a9;overflow-wrap:anywhere}
+.feedback.error{color:#ffc9ac}
+.subtle{background:transparent;color:#c8d3da;border-color:#60737b}
+.message{padding:.85rem 0;border-top:1px solid #52636d}
+.message:first-child{margin-top:.4rem}
+.message-body{color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;margin:.5rem 0}
+time,.message small{font-size:.72rem;color:var(--muted)}
+.contact-row{width:100%;display:flex;justify-content:space-between;text-align:left;align-items:center;margin:.45rem 0;gap:.7rem;background:#101b21}
+.contact-row.selected{border-color:#d9bc8b;background:#293039}
+.contact-row-text{display:grid;gap:.15rem;min-width:0}
+.contact-row-text strong,.contact-row-text small{overflow-wrap:anywhere}
+.contact-row-text small{font-weight:400;color:var(--muted)}
+#history-panel,#send-panel{margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--line)}
+footer{display:flex;flex-wrap:wrap;gap:.65rem 1rem;justify-content:center;padding:.7rem;color:var(--muted);font-size:.8rem}
+@media(max-width:350px){.sheet{padding-left:.75rem;padding-right:.75rem}.panel{padding:.8rem}.signature{gap:.7rem}.signature img{width:42px;height:42px}}
