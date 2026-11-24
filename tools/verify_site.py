@@ -184,7 +184,7 @@ def main():
 
     # Every public/owner route supplies the actual S's-YR raster favicon rather
     # than falling back to another project at the shared GitHub Pages origin.
-    for path in ("index.html", "works.html", "contact.html", "shinji/index.html", "shinji/works.html", "shinji/contact.html", "shinji/notices.html", "shinji/owner.html"):
+    for path in ("index.html", "works.html", "contact.html", "shinji/index.html", "shinji/works.html", "shinji/contact.html", "shinji/notices.html", "shinji/owner.html", "shinji/owner/index.html"):
         from html.parser import HTMLParser
         class ShareHead(HTMLParser):
             def __init__(self):

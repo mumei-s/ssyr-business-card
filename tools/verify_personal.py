@@ -24,7 +24,13 @@ def check_identity(root):
         if file.suffix not in {'.html', '.css', '.js', '.svg', '.vcf', '.webmanifest'}:
             continue
         text = unquote(unescape(file.read_text()))
-        assert not re.search(fr'{surname}|かわい|カワイ|しんじ|シンジ|\bkawai\b|tel\s*:|{domestic}|{international}', text, re.I), file
+        assert not re.search(fr'{surname}|かわい|カワイ|しんじ|シンジ|\bkawai\b|{domestic}|{international}', text, re.I), file
+        # The private owner console may construct a tel link from authenticated
+        # contact data. Never embed a static telephone number in public bytes.
+        if file != personal / 'owner.js':
+            assert not re.search(r'tel\s*:', text, re.I), file
+        else:
+            assert not re.search(r'tel\s*:\s*\+?\d', text, re.I), file
         assert not re.search(r'assets/(?:lettering/(?:name|phone)|qr-(?:contact|introduction)|og-card)\.svg', text), file
 
     contact = (personal / 'contact.vcf').read_text().splitlines()

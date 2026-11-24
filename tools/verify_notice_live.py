@@ -19,6 +19,11 @@ assert h.get('Access-Control-Allow-Origin')=='https://mumei-s.github.io'
 assert request({'action':'owner-list'})[0]==401
 assert request({'action':'status','device':'invalid'})[0]==401
 assert request({'action':'owner-send','contactId':'invalid'})[0]==401
+assert request({'action':'owner-push-on','subscription':{}})[0]==401
+assert request({'action':'owner-read','contactId':'invalid'})[0]==401
+assert request({'action':'owner-promote','contactId':'invalid'})[0]==401
+assert request({'action':'visitor-start','device':'invalid'})[0]==401
+assert request({'action':'chat-send','device':'invalid','body':'synthetic'})[0]==401
 assert request({'action':'card-owner-login','password':''})[0]==400
 assert request({'action':'card-owner-setup','code':'invalid','password':''})[0]==400
 assert request({'action':'card-owner-logout'})[0]==401

@@ -1,0 +1,31 @@
+{
+  "id": "./",
+  "name": "S's-YR 管理者",
+  "short_name": "S's-YR 管理",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#101417",
+  "theme_color": "#101417",
+  "icons": [
+    {
+      "src": "../brand-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../logo-spectrum.webp",
+      "sizes": "384x384",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "../app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

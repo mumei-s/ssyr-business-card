@@ -14,7 +14,7 @@
        const code=String(data.error_code||data.code||'');
        if(r.status===429){
          if(code==='over_email_send_rate_limit'||path.includes('/auth/v1/otp'))throw new ApiError(429,'認証メールの送信上限に達しています。再送せず、上のパスワードでログインしてください。');
-         throw new ApiError(429,'ログインの試行回数が上限に達しました。時間をおいてお試しください。');
+         throw new ApiError(429,typeof data.error==='string'?data.error:'操作回数の上限に達しました。時間をおいてお試しください。');
        }
        if(path.includes('/auth/v1/token?grant_type=password')&&(r.status===400||r.status===401||r.status===403))throw new ApiError(r.status,'メールアドレスまたはパスワードをご確認ください。');
        throw new ApiError(r.status,typeof data.error==='string'?data.error:typeof data.msg==='string'?'認証内容をご確認ください。':'通信に失敗しました。');
