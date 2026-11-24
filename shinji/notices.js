@@ -1,7 +1,7 @@
 (() => {
  'use strict';
  const N=window.SSYRNotice,{$,el,feedback}=N;
- let device=N.getDevice(),contact=null,worker=null,key=null,busy=false,localSub=null,initial=false,pending=null,inviteCode='',lastSignature='';
+ let device=N.getDevice(),contact=null,worker=null,key=null,busy=false,localSub=null,initial=false,pending=null,inviteCode='',lastSignature='',quietBusy=false,revision=0,preparing=false;
  const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
  const supported=window.isSecureContext&&'Notification'in window&&'serviceWorker'in navigator&&'PushManager'in window&&(!ios||standalone);
@@ -12,9 +12,9 @@
    $('notice-state').textContent=registered?'通知 ON':'通知 OFF';
    $('notice-state').classList.toggle('on',registered);
    if(!busy)$('news').checked=!!contact?.muumeiNews;
-   $('device-guide').hidden=supported;
-   $('device-guide').textContent=ios?'Safariで名刺をホーム画面に追加し、追加したアイコンから開くと通知を設定できます。':'通知の設定には、対応するブラウザで名刺を開いてください。チャットはこのまま使えます。';
-   $('enable').disabled=busy||!supported||!worker||!key||registered;
+   $('device-guide').hidden=supported&&!preparing&&!!worker&&!!key;
+   $('device-guide').textContent=preparing?'通知を準備しています。チャットはそのまま使えます。':supported?'通知の準備を再試行できます。':ios?'Safariで名刺をホーム画面に追加し、追加したアイコンから開くと通知を設定できます。':'通知の設定には、対応するブラウザで名刺を開いてください。チャットはこのまま使えます。';
+   $('enable').disabled=busy||!supported||preparing||registered;
    $('enable').textContent=contact?.enabled&&!registered?'通知を再設定':'通知をONにする';
    $('test').disabled=busy||!registered;
    $('stop').disabled=busy||!contact||(!contact.enabled&&!localSub);
@@ -45,12 +45,14 @@
    badge(messages.filter(m=>m.direction!=='inbound'&&!m.read_at).length);
    root.scrollTop=root.scrollHeight;
  }
- async function refresh(){
+ async function refresh(accept=()=>true){
+   if(!accept())return;
    if(!N.validToken(device)){contact=null;renderMessages([]);initial=true;render();return}
-   try{const r=await N.call('status',{device});contact=r.contact;renderMessages(r.messages||[])}
-   catch(e){if(e.status===401){contact=null;N.clearDevice();device='';renderMessages([])}else throw e}
-   if(worker)try{localSub=await worker.pushManager.getSubscription()}catch{localSub=null}
+   try{const r=await N.call('status',{device});if(!accept())return;contact=r.contact;renderMessages(r.messages||[])}
+   catch(e){if(!accept())return;if(e.status===401){contact=null;N.clearDevice();device='';renderMessages([])}else throw e}
    initial=true;render();
+   // The chat must not wait for the browser's PushManager to respond.
+   if(worker){const reg=worker;void N.wait(reg.pushManager.getSubscription(),4000).then(sub=>{if(worker===reg&&accept()){localSub=sub;render()}}).catch(()=>{})}
  }
  async function ensureContact(){
    if(contact)return contact;
@@ -62,15 +64,24 @@
    contact=r.contact;inviteCode='';$('invite').value='';render();return contact;
  }
  async function prepare(){
-   if(!supported)return;
-   const [v,reg]=await Promise.all([N.config(),navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'})]);
-   if(v.ok!==true||typeof v.vapidPublicKey!=='string')throw Error('通知への接続を確認できません。');
-   key=N.decode(v.vapidPublicKey);if(key.length!==65||key[0]!==4)throw Error('通知への接続を確認できません。');
-   worker=await Promise.race([navigator.serviceWorker.ready,new Promise((_,reject)=>setTimeout(()=>reject(Error('通知の準備を再試行してください。')),10000))]);
-   if(worker.scope!==new URL('./',location.href).href||reg.scope!==worker.scope)throw Error('名刺アプリから開いてください。');
-   localSub=await worker.pushManager.getSubscription();
+   if(!supported||preparing)return;
+   preparing=true;render();
+   try{
+     const [v,reg]=await N.wait(Promise.all([N.config(),navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'})]),9000,'通知の準備を再試行してください。');
+     if(v.ok!==true||typeof v.vapidPublicKey!=='string')throw Error('通知への接続を確認できません。');
+     const k=N.decode(v.vapidPublicKey);if(k.length!==65||k[0]!==4)throw Error('通知への接続を確認できません。');
+     const active=await N.wait(navigator.serviceWorker.ready,6000,'通知の準備を再試行してください。');
+     if(active.scope!==new URL('./',location.href).href||reg.scope!==active.scope)throw Error('名刺アプリから開いてください。');
+     worker=active;key=k;localSub=await N.wait(worker.pushManager.getSubscription(),5000);
+   }catch(e){worker=null;key=null;throw e}
+   finally{preparing=false;render()}
  }
- async function run(task){if(busy)return;busy=true;render();feedback('通信中…');try{await task()}catch(e){feedback(e.message||'もう一度お試しください。',true)}finally{busy=false;render()}}
+ async function run(task){
+   if(busy)return;revision++;busy=true;render();feedback('通信中…');
+   const slow=setTimeout(()=>feedback('通信に時間がかかっています。送信中の内容は履歴をご確認ください。'),12000);
+   try{await task()}catch(e){feedback(e.message||'もう一度お試しください。',true)}
+   finally{clearTimeout(slow);busy=false;render()}
+ }
  const h=new URLSearchParams(location.hash.slice(1)).get('invite');
  if(N.validToken(h)){inviteCode=h;$('invite').value=h;$('invite-options').hidden=true;history.replaceState(null,'',location.pathname+location.search)}
  $('invite').addEventListener('input',render);
@@ -78,7 +89,7 @@
  $('chat-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
    const body=$('chat-body').value.trim();if(!body)throw Error('メッセージを入力してください。');
    await ensureContact();
-   if(!pending||pending.body!==body)pending={body,requestId:crypto.randomUUID()};
+   if(!pending||pending.body!==body)pending={body,requestId:N.requestId()};
    const r=await N.call('chat-send',{device,body,requestId:pending.requestId});
    if(!r?.message)throw Error('送信結果を確認できません。再送してください。');
    pending=null;$('chat-body').value='';
@@ -88,26 +99,42 @@
    try{await refresh()}catch{feedback('メッセージを保存しました。 '+result+'。履歴は更新ボタンで確認してください。',true)}
  })});
  $('enable').addEventListener('click',()=>{
-   if(busy||!supported||!worker||!key)return;
-   const permission=Notification.requestPermission();
+   if(busy||!supported||preparing)return;
+   const permission=N.wait(Notification.requestPermission(),15000,'通知の許可画面が応答しません。ブラウザーの通知設定をご確認ください。');
    void run(async()=>{
      if(await permission!=='granted')throw Error('ブラウザの通知設定から許可してください。');
+     if(!worker||!key)await prepare();
+     if(!worker||!key)throw Error('通知を準備できませんでした。もう一度お試しください。');
      await ensureContact();
-     let sub=await worker.pushManager.getSubscription(),created=false;
-     if(sub){const existing=sub.options?.applicationServerKey;if(existing){const bytes=new Uint8Array(existing);if(bytes.length!==key.length||!bytes.every((n,i)=>n===key[i])){await sub.unsubscribe();sub=null}}}
-     if(!sub){sub=await worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key});created=true}
+     let sub=await N.wait(worker.pushManager.getSubscription()),created=false;
+     if(sub){const existing=sub.options?.applicationServerKey;if(existing){const bytes=new Uint8Array(existing);if(bytes.length!==key.length||!bytes.every((n,i)=>n===key[i])){await N.wait(sub.unsubscribe());sub=null}}}
+     if(!sub){sub=await N.wait(worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key}),10000);created=true}
      try{const r=await N.call('subscribe',{device,subscription:sub.toJSON()});contact=r.contact;localSub=sub;feedback('通知をONにしました。')}
-     catch(e){if(created)await sub.unsubscribe().catch(()=>{});throw e}
+     catch(e){if(created)await N.wait(sub.unsubscribe()).catch(()=>{});throw e}
    });
  });
  $('test').addEventListener('click',()=>void run(async()=>{const r=await N.call('test',{device});feedback(r.status==='accepted'?'テスト通知を送信しました。端末に表示されるかご確認ください。':N.pushLabels[r.status]||'通知の送信結果を確認できませんでした。',r.status!=='accepted');await refresh()}));
- $('stop').addEventListener('click',()=>void run(async()=>{await N.call('stop',{device});if(localSub)await localSub.unsubscribe().catch(()=>{});await refresh();feedback('通知をOFFにしました。')}));
- $('disconnect').addEventListener('click',()=>{if(!confirm('この端末の連絡登録を解除しますか？'))return;void run(async()=>{await N.call('disconnect',{device});if(localSub)await localSub.unsubscribe().catch(()=>{});N.clearDevice();device='';contact=null;localSub=null;pending=null;renderMessages([]);badge(0);feedback('端末の登録を解除しました。')})});
+ $('stop').addEventListener('click',()=>void run(async()=>{await N.call('stop',{device});if(localSub)await N.wait(localSub.unsubscribe()).catch(()=>{});await refresh();feedback('通知をOFFにしました。')}));
+ $('disconnect').addEventListener('click',()=>{if(!confirm('この端末の連絡登録を解除しますか？'))return;void run(async()=>{await N.call('disconnect',{device});if(localSub)await N.wait(localSub.unsubscribe()).catch(()=>{});N.clearDevice();device='';contact=null;localSub=null;pending=null;renderMessages([]);badge(0);feedback('端末の登録を解除しました。')})});
  $('news').addEventListener('change',()=>{const selected=$('news').checked;void run(async()=>{await ensureContact();const r=await N.call('preferences',{device,muumeiNews:selected});contact=r.contact;feedback('設定を保存しました。')})});
- $('refresh').addEventListener('click',()=>void run(async()=>{if(supported&&(!worker||!key))await prepare();await refresh();feedback('更新しました。')}));
- async function quietRefresh(){if(busy||!contact||document.visibilityState!=='visible')return;busy=true;try{await refresh()}catch{}finally{busy=false;render()}}
+ $('refresh').addEventListener('click',()=>void run(async()=>{await refresh();feedback('更新しました。');if(supported&&(!worker||!key))void prepare().catch(()=>{})}));
+ async function quietRefresh(){
+   if(busy||quietBusy||!contact||document.visibilityState!=='visible')return;
+   quietBusy=true;const stamp=revision,secret=device;
+   const accept=()=>stamp===revision&&!busy&&device===secret&&document.visibilityState==='visible';
+   try{await refresh(accept)}catch{}finally{quietBusy=false;if(!busy)render()}
+ }
  window.addEventListener('focus',quietRefresh);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void quietRefresh()});
  if('serviceWorker'in navigator&&navigator.serviceWorker.addEventListener)navigator.serviceWorker.addEventListener('message',e=>{if(e.data?.type==='ssyr-chat-update')void quietRefresh()});
  setInterval(quietRefresh,30000);
- (async()=>{try{await refresh()}catch(e){initial=true;render();feedback(e.message,true)}try{await prepare();render()}catch(e){if(contact)feedback(e.message,true)}})();
+ $('recover-page').addEventListener('click',()=>{if((busy||$('chat-body').value.trim())&&!confirm('画面を再読み込みします。未送信の入力は消えることがあります。送信中だった場合は履歴をご確認ください。'))return;location.reload()});
+ // Render immediately, even while the first read or notification preparation is pending.
+ initial=true;render();
+ if(N.validToken(device)){
+   const stamp=revision,secret=device;
+   void refresh(()=>stamp===revision&&!busy&&device===secret).catch(e=>{if(stamp===revision&&!busy)feedback(e.message,true)});
+ }else renderMessages([]);
+ void prepare().catch(()=>{});
+
 })();

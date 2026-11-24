@@ -75,3 +75,6 @@ footer{display:flex;flex-wrap:wrap;gap:.65rem 1rem;justify-content:center;paddin
 .owner-install-panel #owner-install-button,.owner-install-panel #owner-app-link{width:100%}
 .owner-install-panel .owner-install-status{color:#e5d3af;font-size:.82rem}
 .owner-install-panel .auth-options{margin:0;padding-top:.5rem}
+
+/* Recovery is always available independently of the chat request lock. */
+.connection-recovery{display:flex;justify-content:flex-end;align-items:center;margin:-.35rem 0 .25rem}.connection-recovery button{font-size:.72rem;min-height:36px;padding:.35rem .6rem;background:transparent;color:var(--muted);border-color:#53656e}

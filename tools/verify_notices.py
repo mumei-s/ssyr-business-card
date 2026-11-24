@@ -20,7 +20,8 @@ def check_notices(browser,base):
     page=ctx.new_page()
     errors=[];requests=[];auth_requests=[]
     page.on('pageerror',lambda e:errors.append(str(e)))
-    state={'linked':False,'enabled':False,'news':False,'read':False,'owner_setup':False,'owner_session':False,'owner_enabled':False,'visitor':False,'guest_body':'','unread':1,'saved':[dict(MANUAL)]}
+    delayed=[]
+    state={'delay_status':False,'delay_list':False,'linked':False,'enabled':False,'news':False,'read':False,'owner_setup':False,'owner_session':False,'owner_enabled':False,'visitor':False,'guest_body':'','unread':1,'saved':[dict(MANUAL)]}
     page.add_init_script("""(() => {
       const scopes=new Map();
       function makeReg(scope,owner){
@@ -61,6 +62,8 @@ def check_notices(browser,base):
             assert b['invite']==INVITE and len(b['device'])==64
             state['linked']=True;state['visitor']=False;done({'contact':summary()})
         elif a=='status':
+            if state['delay_status']:
+                state['delay_status']=False;delayed.append(r);return
             if not state['linked']:done({'error':'未登録'},401);return
             messages=[{'id':CID,'title':'テスト連絡','body':'受信した連絡','direction':'outbound','created_at':DATE,'read_at':DATE if state['read'] else None}]
             if state['guest_body']:messages.insert(0,{'id':MID,'title':'チャット','body':state['guest_body'],'direction':'inbound','created_at':DATE,'read_at':None})
@@ -89,6 +92,8 @@ def check_notices(browser,base):
         elif a.startswith('owner-'):
             assert state['owner_session'] and r.request.headers.get('authorization')=='Bearer '+SESSION
             if a=='owner-list':
+                if state['delay_list']:
+                    state['delay_list']=False;delayed.append(r);return
                 done({'contacts':[dict(VISITOR,unread=state['unread']),*state['saved']],'ownerPushEnabled':state['owner_enabled']})
             elif a=='owner-history':
                 rows=[{'id':MID,'title':'チャット','body':'ゲストからの相談','direction':'inbound','created_at':DATE,'read_at':None if state['unread'] else DATE,'push_status':'accepted'}] if b['contactId']==VID else []
@@ -122,6 +127,19 @@ def check_notices(browser,base):
     expect(page.locator('#feedback')).to_contain_text('通知サービス受付済み')
     expect(page.locator('#message-list .mine')).to_contain_text('相談です')
     assert 'claim' not in requests
+    # A background read must not lock the compose button.
+    state['delay_status']=True
+    page.evaluate("window.dispatchEvent(new Event('focus'))")
+    for _ in range(40):
+        if delayed:break
+        page.wait_for_timeout(50)
+    assert delayed,'background read did not start'
+    expect(page.locator('#chat-send')).to_be_enabled()
+    page.locator('#chat-body').fill('通信待ち中も送信')
+    page.locator('#chat-send').click()
+    expect(page.locator('#message-list .mine')).to_contain_text('通信待ち中も送信')
+    delayed.pop().fulfill(json={'contact':{'displayName':'STALE','enabled':False,'muumeiNews':False},'messages':[]},headers=HEADERS)
+    expect(page.locator('#message-list .mine')).to_contain_text('通信待ち中も送信')
     expect(page.locator('#enable')).to_be_enabled()
     page.locator('#enable').click()
     expect(page.locator('#notice-state')).to_have_text('通知 ON')
@@ -172,8 +190,16 @@ def check_notices(browser,base):
     expect(page.locator('#owner-push-state')).to_have_text('OFF')
     expect(page.locator('#tab-chats')).to_have_attribute('aria-pressed','true')
     expect(page.locator('#unread-count')).to_have_text('1')
+    state['delay_list']=True
+    page.evaluate("window.dispatchEvent(new Event('focus'))")
+    for _ in range(40):
+        if delayed:break
+        page.wait_for_timeout(50)
+    assert delayed,'background owner list did not start'
     page.locator('.contact-row').filter(has_text='ゲストさん').click()
     expect(page.locator('#history')).to_contain_text('ゲストからの相談')
+    delayed.pop().fulfill(json={'contacts':[],'ownerPushEnabled':False},headers=HEADERS)
+    expect(page.locator('#selected-name')).to_have_text('ゲストさん')
     expect(page.locator('#unread-count')).to_have_text('')
     expect(page.locator('#send-panel')).to_be_visible()
     page.locator('#message-body').fill('テスト返信')

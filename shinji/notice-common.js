@@ -5,6 +5,12 @@
  const deviceKey='ssyr-card-device-v1';
  const $=id=>document.getElementById(id);
  class ApiError extends Error{constructor(status,message){super(message);this.status=status}}
+ // Browser APIs (permissions, SW registration, clipboard and push subscription)
+ // may never resolve on embedded browsers. Do not let them lock the application.
+ function wait(promise,ms=6000,message='端末の処理が時間内に完了しませんでした。もう一度お試しください。'){
+   let timer;
+   return Promise.race([Promise.resolve(promise),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new ApiError(0,message)),ms)})]).finally(()=>clearTimeout(timer));
+ }
  async function jsonRequest(path,options={},timeoutMs=27000){
    const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),timeoutMs);
    try{
@@ -23,8 +29,12 @@
    }catch(e){if(e instanceof ApiError)throw e;if(controller.signal.aborted)throw new ApiError(0,'接続が時間内に完了しませんでした。もう一度お試しください。');throw new ApiError(0,'通信に失敗しました。もう一度お試しください。')}
    finally{clearTimeout(timer)}
  }
- const call=(action,fields={},access)=>jsonRequest(url,{method:'POST',headers:{'Content-Type':'application/json',...(access?{Authorization:'Bearer '+access}:{})},body:JSON.stringify({action,...fields})});
- const config=()=>jsonRequest(url);
+ const call=(action,fields={},access)=>{
+   const slow=['owner-send','chat-send','owner-push-test','test','card-owner-login','card-owner-setup'].includes(action);
+   return jsonRequest(url,{method:'POST',headers:{'Content-Type':'application/json',...(access?{Authorization:'Bearer '+access}:{})},body:JSON.stringify({action,...fields})},slow?27000:10000);
+ };
+ const config=()=>jsonRequest(url,{},8000);
+ const requestId=()=>{if(typeof crypto.randomUUID==='function')return crypto.randomUUID();const b=crypto.getRandomValues(new Uint8Array(16));b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;const s=Array.from(b,x=>x.toString(16).padStart(2,'0')).join('');return s.slice(0,8)+'-'+s.slice(8,12)+'-'+s.slice(12,16)+'-'+s.slice(16,20)+'-'+s.slice(20)};
  const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
  const validToken=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
  function getDevice(){try{return localStorage.getItem(deviceKey)||''}catch{return ''}}
@@ -58,5 +68,5 @@
  }
  const pushLabels={pending:'処理結果未確定',accepted:'通知サービス受付済み',failed:'通知送信失敗',expired:'端末登録期限切れ',disabled:'連絡を保存・通知OFF',unknown:'送信結果未確定'};
  function setBusy(root,busy){for(const b of root.querySelectorAll('button[type=submit]'))b.disabled=busy}
- window.SSYRNotice={base,url,$,call,config,random,validToken,getDevice,setDevice,clearDevice,inviteFrom,date,el,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
+ window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,inviteFrom,date,el,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
 })();

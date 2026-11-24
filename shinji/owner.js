@@ -8,7 +8,7 @@
  const isSaved=c=>!!c&&c.entry_type!=='visitor'&&!!(c.email||c.phone);
  const sessionKey='ssyr-owner-session-v1',rememberKey='ssyr-owner-remember-v1';
  const validSession=v=>typeof v==='string'&&/^ssyr1_[a-f0-9]{64}$/.test(v);
- let remembered=false;
+ let remembered=false,quietBusy=false,revision=0,pushPreparing=false;
  function loadSession(){
    try{const v=localStorage.getItem(rememberKey);if(validSession(v)){remembered=true;return v}}catch{}
    try{return sessionStorage.getItem(sessionKey)||''}catch{return ''}
@@ -29,9 +29,14 @@
  function clearAuthInputs(){for(const id of ['login-password','setup-password','setup-confirm','setup-code'])$(id).value='';setupCode=''}
  function hideConsole(){access='';saveSession('');showReconnect(false);contacts=[];selectedId='';pending=null;ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href=new URL('notices.html',ROOT).href;$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
  async function run(fn){
-   if(busy)return;busy=true;feedback('通信中…');for(const b of document.querySelectorAll('button'))b.disabled=true;
+   if(busy)return;
+   revision++;busy=true;feedback('通信中…');
+   // Keep navigation/recovery reachable; only the foreground action is locked.
+   const buttons=Array.from(document.querySelectorAll('button')).filter(b=>!['owner-install-button','recover-page'].includes(b.id));
+   for(const b of buttons)b.disabled=true;
+   const slow=setTimeout(()=>feedback('通信に時間がかかっています。画面を再読み込みする前に、送信済みの履歴をご確認ください。'),12000);
    try{await fn()}catch(e){if(access&&(e.status===401||e.status===403)){hideConsole();feedback('再ログインしてください。',true)}else feedback(e.message||'もう一度お試しください。',true)}
-   finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;updateControls()}
+   finally{clearTimeout(slow);busy=false;for(const b of buttons)b.disabled=false;updateControls()}
  }
  function updateControls(){
    const c=selected(),registered=ownerEnabled&&!!ownerSub&&canPush&&Notification.permission==='granted';
@@ -41,10 +46,10 @@
    $('history-prev').disabled=busy||historyPage===0;
    $('history-next').disabled=busy||$('history').dataset.more!=='true';
    $('owner-push-state').textContent=registered?'ON':'OFF';$('owner-push-state').classList.toggle('on',registered);
-   $('owner-push-on').disabled=busy||!access||!canPush||!ownerWorker||!ownerKey||registered;
+   $('owner-push-on').disabled=busy||!access||!canPush||pushPreparing||registered;
    $('owner-push-off').disabled=busy||!access||!ownerEnabled;
    $('owner-push-test').disabled=busy||!registered;
-   $('owner-push-guide').textContent=registered?'相手からのチャットをこの端末に通知します。テストで受信を確認できます。':canPush?'管理者通知をONにして、端末の通知を許可してください。':'通知を使う場合は管理者アプリをホーム画面に追加して開いてください。';
+   $('owner-push-guide').textContent=pushPreparing?'通知を準備しています…':registered?'相手からのチャットをこの端末に通知します。テストで受信を確認できます。':canPush?'管理者通知をONにして、端末の通知を許可してください。':'通知を使う場合は管理者アプリをホーム画面に追加して開いてください。';
  }
  function renderContacts(){
    const q=$('search').value.toLowerCase().trim(),list=$('contacts');
@@ -82,20 +87,25 @@
    }else $('send-panel').hidden=true;
    updateControls();
  }
- async function reload(preserve=false){
-   const r=await ownerCall('owner-list');contacts=r.contacts||[];ownerEnabled=r.ownerPushEnabled===true;
+ async function reload(preserve=false,accept=()=>true){
+   const r=await ownerCall('owner-list');
+   if(!accept())return false;
+   const next=r.contacts||[],changed=JSON.stringify(next)!==JSON.stringify(contacts);
+   contacts=next;ownerEnabled=r.ownerPushEnabled===true;
    if(!selected())selectedId='';
-   renderContacts();showContact(!preserve);
+   if(!preserve||changed)renderContacts();
+   if(!preserve)showContact(true);else if(changed)showContact(false);else updateControls();
+   return true;
  }
  function showInvite(value){
    const link=new URL('notices.html',ROOT);link.searchParams.set('v','share-2');link.hash='invite='+value;
    $('invite-link').value=link.href;$('open-invite').href=link.href;$('invite-panel').hidden=false;
    $('invite-panel').scrollIntoView({block:'start'});
  }
- async function history(){
+ async function history(accept=()=>true,markRead=true){
    if(!selectedId)return;
-   const id=selectedId,r=await ownerCall('owner-history',{contactId:id,page:historyPage});
-   if(selectedId!==id)return;
+   const id=selectedId,page=historyPage,r=await ownerCall('owner-history',{contactId:id,page});
+   if(!accept()||selectedId!==id||historyPage!==page)return;
    const root=$('history'),rows=r.messages||[],sig=JSON.stringify([id,historyPage,rows]);
    root.dataset.more=String(rows.length===50);
    if(sig!==historySignature){
@@ -111,46 +121,49 @@
      if(!rows.length)root.append(el('p','会話はまだありません。','muted'));
      if(historyPage===0)root.scrollTop=root.scrollHeight;
    }
-   if(mode==='chats'&&historyPage===0){
+   if(markRead&&mode==='chats'&&historyPage===0){
      const ids=rows.filter(m=>m.direction==='inbound'&&!m.read_at).map(m=>m.id);
      if(ids.length){await ownerCall('owner-read',{contactId:id,ids});const c=selected();if(c)c.unread=Math.max(0,(c.unread||0)-ids.length);renderContacts()}
    }
    updateControls();
  }
  async function prepareOwnerPush(){
-   if(!canPush)return;
+   if(!canPush||pushPreparing)return;
+   pushPreparing=true;updateControls();
    try{
-     const [v,reg]=await Promise.all([N.config(),navigator.serviceWorker.register(new URL('owner/sw.js',ROOT).href,{scope:new URL('owner/',ROOT).href,updateViaCache:'none'})]);
+     const [v,reg]=await N.wait(Promise.all([N.config(),navigator.serviceWorker.register(new URL('owner/sw.js',ROOT).href,{scope:new URL('owner/',ROOT).href,updateViaCache:'none'})]),9000,'通知の準備を再試行してください。');
      if(!v.ok||typeof v.vapidPublicKey!=='string')throw Error();
      const k=N.decode(v.vapidPublicKey);if(k.length!==65||k[0]!==4)throw Error();
      // Use the registration returned for OWNER, never the visitor's ready worker.
      const expected=new URL('owner/',ROOT).href;if(reg.scope!==expected)throw Error();
      for(let i=0;i<20&&!reg.active;i++)await new Promise(r=>setTimeout(r,250));
      if(!reg.active)throw Error();
-     ownerWorker=reg;ownerKey=k;ownerSub=await reg.pushManager.getSubscription();
+     ownerWorker=reg;ownerKey=k;ownerSub=await N.wait(reg.pushManager.getSubscription(),5000);
    }catch{ownerWorker=null;ownerKey=null}
-   updateControls();
+   finally{pushPreparing=false;updateControls()}
  }
  $('owner-push-on').addEventListener('click',()=>{
-   if(busy||!access||!ownerWorker||!ownerKey||!canPush)return;
-   const permission=Notification.requestPermission();
+   if(busy||!access||!canPush)return;
+   const permission=N.wait(Notification.requestPermission(),15000,'通知の許可画面が応答しません。ブラウザーの通知設定をご確認ください。');
    void run(async()=>{
      if(await permission!=='granted')throw Error('通知を許可してください。');
-     let sub=await ownerWorker.pushManager.getSubscription(),created=false;
-     if(sub&&sub.options?.applicationServerKey){const b=new Uint8Array(sub.options.applicationServerKey);if(b.length!==ownerKey.length||!b.every((v,i)=>v===ownerKey[i])){await sub.unsubscribe();sub=null}}
-     if(!sub){sub=await ownerWorker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:ownerKey});created=true}
+     if(!ownerWorker||!ownerKey)await prepareOwnerPush();
+     if(!ownerWorker||!ownerKey)throw Error('通知を準備できませんでした。もう一度お試しください。');
+     let sub=await N.wait(ownerWorker.pushManager.getSubscription()),created=false;
+     if(sub&&sub.options?.applicationServerKey){const b=new Uint8Array(sub.options.applicationServerKey);if(b.length!==ownerKey.length||!b.every((v,i)=>v===ownerKey[i])){await N.wait(sub.unsubscribe());sub=null}}
+     if(!sub){sub=await N.wait(ownerWorker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:ownerKey}),10000);created=true}
      try{const result=await ownerCall('owner-push-on',{subscription:sub.toJSON()});ownerEnabled=result.enabled;ownerSub=sub;feedback('管理者通知をONにしました。')}
-     catch(e){if(created)await sub.unsubscribe().catch(()=>{});throw e}
+     catch(e){if(created)await N.wait(sub.unsubscribe()).catch(()=>{});throw e}
    });
  });
- $('owner-push-off').addEventListener('click',()=>void run(async()=>{await ownerCall('owner-push-off');ownerEnabled=false;if(ownerSub)await ownerSub.unsubscribe().catch(()=>{});ownerSub=null;feedback('管理者通知をOFFにしました。')}));
+ $('owner-push-off').addEventListener('click',()=>void run(async()=>{await ownerCall('owner-push-off');ownerEnabled=false;if(ownerSub)await N.wait(ownerSub.unsubscribe()).catch(()=>{});ownerSub=null;feedback('管理者通知をOFFにしました。')}));
  $('owner-push-test').addEventListener('click',()=>void run(async()=>{const r=await ownerCall('owner-push-test');feedback(r.status==='accepted'?'管理者テスト通知を送信しました。':N.pushLabels[r.status]||'送信結果未確定',r.status!=='accepted');if(r.status==='expired'){ownerEnabled=false;ownerSub=null}}));
  function changeMode(next){
-   mode=next;selectedId='';editing=false;promoting=false;historyPage=0;historySignature='';$('invite-panel').hidden=true;showContact();renderContacts();feedback();
+   if(busy)return;revision++;mode=next;selectedId='';editing=false;promoting=false;historyPage=0;historySignature='';$('invite-panel').hidden=true;showContact();renderContacts();feedback();
  }
  $('tab-chats').addEventListener('click',()=>changeMode('chats'));
  $('tab-contacts').addEventListener('click',()=>changeMode('contacts'));
- $('promote-contact').addEventListener('click',()=>{if(!selected())return;editing=true;promoting=true;showContact();$('edit-panel').scrollIntoView({block:'start'});$('contact-name').focus()});
+ $('promote-contact').addEventListener('click',()=>{if(busy||!selected())return;revision++;editing=true;promoting=true;showContact();$('edit-panel').scrollIntoView({block:'start'});$('contact-name').focus()});
  async function launchState(){
    // The card repository hosts this page on the same origin as MUUMEI.
    try{const r=await fetch('/muumei-public/muumei-config.json',{cache:'no-store',credentials:'omit',redirect:'error',signal:AbortSignal.timeout(6000)});const c=await r.json();ready=r.ok&&c.ready===true&&String(c.appUrl).replace(/\/+$/,'')==='https://mumei-s.github.io/muumei-public'}catch{ready=false}
@@ -216,7 +229,7 @@
  }));
  $('search').addEventListener('input',renderContacts);
  $('reload').addEventListener('click',()=>void run(async()=>{await reload();if(selectedId)await history();if(canPush&&(!ownerWorker||!ownerKey))await prepareOwnerPush();await launchState();feedback('更新しました。')}));
- $('new-contact').addEventListener('click',()=>{mode='contacts';selectedId='';pending=null;historyPage=0;editing=true;promoting=false;$('invite-panel').hidden=true;showContact();renderContacts();$('edit-panel').scrollIntoView({block:'start'});$('contact-name').focus()});
+ $('new-contact').addEventListener('click',()=>{if(busy)return;revision++;mode='contacts';selectedId='';pending=null;historyPage=0;editing=true;promoting=false;$('invite-panel').hidden=true;showContact();renderContacts();$('edit-panel').scrollIntoView({block:'start'});$('contact-name').focus()});
  $('contact-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
    const fields={name:$('contact-name').value,email:$('contact-email').value,phone:$('contact-phone').value,memo:$('contact-memo').value};
    if(!fields.email.trim()&&!fields.phone.trim())throw Error('メールまたは電話番号を入力してください。');
@@ -225,12 +238,12 @@
  })});
  $('reissue').addEventListener('click',()=>void run(async()=>{if(!selectedId)return;const r=await ownerCall('owner-invite',{contactId:selectedId});await reload();showInvite(r.invite);feedback('招待リンクを発行しました。')}));
  $('revoke').addEventListener('click',()=>{if(!selectedId||!confirm('この相手の端末登録を解除しますか？'))return;void run(async()=>{await ownerCall('owner-revoke',{contactId:selectedId});$('invite-panel').hidden=true;await reload();feedback('登録を解除しました。')})});
- $('copy-invite').addEventListener('click',()=>void run(async()=>{try{await navigator.clipboard.writeText($('invite-link').value);feedback('招待リンクをコピーしました。')}catch{$('invite-link').focus();$('invite-link').select();feedback('表示したリンクをコピーしてください。')}}));
+ $('copy-invite').addEventListener('click',()=>void run(async()=>{try{await N.wait(navigator.clipboard.writeText($('invite-link').value));feedback('招待リンクをコピーしました。')}catch{$('invite-link').focus();$('invite-link').select();feedback('表示したリンクをコピーしてください。')}}));
  $('share-invite').addEventListener('click',()=>{const url=$('invite-link').value;if(navigator.share)void navigator.share({title:"S's-YR 受け取り登録",url}).catch(()=>{});else $('copy-invite').click()});
  $('send-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
    if(!selectedId)return;
    const title='チャット',body=$('message-body').value.trim();if(!body)throw Error('メッセージを入力してください。');
-   const signature=JSON.stringify([selectedId,title,body]);if(!pending||pending.signature!==signature)pending={signature,requestId:crypto.randomUUID()};
+   const signature=JSON.stringify([selectedId,title,body]);if(!pending||pending.signature!==signature)pending={signature,requestId:N.requestId()};
    const r=await ownerCall('owner-send',{contactId:selectedId,title,body,requestId:pending.requestId});
    if(!r?.message)throw Error('送信結果を確認できません。再送してください。');
    pending=null;$('send-form').reset();historyPage=0;
@@ -240,8 +253,18 @@
  })});
  $('history-prev').addEventListener('click',()=>void run(async()=>{historyPage=Math.max(0,historyPage-1);await history()}));
  $('history-next').addEventListener('click',()=>void run(async()=>{historyPage++;await history()}));
- async function quietRefresh(){if(busy||!access||editing||document.visibilityState!=='visible')return;busy=true;try{await reload(true);if(selectedId)await history()}catch(e){if(e.status===401||e.status===403){hideConsole();feedback('再ログインしてください。',true)}}finally{busy=false;updateControls()}}
+ async function quietRefresh(){
+   // Polling must never acquire the foreground lock, ignore a tap, or replace a
+   // newer view. A user action invalidates all previously started read results.
+   if(busy||quietBusy||!access||editing||document.visibilityState!=='visible')return;
+   quietBusy=true;
+   const stamp=revision,token=access,accept=()=>stamp===revision&&!busy&&access===token&&!editing&&document.visibilityState==='visible';
+   try{if(await reload(true,accept)&&accept()&&selectedId)await history(accept,false)}
+   catch(e){if(accept()&&(e.status===401||e.status===403)){hideConsole();feedback('再ログインしてください。',true)}}
+   finally{quietBusy=false;if(!busy)updateControls()}
+ }
  window.addEventListener('focus',quietRefresh);
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void quietRefresh()});
  if('serviceWorker'in navigator&&navigator.serviceWorker.addEventListener)navigator.serviceWorker.addEventListener('message',e=>{if(e.data?.type==='ssyr-owner-update')void quietRefresh()});
  setInterval(quietRefresh,30000);
  function resumeSession(){
@@ -264,6 +287,7 @@
      feedback('通知サービス受付 '+accepted+'件 ／ 送信済み '+duplicates+'件 ／ その他 '+other+'件');if(selectedId)await history();
    });
  });
+ $('recover-page').addEventListener('click',()=>{if((busy||$('message-body').value.trim()||$('contact-form').querySelector('input')?.value)&&!confirm('画面を再読み込みします。未送信の入力は消えることがあります。送信中だった場合は履歴をご確認ください。'))return;location.reload()});
  const appLink=$('owner-app-link');
- if(appLink)appLink.href=new URL('owner/?v=remember-2',ROOT).href;
+ if(appLink)appLink.href=new URL('owner/?v=flow-fix-1',ROOT).href;
 })();
