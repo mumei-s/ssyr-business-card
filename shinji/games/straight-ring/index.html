@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#100b20">
+<meta name="description" content="ちびマイキャラクターで5試合のタイトル戦へ。スマホ横画面のボクシングゲーム。">
+<title>HIKARI STRAIGHT | ちびボクシング</title>
+<link rel="stylesheet" href="./style.css?v=6">
+<link rel="stylesheet" href="./character.css">
+<link rel="stylesheet" href="./super-variants.css?v=5">
+<script type="module" src="./app.mjs?v=5"></script>
+</head>
+<body>
+<main class="shell">
+  <header class="mast">
+    <div class="wordmark"><span class="logo" aria-hidden="true">H<span>✦</span></span><div><p>CHIBI BOXING CLUB</p><h1>HIKARI <span>STRAIGHT</span></h1></div></div>
+    <div class="mast-tools"><span class="landscape">横画面推奨</span><button type="button" id="sound" class="small-toggle" aria-pressed="false">音 OFF</button><button type="button" id="back" class="small-toggle" hidden>中断</button></div>
+  </header>
+  <section class="arena lobby" aria-label="ボクシングリング">
+    <canvas id="ring" width="1000" height="468" aria-label="ちびキャラクターの試合"></canvas>
+    <div class="hud" aria-label="試合状況">
+      <div class="hud-corner">
+        <div class="stat stat-player"><div class="stat-heading"><span id="player-name">マイキャラ</span><span id="player-percent">100</span></div><div class="vital" role="progressbar" aria-label="自分の体力" id="player-vital" aria-valuenow="100"><i></i></div><div class="energy" role="progressbar" id="energy" aria-valuenow="100" aria-label="スタミナ"><i></i></div></div>
+        <div class="hud-meta"><span id="round">TITLE MATCH</span></div>
+      </div>
+      <div class="roundbox"><strong id="timer">0:35</strong></div>
+      <div class="hud-corner">
+        <div class="stat stat-cpu"><div class="stat-heading"><span id="cpu-name">チャレンジャー</span><span id="cpu-percent">100</span></div><div class="vital" role="progressbar" aria-label="相手の体力" id="cpu-vital" aria-valuenow="100"><i></i></div></div>
+        <div class="hud-meta hud-meta-cpu"><span id="cpu-style">CHALLENGER</span><span id="division">5試合</span></div>
+      </div>
+    </div>
+    <div id="stage-banner" class="banner" hidden></div>
+    <div id="super-cut" class="super-cut" aria-hidden="true" hidden>
+      <div class="super-noise"></div><img id="super-portrait" alt="" decoding="async"><div class="super-beam"></div>
+      <div class="super-caption"><span id="super-owner"></span><strong>ストレート<br>フラッシュ</strong></div>
+    </div>
+    <div class="intro" id="intro">
+      <p class="kicker"><span></span> THE TITLE ROAD <span></span></p>
+      <h2>リングの<span>真ん中</span>へ。</h2>
+      <p class="intro-copy">ちびマイキャラで挑む、全5試合のタイトルロード。</p>
+      <button class="cta" id="setup-open" type="button">キャラを選んで始める</button>
+      <button class="quiet" id="rules-open" type="button">試合ルール・操作を見る</button>
+    </div>
+    <ol class="bracket" aria-label="タイトルロードの進み具合" id="bracket"></ol>
+  </section>
+
+  <section class="console" aria-label="ゲームコントローラー">
+    <div class="pad-zone">
+      <div class="control-title">MOVE <span>移動</span></div>
+      <div class="dpad" id="pad">
+        <button type="button" data-hold="up" aria-label="奥へ移動" title="W / ↑" disabled><span aria-hidden="true">▲</span></button>
+        <button type="button" data-hold="left" aria-label="左へ移動" title="A / ←" disabled><span aria-hidden="true">◀</span></button>
+        <i aria-hidden="true">✦</i>
+        <button type="button" data-hold="right" aria-label="右へ移動" title="D / →" disabled><span aria-hidden="true">▶</span></button>
+        <button type="button" data-hold="down" aria-label="手前へ移動" title="S / ↓" disabled><span aria-hidden="true">▼</span></button>
+      </div>
+    </div>
+    <div class="card-zone">
+      <div class="control-title">SPECIAL <span>必殺ゲージ</span></div>
+      <div class="meter" id="meter" role="progressbar" aria-valuenow="0" aria-label="必殺ゲージ"><i></i></div>
+      <button class="card-button" id="card" data-punch="card" type="button" disabled><span aria-hidden="true">✦</span> 必殺カード <small id="card-percent">0%</small></button>
+      <p id="battle-log" aria-live="polite">有効打・ガード成功でチャージ</p>
+    </div>
+    <div class="attack-zone">
+      <div class="control-title">PUNCH / GUARD <span>攻撃と防御</span></div>
+      <div class="attacks">
+        <button type="button" data-punch="jab" title="J" disabled><b>ジャブ</b><small>J</small></button>
+        <button type="button" data-punch="straight" title="K" disabled><b>ストレート</b><small>K</small></button>
+        <button type="button" data-punch="hook" title="L" disabled><b>フック</b><small>L</small></button>
+        <button type="button" data-punch="upper" title="I" disabled><b>アッパー</b><small>I</small></button>
+        <button type="button" class="guard" data-hold="guard" title="Space" disabled><b>ガード</b><small>長押し</small></button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="setup" class="dialog" aria-labelledby="setup-title">
+  <div class="dialog-top"><div><p class="kicker">TITLE ROAD</p><h2 id="setup-title">リングに上がる準備</h2></div><form method="dialog"><button class="x" aria-label="閉じる">×</button></form></div>
+  <form id="profile-form" autocomplete="off">
+    <div class="form-grid">
+      <label>リングネーム<input id="nickname" type="text" maxlength="18" value="マイキャラ" placeholder="ニックネーム"></label>
+      <label>ゲーム内の体重（kg）<input id="weight" type="number" min="35" max="150" step="1" value="55" required></label>
+      <label>自分のキャラクター<select id="fighter-select" aria-describedby="fighter-note"><option value="rose">ローズ（ピンク）</option><option value="azure">アズール（ブルー）</option><option value="jade">ジェイド（グリーン）</option><option value="violet">ヴァイオレット（パープル）</option><option value="custom" disabled>取り込んだマイキャラクター</option></select></label>
+      <label>対戦相手のタイプ<select id="opponent-type"><option value="any">男女混合</option><option value="female">女性のみ</option><option value="male">男性のみ</option></select></label>
+      <label>最初の対戦相手<select id="opponent"></select></label>
+    </div>
+    <p class="profile-note"><strong id="weight-class"></strong>　階級とプロフィールはゲーム用です。</p>
+    <p class="privacy-note" id="fighter-note">既定のキャラは画像なしで使えます。自作キャラは下の「マイキャラクターをつくる・取り込む」から。</p>
+    <button id="begin" class="cta" type="submit">タイトルロード開始</button>
+  </form>
+  <details class="character-panel"><summary>マイキャラクターをつくる・取り込む</summary><div id="character-lab"></div></details>
+  <p class="privacy-note">プロフィールや取り込んだキャラクターはこのブラウザー内に保存されます。</p>
+</dialog>
+
+<dialog id="rules" class="dialog" aria-labelledby="rules-title">
+  <div class="dialog-top"><div><p class="kicker">MATCH RULES</p><h2 id="rules-title">試合ルール・操作</h2></div><form method="dialog"><button class="x" aria-label="閉じる">×</button></form></div>
+  <ol class="rules">
+    <li>十字キーで移動。相手に近づき、右側のパンチボタンをタップ。ガードは押している間だけ有効です。</li>
+    <li>有効打やガード成功で必殺ゲージが増加。100%で「必殺カード」が使えます。</li>
+    <li>1試合は1ラウンド35秒、最大3ラウンド。ダウンから10カウント内に立てなければKO。このゲームでは3回のダウンでTKOです。</li>
+    <li>時間切れは有効打とダウンをもとに、ラウンドごとに10点を基準として判定。引き分け・敗戦は同じ試合からやり直せます。</li>
+    <li>5試合勝つとトロフィー・ベルトとゲーム内賞金を獲得します。賞金の換金はできません。</li>
+  </ol>
+  <p class="privacy-note">採点とカウントを参考にしたゲーム用の短縮ルールです。実際の競技規則とは異なります。キーボードは矢印／WASDで移動、J・K・L・Iでパンチ、Spaceでガード、Eで必殺。</p>
+</dialog>
+
+<dialog id="outcome" class="dialog outcome" aria-labelledby="result-title">
+  <div id="result-art" class="result-art" aria-hidden="true"></div>
+  <p id="result-kicker" class="kicker"></p><h2 id="result-title"></h2>
+  <p id="result-copy"></p><p id="result-score"></p>
+  <div id="next-picker" hidden><label>次の対戦相手<select id="next-opponent"></select></label></div>
+  <div id="ending" class="ending" hidden>
+    <div class="ending-light" aria-hidden="true"></div>
+    <p class="ending-name">ひかりちゃん。</p>
+    <p class="ending-cheer">早く膝を治して、部活に勉強頑張ってね😉</p>
+    <p class="ending-road">自分の進みたい道に向かって<strong>ストレート👊</strong></p>
+  </div>
+  <div class="outcome-actions"><button type="button" id="result-primary" class="cta"></button><button type="button" id="result-home" class="quiet">タイトルへ戻る</button></div>
+</dialog>
+</body>
+</html>
