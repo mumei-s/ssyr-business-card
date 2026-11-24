@@ -55,7 +55,7 @@ def check_notices(browser, base):
         elif a=='read':state['read']=True;r.fulfill(json={'ok':True},headers=HEADERS)
         elif a=='disconnect':state['linked']=False;state['enabled']=False;r.fulfill(json={'ok':True},headers=HEADERS)
         elif a.startswith('owner-'):
-            assert r.request.headers.get('authorization')=='Bearer synthetic-owner'
+            assert r.request.headers.get('authorization') in {'Bearer synthetic-owner','Bearer synthetic.owner.callback'}
             if a=='owner-list':r.fulfill(json={'contacts':[OWNER]},headers=HEADERS)
             elif a=='owner-history':r.fulfill(json={'messages':[]},headers=HEADERS)
             elif a=='owner-send':r.fulfill(json={'message':{'push_status':'accepted'}},headers=HEADERS)
@@ -69,12 +69,18 @@ def check_notices(browser, base):
         else:route(r)
     page.route(API,api_route)
     page.route(CONFIG,lambda r:r.fulfill(json={'url':'https://slamzhgsawfnmwlejgqp.supabase.co','key':'sb_publishable_test'},headers=HEADERS))
+    from urllib.parse import urlsplit,parse_qs
+    verification_bodies = []
     def auth_route(r):
         if r.request.method=='OPTIONS':r.fulfill(status=204,headers=HEADERS);return
-        if r.request.url.endswith('/otp'):
+        path=urlsplit(r.request.url)
+        if path.path.endswith('/otp'):
             assert r.request.post_data_json['create_user'] is False
+            assert parse_qs(path.query).get('redirect_to')==['https://mumei-s.github.io/ssyr-business-card/shinji/owner.html']
             r.fulfill(json={},headers=HEADERS)
-        elif r.request.url.endswith('/verify'):r.fulfill(json={'access_token':'synthetic-owner'},headers=HEADERS)
+        elif path.path.endswith('/verify'):
+            verification_bodies.append(r.request.post_data_json)
+            r.fulfill(json={'access_token':'synthetic-owner'},headers=HEADERS)
         else:r.fulfill(json={},headers=HEADERS)
     page.route(AUTH+'**',auth_route)
     page.goto(base+'shinji/notices.html#invite='+INVITE)
@@ -98,10 +104,12 @@ def check_notices(browser, base):
     expect(page.locator('#owner-console')).to_be_hidden()
     page.locator('#login-email').fill('test@example.invalid')
     page.locator('#login-form button').click()
+    expect(page.locator('#feedback')).to_contain_text('ログインメールを送信しました')
     expect(page.locator('#otp-form')).to_be_visible()
     page.locator('#otp-code').fill('123456')
-    page.locator('#otp-form button').click()
+    page.locator('#otp-form button[type="submit"]').click()
     expect(page.locator('#owner-console')).to_be_visible()
+    assert verification_bodies[-1]=={'email':'test@example.invalid','token':'123456','type':'email'}
     page.locator('.contact-row').click()
     expect(page.locator('#send-panel')).to_be_visible()
     page.locator('#message-title').fill('テスト')
@@ -109,6 +117,23 @@ def check_notices(browser, base):
     page.locator('#send-form button').click()
     expect(page.locator('#feedback')).to_contain_text('通知サービス受付済み')
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth+1')
+    # A copied Sign in URL works without visiting the old redirect target, even
+    # if the user opens the card in a different browser from their mail app.
+    page.goto(base+'shinji/owner.html?login=link')
+    expect(page.locator('#owner-console')).to_be_hidden()
+    page.locator('#otp-code').fill('https://foreign.invalid/auth/v1/verify?token='+'a'*64+'&type=magiclink')
+    page.locator('#otp-form button[type="submit"]').click()
+    expect(page.locator('#feedback')).to_contain_text('ログインメールのリンク')
+    assert len(verification_bodies)==1
+    page.locator('#otp-code').fill('https://slamzhgsawfnmwlejgqp.supabase.co/auth/v1/verify?token='+'b'*64+'&type=magiclink&redirect_to=https%3A%2F%2Fold.invalid%2F')
+    page.locator('#otp-form button[type="submit"]').click()
+    expect(page.locator('#owner-console')).to_be_visible()
+    assert verification_bodies[-1]=={'token_hash':'b'*64,'type':'email'}
+    assert page.url==base+'shinji/owner.html?login=link'
+    assert page.locator('#otp-code').input_value()==''
+    page.goto(base+'shinji/owner.html?login=callback#access_token=synthetic.owner.callback&refresh_token=synthetic&token_type=bearer&type=magiclink')
+    expect(page.locator('#owner-console')).to_be_visible()
+    assert '#' not in page.url
     assert not errors, errors
     assert {'claim','subscribe','test','preferences','read','stop','owner-list','owner-history','owner-send'}.issubset(set(requests)),requests
     ctx.close()

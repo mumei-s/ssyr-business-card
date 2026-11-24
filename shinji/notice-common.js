@@ -29,7 +29,26 @@
  function decode(s){const b=s.replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(b+'='.repeat((4-b.length%4)%4)),x=>x.charCodeAt(0))}
  async function publicAuthKey(){const c=await jsonRequest(base+'/functions/v1/public-config');if(c.url!==base||typeof c.key!=='string'||!/^sb_publishable_[A-Za-z0-9_-]+$/.test(c.key))throw Error('管理者ログインの接続を確認してください。');return c.key}
  const auth=(action,body,key)=>jsonRequest(base+'/auth/v1/'+action,{method:'POST',headers:{'Content-Type':'application/json',apikey:key},body:JSON.stringify(body)});
+ // Accept only this project's verification links. Never navigate to a copied URL.
+ function loginVerification(value,email){
+   const raw=String(value||'').trim();
+   if(/^\d{6,10}$/.test(raw)){
+     const address=String(email||'').trim();
+     if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address))throw Error('メールアドレスも入力してください。');
+     return {email:address,token:raw,type:'email'};
+   }
+   let u;try{u=new URL(raw)}catch{throw Error('メールの「Sign in」を長押しし、リンクをコピーしてください。')}
+   if(u.protocol!=='https:'||u.username||u.password||u.hash)throw Error('ログインメールのリンクをご確認ください。');
+   const type=u.searchParams.get('type');
+   if(type!=='magiclink'&&type!=='email')throw Error('ログインメールのリンクをご確認ください。');
+   const direct=u.origin===base&&u.pathname==='/auth/v1/verify';
+   const trustedConfirm=['https://muumei-owner.sabosan0404.chatgpt.site','https://muumei.sabosan0404.chatgpt.site','https://mumei-s.github.io'].includes(u.origin)&&['/auth/confirm','/auth/confirm/','/muumei-public/auth/confirm','/muumei-public/auth/confirm/'].includes(u.pathname);
+   if(!direct&&!trustedConfirm)throw Error('MUUMEIから届いたログインメールのリンクをご確認ください。');
+   const hash=direct?(u.searchParams.get('token')||u.searchParams.get('token_hash')):u.searchParams.get('token_hash');
+   if(!hash||!/^[a-zA-Z0-9_-]{32,256}$/.test(hash))throw Error('ログインメールのリンクをご確認ください。');
+   return {token_hash:hash,type:'email'};
+ }
  const pushLabels={pending:'処理結果未確定',accepted:'通知サービス受付済み',failed:'通知送信失敗',expired:'端末登録期限切れ',disabled:'連絡を保存・通知OFF',unknown:'送信結果未確定'};
  function setBusy(root,busy){for(const b of root.querySelectorAll('button[type=submit]'))b.disabled=busy}
- window.SSYRNotice={base,url,$,call,config,random,validToken,getDevice,setDevice,clearDevice,inviteFrom,date,el,feedback,decode,publicAuthKey,auth,pushLabels,setBusy};
+ window.SSYRNotice={base,url,$,call,config,random,validToken,getDevice,setDevice,clearDevice,inviteFrom,date,el,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
 })();

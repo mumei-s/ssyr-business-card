@@ -5,7 +5,7 @@
  const ownerCall=(action,fields={})=>N.call(action,fields,access);
  const status=c=>c.revoked_at?'解除済み':!c.linked_at?'招待待ち':c.push_enabled_at?'通知 ON':'通知 OFF';
  const selected=()=>contacts.find(c=>c.id===selectedId);
- function hideConsole(){access='';contacts=[];selectedId='';pending=null;ready=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('otp-form').hidden=true;$('otp-code').value='';$('login-email').value='';$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href='./notices.html';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true}
+ function hideConsole(){access='';contacts=[];selectedId='';pending=null;ready=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('otp-form').hidden=false;$('otp-code').value='';$('login-email').value='';$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href='./notices.html';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true}
  async function run(fn){
    if(busy)return;busy=true;feedback();for(const b of document.querySelectorAll('button'))b.disabled=true;
    try{await fn()}catch(e){if(access&&(e.status===401||e.status===403)){hideConsole();feedback('再ログインしてください。',true)}else feedback(e.message||'もう一度お試しください。',true)}
@@ -55,14 +55,44 @@
    try{const r=await fetch('/muumei-public/muumei-config.json',{cache:'no-store',credentials:'omit',redirect:'error'});const c=await r.json();ready=r.ok&&c.ready===true&&String(c.appUrl).replace(/\/+$/,'')==='https://mumei-s.github.io/muumei-public'}catch{ready=false}
    $('muumei-state').textContent=ready?'正式公開を確認しました。':'正式公開前';updateControls();
  }
- $('login-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{email=$('login-email').value.trim();authKey=await N.publicAuthKey();await N.auth('otp',{email,create_user:false},authKey);$('otp-form').hidden=false;$('otp-code').focus();feedback('メールに届いた認証コードを入力してください。')})});
- $('otp-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
-   const r=await N.auth('verify',{email,token:$('otp-code').value.trim(),type:'email'},authKey);
-   if(typeof r.access_token!=='string')throw Error('ログインできませんでした。');
-   access=r.access_token;
+ const returnUrl='https://mumei-s.github.io/ssyr-business-card/shinji/owner.html';
+ async function finishLogin(token){
+   if(typeof token!=='string'||!token||token.length>8192)throw Error('ログインできませんでした。');
+   access=token;
    try{await reload()}catch(e){access='';throw e}
    $('login-panel').hidden=true;$('owner-console').hidden=false;$('otp-code').value='';$('login-email').value='';await launchState();feedback('ログインしました。');
+ }
+ $('login-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
+   email=$('login-email').value.trim();authKey=await N.publicAuthKey();
+   await N.auth('otp?redirect_to='+encodeURIComponent(returnUrl),{email,create_user:false},authKey);
+   $('otp-form').hidden=false;
+   feedback('ログインメールを送信しました。メールの「Sign in」を長押ししてリンクをコピーし、下に貼り付けてください。');
  })});
+ $('paste-login').addEventListener('click',async()=>{
+   try{
+     const text=await navigator.clipboard.readText();
+     if(text&&text.length<=4096){$('otp-code').value=text.trim();$('otp-code').focus();feedback('貼り付けました。「電話帳にログイン」を押してください。')}
+     else $('otp-code').focus();
+   }catch{$('otp-code').focus();feedback('入力欄を長押しして貼り付けてください。')}
+ });
+ $('otp-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
+   const input=$('otp-code').value;
+   const body=N.loginVerification(input,$('login-email').value.trim()||email);
+   authKey=await N.publicAuthKey();
+   $('otp-code').value='';
+   const r=await N.auth('verify',body,authKey);
+   await finishLogin(r.access_token);
+ })});
+ // If the project's redirect allowlist permits the new URL, a normal tap can
+ // return here with an access token. Immediately remove credentials from the URL.
+ const callback=new URLSearchParams(location.hash.slice(1));
+ if(callback.has('access_token')||callback.has('refresh_token')||callback.has('error')||callback.has('error_code')){
+   const token=callback.get('access_token'),type=callback.get('type');
+   history.replaceState(null,'',location.pathname+location.search);
+   if(token&&token.length<=8192&&/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)&&(type==='magiclink'||type==='email')){
+     void run(async()=>{authKey=await N.publicAuthKey();await finishLogin(token)});
+   }else feedback('ログインリンクの期限をご確認ください。必要に応じて新しいメールを送ってください。',true);
+ }
  $('logout').addEventListener('click',()=>void run(async()=>{const old=access;hideConsole();try{await fetch(N.base+'/auth/v1/logout?scope=local',{method:'POST',headers:{apikey:authKey,Authorization:'Bearer '+old},credentials:'omit',redirect:'error'})}catch{}feedback('ログアウトしました。')}));
  $('search').addEventListener('input',renderContacts);
  $('reload').addEventListener('click',()=>void run(async()=>{await reload();if(selectedId)await history();await launchState()}));
