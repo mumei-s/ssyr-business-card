@@ -40,7 +40,7 @@
    if(!selected())selectedId='';renderContacts();showContact();
  }
  function showInvite(value){
-   const link=new URL('./notices.html',location.href);link.hash='invite='+value;
+   const link=new URL('./notices.html',location.href);link.searchParams.set('v','share-2');link.hash='invite='+value;
    $('invite-link').value=link.href;$('open-invite').href=link.href;
    $('invite-panel').hidden=false;
  }

@@ -181,6 +181,25 @@ def check_no_qr():
 def main():
     check_identity(ROOT)
     check_no_qr()
+
+    # Every public/owner route supplies the actual S's-YR raster favicon rather
+    # than falling back to another project at the shared GitHub Pages origin.
+    for path in ("index.html", "works.html", "contact.html", "shinji/index.html", "shinji/works.html", "shinji/contact.html", "shinji/notices.html", "shinji/owner.html"):
+        from html.parser import HTMLParser
+        class ShareHead(HTMLParser):
+            def __init__(self):
+                super().__init__(); self.icons=[]; self.meta={}
+            def handle_starttag(self, tag, attrs):
+                a=dict(attrs)
+                if tag=="link" and a.get("rel")=="icon": self.icons.append(a)
+                if tag=="meta" and a.get("property"): self.meta[a["property"]]=a.get("content")
+        parser=ShareHead(); parser.feed((ROOT/path).read_text())
+        assert len(parser.icons)==1, path
+        assert parser.icons[0]["type"]=="image/png" and parser.icons[0]["href"].split("?")[0].endswith("brand-96.png"), path
+        assert parser.meta.get("og:site_name")=="S's-YR" and "og:image" in parser.meta, path
+        assert "#" not in parser.meta.get("og:url","") and "invite=" not in parser.meta.get("og:url",""), path
+    with Image.open(ROOT/"shinji/brand-96.png") as icon:
+        assert icon.size==(96,96) and icon.format=="PNG"
     vcard = (ROOT / "contact.vcf").read_text(encoding="utf-8")
     for field in ("BEGIN:VCARD", "FN:川合 伸次", "TEL;TYPE=CELL:080-9119-0044", "EMAIL:ss526s-syr@yahoo.co.jp", "END:VCARD"):
         assert field in vcard.splitlines(), f"Missing contact field {field}"
