@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "ready": false,
+  "ready": true,
   "entry": "index.html",
-  "verifiedCommit": null
+  "verifiedCommit": "677750daeb641240c6eac3dc060f4aef54ef88ab"
 }
