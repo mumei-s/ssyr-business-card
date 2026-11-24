@@ -96,15 +96,19 @@
    $('setup-panel').hidden=true;$('login-panel').hidden=false;
    try{await finishLogin(r.accessToken)}catch{feedback('パスワードを設定しました。新しい専用パスワードでログインしてください。',true)}
  })});
- const fragment=new URLSearchParams(location.hash.slice(1));
- if(fragment.has('setup')){
-   const code=(fragment.get('setup')||'').toUpperCase();
-   window.history.replaceState(null,'',location.pathname+location.search);
-   showSetup(code);
- }else if(fragment.has('access_token')||fragment.has('refresh_token')||fragment.has('error')||fragment.has('error_code')){
-   window.history.replaceState(null,'',location.pathname+location.search);
-   feedback('電話帳専用パスワードでログインしてください。');
+ function handleSetupFragment(){
+   const fragment=new URLSearchParams(location.hash.slice(1));
+   if(fragment.has('setup')){
+     const code=(fragment.get('setup')||'').toUpperCase();
+     window.history.replaceState(null,'',location.pathname+location.search);
+     if(!access&&!busy)showSetup(code);
+   }else if(fragment.has('access_token')||fragment.has('refresh_token')||fragment.has('error')||fragment.has('error_code')){
+     window.history.replaceState(null,'',location.pathname+location.search);
+     if(!access)feedback('電話帳専用パスワードでログインしてください。');
+   }
  }
+ handleSetupFragment();
+ window.addEventListener('hashchange',handleSetupFragment);
  $('logout').addEventListener('click',()=>void run(async()=>{
    const old=access;
    try{await N.call('card-owner-logout',{},old);hideConsole();feedback('ログアウトしました。')}
