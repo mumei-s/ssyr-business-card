@@ -171,11 +171,19 @@ def check_contact_routes(browser, base):
 
 
 def check_no_qr():
+    # Card/contact QR images are not published. Owner invitations are generated
+    # from the selected thread only, in the owner's browser.
+    generator = ROOT / 'shinji' / 'invite-qr.js'
+    license_file = ROOT / 'shinji' / 'invite-qr-LICENSE.txt'
     files = [p for folder in ('assets', 'shinji') for p in (ROOT / folder).rglob('*') if p.is_file()]
-    assert not any('qr' in p.name.lower() for p in files), 'A public QR asset is still present'
-    for path in [*ROOT.glob('*.html'), *(ROOT / 'shinji').glob('*.html')]:
-        assert not re.search(r'QRコード|連絡先QR|QRを|(?:contact|introduction)-qr|qr-(?:contact|introduction)',
-                             path.read_text(), re.I), f'QR control remains in {path.name}'
+    assert not any('qr' in p.name.lower() for p in files if p not in (generator, license_file)), 'A public QR asset is still present'
+    owner_pages = {ROOT / 'shinji' / 'owner.html', ROOT / 'shinji' / 'owner' / 'index.html'}
+    for path in [*ROOT.glob('*.html'), *(ROOT / 'shinji').glob('*.html'), ROOT / 'shinji' / 'owner' / 'index.html']:
+        page = path.read_text()
+        assert not re.search(r'連絡先QR|(?:contact|introduction)-qr|qr-(?:contact|introduction)', page, re.I), path
+        if path not in owner_pages:
+            assert not re.search(r'QRコード|QRを|invite-qr', page, re.I), f'QR control remains in {path.name}'
+
 
 
 def main():

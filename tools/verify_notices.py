@@ -1,5 +1,6 @@
 """Synthetic browser interactions: no real recipient, mailbox or push is used."""
 import base64
+from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlsplit
 from uuid import UUID
 from playwright.sync_api import expect
@@ -19,6 +20,8 @@ FIRST_CONTACT='88888888-8888-4888-8888-888888888888'
 FIRST_MID='99999999-9999-4999-8999-999999999999'
 FIRST_NAME='こちらから連絡する相手'
 FIRST_BODY='こちらからの最初のメッセージです。'
+COMMON_NAME='共通名刺の受け取りテスト'
+COMMON_CONTACT='66666666-6666-4666-8666-666666666666'
 DATE='2026-11-24T00:00:00Z'
 MANUAL={'id':CID,'display_name':'既知の相手','email':'test@example.invalid','phone':'','memo':'','linked_at':DATE,'push_enabled_at':DATE,'revoked_at':None,'muumei_news':False,'entry_type':'manual','unread':0}
 VISITOR={'id':VID,'display_name':'ゲストさん','email':'','phone':'','memo':'','linked_at':DATE,'push_enabled_at':None,'revoked_at':None,'muumei_news':False,'entry_type':'visitor','chat_updated_at':DATE,'unread':1}
@@ -31,6 +34,7 @@ def check_notices(browser,base):
     delayed=[]
     device_contacts = {}
     owner_starts = {}
+    public_registrations = {}
     threads = {
         # Outbound notices sent before the direction field existed.
         VID: [{'id': CID, 'title': 'テスト連絡', 'body': '受信した連絡', 'created_at': DATE, 'read_at': None}],
@@ -69,9 +73,23 @@ def check_notices(browser,base):
             r.fulfill(json={'ok':True,'version':1,'vapidPublicKey':key},headers=HEADERS);return
         b=r.request.post_data_json;a=b['action'];requests.append(a)
         def done(body,status=200):r.fulfill(status=status,json=body,headers=HEADERS)
-        def summary():return {'id':device_contacts.get(b.get('device')),'displayName':{VID:'ゲストさん',CID:'既知の相手',FIRST_CONTACT:FIRST_NAME}.get(device_contacts.get(b.get('device')),'ゲスト'),'enabled':state['enabled'],'muumeiNews':state['news']}
+        def summary():return {'id':device_contacts.get(b.get('device')),'displayName':{VID:'ゲストさん',CID:'既知の相手',FIRST_CONTACT:FIRST_NAME,COMMON_CONTACT:COMMON_NAME}.get(device_contacts.get(b.get('device')),'ゲスト'),'enabled':state['enabled'],'muumeiNews':state['news']}
         if a=='visitor-start':
-            assert len(b['device'])==64 and b['name']=='ゲストさん'
+            assert len(bytes.fromhex(b['device']))==32
+            if b['name']==COMMON_NAME or b['device'] in public_registrations:
+                assert not b.get('email') and not b.get('phone') and not b.get('muumeiNews')
+                if b['device'] not in public_registrations:
+                    assert not public_registrations, 'One browser created two receiver records'
+                    public_registrations[b['device']]=dict(VISITOR,id=COMMON_CONTACT,
+                        display_name=COMMON_NAME,chat_updated_at=None,unread=0)
+                    device_contacts[b['device']]=COMMON_CONTACT
+                    threads[COMMON_CONTACT]=[]
+                    if state.pop('drop_common_response', False):
+                        done({'error':'接続結果を確認できません。'},503)
+                        return
+                done({'contact':summary()})
+                return
+            assert b['name']=='ゲストさん'
             device_contacts[b['device']] = VID
             state['linked']=True;done({'contact':summary()})
         elif a=='claim':
@@ -137,13 +155,14 @@ def check_notices(browser,base):
             if a=='owner-list':
                 if state['delay_list']:
                     state['delay_list']=False;delayed.append(r);return
-                done({'contacts':[dict(VISITOR,unread=state['unread']),*state['saved'],*(item['contact'] for item in owner_starts.values())],'ownerPushEnabled':state['owner_enabled']})
+                done({'contacts':[dict(VISITOR,unread=state['unread']),*state['saved'],*public_registrations.values(),*(item['contact'] for item in owner_starts.values())],'ownerPushEnabled':state['owner_enabled']})
             elif a=='owner-start-chat':
                 assert b['name']==FIRST_NAME and b['body']==FIRST_BODY
                 assert not b.get('email') and not b.get('phone')
                 assert UUID(b['requestId']).version == 4 and len(bytes.fromhex(b['invite'])) == 32
                 if b['requestId'] not in owner_starts:
-                    row=dict(VISITOR,id=FIRST_CONTACT,display_name=FIRST_NAME,linked_at=None,owner_started=True,unread=0)
+                    row=dict(VISITOR,id=FIRST_CONTACT,display_name=FIRST_NAME,linked_at=None,owner_started=True,unread=0,
+                             invite_expires_at=(datetime.now(timezone.utc)+timedelta(days=7)).isoformat())
                     owner_starts[b['requestId']]={'contact':row,'invite':b['invite']}
                     threads[FIRST_CONTACT]=[{'id':FIRST_MID,'title':'チャット','body':b['body'],'direction':'outbound','created_at':DATE,'read_at':None,'push_status':'disabled'}]
                     # Model a committed first request whose response was lost.
@@ -162,9 +181,10 @@ def check_notices(browser,base):
                 next(m for m in threads[VID] if m['id']==MID)['read_at']=DATE
                 state['unread']=0;done({'ok':True})
             elif a=='owner-send':
-                assert b['title']=='チャット' and b['body']=='テスト返信' and b['contactId']==VID
-                item={'id':REPLY_ID,'title':'チャット','body':b['body'],'direction':'outbound','created_at':DATE,'read_at':None,'push_status':'accepted'}
-                threads[VID].insert(0,item)
+                contact_id=b['contactId']
+                assert b['title']=='チャット' and (contact_id, b['body']) in ((VID, 'テスト返信'), (COMMON_CONTACT, FIRST_BODY))
+                item={'id':REPLY_ID,'title':'チャット','body':b['body'],'direction':'outbound','created_at':DATE,'read_at':None,'push_status':'accepted' if contact_id==VID else 'disabled'}
+                threads[contact_id].insert(0,item)
                 done({'message':item})
             elif a=='owner-delete-message':
                 assert b['contactId']==VID and b['id']==REPLY_ID
@@ -388,8 +408,101 @@ def check_notices(browser,base):
     assert link.path.endswith('/shinji/notices.html')
     assert parse_qs(link.fragment)['invite']==[next(iter(owner_starts.values()))['invite']]
     assert FIRST_BODY not in share
+    qr = page.locator('#invite-qr')
+    expect(qr).to_be_visible()
+    assert qr.evaluate("""canvas => {
+        const p=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+        return Array.from(p).some((v,i)=>i%4===0 && v===0)
+            && Array.from(p).some((v,i)=>i%4===0 && v===255);
+    }""")
+    # An owner may come back to the waiting person's row later. The original
+    # scannable address must survive a reload of this owner's tab.
+    page.reload()
+    page.locator('.contact-row').filter(has_text=FIRST_NAME).click()
+    if not page.locator('#invite-panel').is_visible():
+        page.locator('#show-invite').click()
+    expect(qr).to_be_visible()
+    expect(page.locator('#invite-link')).to_have_value(share)
+    assert 'owner-invite' not in requests
+    # A second owner's session lacks the cached original token. Selection or
+    # cancellation cannot silently replace a valid link that the recipient has.
+    other_owner=browser.new_context(service_workers='block')
+    other_owner.route('https://**/*',lambda r:r.abort())
+    other_owner.route(API,route)
+    other_owner.add_init_script(f"sessionStorage.setItem('ssyr-owner-session-v1','{SESSION}')")
+    other=other_owner.new_page()
+    other.goto(base+'shinji/owner/')
+    other.locator('.contact-row').filter(has_text=FIRST_NAME).click()
+    dialogs=[]
+    def cancel_reissue(dialog):
+        dialogs.append(dialog.message)
+        dialog.dismiss()
+    other.once('dialog',cancel_reissue)
+    other.locator('#show-invite').click()
+    assert len(dialogs)==1 and 'owner-invite' not in requests
+    other_owner.close()
     page.locator('#tab-contacts').click()
     expect(page.locator('.contact-row').filter(has_text=FIRST_NAME)).to_have_count(0)
+
+    # One common printed card is enough. The recipient first opens it at home,
+    # with no previously saved conversation, permission or PWA installation.
+    ordinary=browser.new_context(viewport={'width':360,'height':760}, service_workers='block')
+    ordinary.route('https://**/*',lambda r:r.abort())
+    ordinary.route(API,route)
+    ordinary.add_init_script("""Object.defineProperty(window,'Notification',{value:{permission:'denied',
+      requestPermission(){throw Error('Receiving contact should not request notification permission')}}});""")
+    guest=ordinary.new_page()
+    guest.on('pageerror',lambda e:errors.append(str(e)))
+    card_url=base+'shinji/'
+    before=list(requests)
+    guest.goto(card_url, wait_until='networkidle')
+    expect(guest.locator('#card-receive-start')).to_be_visible()
+    assert not public_registrations and requests.count('visitor-start')==before.count('visitor-start')
+    guest.locator('#card-receive-name').fill(COMMON_NAME)
+    state['drop_common_response']=True
+    with guest.expect_response(lambda r:r.url==API and r.status==503):
+        guest.locator('#card-receive-start').click()
+    assert len(public_registrations)==1
+    # Reopen the common card in another tab after a dropped response. A retry
+    # must resolve the same registration, even if the first tab never saw success.
+    another=ordinary.new_page()
+    another.goto(card_url, wait_until='networkidle')
+    if not another.locator('#card-receive-open').is_visible():
+        another.locator('#card-receive-name').fill(COMMON_NAME)
+        another.locator('#card-receive-start').click()
+    expect(another.locator('#card-receive-open')).to_be_visible()
+    assert len(public_registrations)==1
+    assert requests.count('chat-send')==before.count('chat-send')
+    assert requests.count('subscribe')==before.count('subscribe')
+    assert requests.count('claim')==before.count('claim')
+    assert threads[COMMON_CONTACT]==[]
+
+    page.locator('#tab-chats').click()
+    page.locator('#reload').click()
+    page.locator('.contact-row').filter(has_text=COMMON_NAME).click()
+    expect(page.locator('#selected-name')).to_have_text(COMMON_NAME)
+    expect(page.locator('#send-panel')).to_be_visible()
+    expect(page.locator('#history .bubble')).to_have_count(0)
+    # The already prepared first message can be copied explicitly to this
+    # verified recipient. Choosing a recipient must not itself send anything.
+    page.locator('.contact-row').filter(has_text=FIRST_NAME).click()
+    page.locator('.reuse-message').click()
+    page.locator('.draft-target').select_option(COMMON_CONTACT)
+    page.locator('.open-message-draft').click()
+    expect(page.locator('#selected-name')).to_have_text(COMMON_NAME)
+    expect(page.locator('#message-body')).to_have_value(FIRST_BODY)
+    assert threads[COMMON_CONTACT]==[] and requests.count('owner-send')==before.count('owner-send')
+    page.locator('#send-form button').click()
+    expect(page.locator('#history .mine')).to_contain_text(FIRST_BODY)
+    another.goto(card_url)
+    expect(another.locator('#card-chat-unread-count')).to_contain_text('1件')
+    another.locator('#card-chat-unread').click()
+    expect(another.locator('#message-list .theirs')).to_contain_text(FIRST_BODY)
+    expect(another.locator('#message-list .mine')).to_have_count(0)
+    assert requests.count('chat-send')==before.count('chat-send')
+    assert requests.count('subscribe')==before.count('subscribe')
+    assert requests.count('owner-start-chat')==before.count('owner-start-chat')
+    ordinary.close()
 
     # A new recipient can read the owner's first message without writing one.
     new_recipient=browser.new_context(service_workers='block')
@@ -430,6 +543,7 @@ def check_notices(browser,base):
     receiver.wait_for_function('window.badgeCalls.at(-1) === 0')
     assert requests.count('subscribe')==before.count('subscribe')
     new_recipient.close()
+
     # Remembered login survives closing/reopening a tab. The server validates it.
     assert page.evaluate("localStorage.getItem('ssyr-owner-remember-v1')")==SESSION
     page.evaluate("sessionStorage.removeItem('ssyr-owner-session-v1')")
