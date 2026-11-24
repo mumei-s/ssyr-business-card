@@ -88,7 +88,7 @@
  const callback=new URLSearchParams(location.hash.slice(1));
  if(callback.has('access_token')||callback.has('refresh_token')||callback.has('error')||callback.has('error_code')){
    const token=callback.get('access_token'),type=callback.get('type');
-   history.replaceState(null,'',location.pathname+location.search);
+   window.history.replaceState(null,'',location.pathname+location.search);
    if(token&&token.length<=8192&&/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)&&(type==='magiclink'||type==='email')){
      void run(async()=>{authKey=await N.publicAuthKey();await finishLogin(token)});
    }else feedback('ログインリンクの期限をご確認ください。必要に応じて新しいメールを送ってください。',true);
