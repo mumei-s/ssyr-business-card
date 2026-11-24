@@ -7,18 +7,20 @@
   <title>SHINJIの電話帳登録 | S's-YR</title>
   <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../assets/contact-import.css?v=direct-2">
-  <script defer src="../assets/contact-import.js?v=direct-2"></script>
+  <script defer src="../assets/contact-import.js?v=direct-3-review"></script>
 </head>
 <body class="contact-page">
   <main class="contact-options" id="contact-options">
     <h1>電話帳に登録</h1>
     <p class="contact-name">SHINJI</p>
-    <p class="contact-hint" id="fallback-hint">登録先を選び、内容を確かめて保存してください。</p>
+    <p class="contact-hint" id="fallback-hint">電話帳が開かない場合は、次の方法を選び、内容を確認して保存してください。</p>
     <nav class="contact-methods" aria-label="連絡先の登録方法">
-      <a data-google-contact href="https://contacts.google.com/new?givenname=SHINJI&amp;email=ss526s-syr%40yahoo.co.jp" referrerpolicy="no-referrer">Google コンタクトで登録</a>
-      <a data-apple-contact href="./contact.vcf" type="text/vcard">Appleの連絡先で開く</a>
+      <a data-vcard-contact href="./contact.vcf" type="text/vcard">連絡先を開く（vCard）</a>
+      <a data-google-contact href="https://contacts.google.com/new?givenname=SHINJI&amp;email=ss526s-syr%40yahoo.co.jp" referrerpolicy="no-referrer">Google コンタクトで登録（別の方法）</a>
     </nav>
-    <p class="contact-note">Google コンタクトで保存した連絡先は、同じアカウントで連絡先の同期を有効にした端末に表示されます。</p>
+    <p class="contact-note">Android：ファイルが保存された場合は、連絡帳アプリのファイル取り込み機能から contact.vcf を選択してください。</p>
+    <p class="contact-note">iPhone：連絡先のプレビューが表示されたら新規連絡先として追加してください。ファイルが保存された場合はファイルアプリから開き、取り込めない場合は下の項目を手入力してください。</p>
+    <p class="contact-note">Google コンタクトはログインが必要な場合があります。自動入力されない項目は下の情報を入力してください。同じアカウントで連絡先の同期を有効にすると端末に反映されます。</p>
     <dl class="contact-fields">
       <div><dt>名前</dt><dd>SHINJI</dd></div>
       <div><dt>屋号</dt><dd>S's-YR</dd></div>

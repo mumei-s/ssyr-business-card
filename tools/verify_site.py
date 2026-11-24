@@ -166,74 +166,8 @@ def check_android_intent(href, name, phone, fallback):
 
 
 def check_contact_routes(browser, base):
-    platforms = {
-        'iOS': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1',
-        'Android': 'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 Chrome/131.0.0.0 Mobile Safari/537.36',
-        'Android Firefox': 'Mozilla/5.0 (Android 15; Mobile; rv:138.0) Gecko/138.0 Firefox/138.0',
-        'no-js': '',
-    }
-    for platform, user_agent in platforms.items():
-        context = browser.new_context(user_agent=user_agent, java_script_enabled=platform != 'no-js',
-                                      viewport={'width': 320, 'height': 780})
-        context.route('https://**/*', lambda route: route.abort())
-        page = context.new_page()
-        for edition, name, phone in (('', '川合 伸次', '080-9119-0044'), ('shinji/', 'SHINJI', None)):
-            contact_url = base + edition + 'contact.html'
-            vcard_url = base + edition + 'contact.vcf'
-            vcard = page.request.get(vcard_url)
-            assert vcard.ok and vcard.body() == (ROOT / edition / 'contact.vcf').read_bytes()
-
-            for route in ('index.html', 'works.html'):
-                page.goto(base + edition + route)
-                actions = page.locator('a[data-add-contact]').all()
-                assert actions, f'No contact action on {page.url}'
-                for action in actions:
-                    expect(action).to_be_visible()
-                    assert action.get_attribute('download') is None
-                    href = action.evaluate('a => a.href')
-                    if platform == 'Android':
-                        check_android_intent(href, name, phone, contact_url)
-                    elif platform == 'iOS':
-                        assert href == vcard_url
-                    else:
-                        assert href == contact_url
-
-                # Verify ordinary navigation on click. A synthetic HTML response observes the
-                # iPhone handoff URL without asking desktop Chromium to download the file.
-                if platform == 'iOS':
-                    page.route(vcard_url, lambda r: r.fulfill(content_type='text/html', body='vCard handoff'))
-                    actions[0].click()
-                    expect(page).to_have_url(vcard_url)
-                    page.unroute(vcard_url)
-                elif platform == 'Android':
-                    # Desktop Chromium has no external contact handler. Suppress only the
-                    # external navigation, then exercise the same recovery link a recipient sees.
-                    page.evaluate("document.addEventListener('click', e => e.preventDefault(), {once: true})")
-                    actions[0].click()
-                    recovery = page.get_by_role('link', name='電話帳が開かないときの登録方法')
-                    expect(recovery).to_be_visible()
-                    recovery.click()
-                    expect(page).to_have_url(contact_url)
-                else:
-                    actions[0].click()
-                    expect(page).to_have_url(contact_url)
-
-            response = page.goto(contact_url)
-            assert response.ok
-            check_viewport(page)
-            google = page.locator('a[href^="https://contacts.google.com/"]')
-            expect(google).to_be_visible()
-            url = urlsplit(google.get_attribute('href'))
-            assert url.path.endswith('/new')
-            fields = parse_qs(url.query)
-            assert fields['givenname'] == [name.split()[-1]]
-            assert fields['email'] == [EMAIL] and fields.get('phone') == ([phone] if phone else None)
-            assert fields.get('familyname') == (['川合'] if phone else None)
-            if platform.startswith('Android'):
-                expect(page.locator('a[href$=".vcf"]:visible')).to_have_count(0)
-            elif platform == 'no-js':
-                expect(page.locator('a[href$=".vcf"]')).to_be_visible()
-        context.close()
+    from verify_contact_routes import check_contact_routes as check
+    check(browser, base, ROOT)
 
 
 def check_no_qr():
