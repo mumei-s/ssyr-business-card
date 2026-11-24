@@ -508,7 +508,4 @@ img { display: block; }
 .install-button[hidden],.install-guide[hidden],.install-status[hidden] { display:none; }
 .install-guide { margin-top:.65rem; color:#dce8ee; }
 .install-guide summary { cursor:pointer; min-height:44px; padding:.65rem .3rem; border:1px solid #657d89; text-align:center; font-size:.86rem; font-weight:650; }
-.install-guide p,.install-status,.notice-info p { font-size:.76rem; color:#c1cfd8; line-height:1.65; margin:.45rem 0 0; }
-.notice-info { border-top:1px solid #526471; margin-top:.8rem; padding-top:.75rem; }
-.notice-info h3 { font-size:.85rem; font-weight:650; margin:0; }
-.notice-info .notice-state { color:#d7c6a0; font-weight:650; }
+.install-guide p,.install-status { font-size:.76rem; color:#c1cfd8; line-height:1.65; margin:.45rem 0 0; }

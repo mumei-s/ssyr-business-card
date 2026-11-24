@@ -186,8 +186,9 @@ def check_card_controls(page):
     page.locator('#front-button').click()
     assert front.locator('.brand-foil').evaluate("el => getComputedStyle(el,'::after').animationPlayState") == 'running'
     expect(page.locator('#install-guide')).to_be_visible()
-    expect(page.locator('.notice-state')).to_contain_text('まだ通知は届きません')
-    assert '管理者専用送信画面' in page.locator('.notice-info').inner_text()
+    expect(page.locator('.notice-info, .notice-state')).to_have_count(0)
+    assert '準備中' not in page.locator('#home-app').inner_text()
+    assert '監視' not in page.locator('#home-app').inner_text()
     manifest_url = page.locator('link[rel="manifest"]').evaluate('el => el.href')
     manifest = page.request.get(manifest_url).json()
     assert manifest['scope'] == './' and manifest['start_url'] == './' and manifest['display'] == 'standalone'
