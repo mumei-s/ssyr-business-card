@@ -35,6 +35,7 @@ def check_notices(browser,base):
     device_contacts = {}
     owner_starts = {}
     public_registrations = {}
+    archive_rows = []
     threads = {
         # Outbound notices sent before the direction field existed.
         VID: [{'id': CID, 'title': 'テスト連絡', 'body': '受信した連絡', 'created_at': DATE, 'read_at': None}],
@@ -81,9 +82,11 @@ def check_notices(browser,base):
                 if b['device'] not in public_registrations:
                     assert not public_registrations, 'One browser created two receiver records'
                     public_registrations[b['device']]=dict(VISITOR,id=COMMON_CONTACT,
-                        display_name=COMMON_NAME,chat_updated_at=None,unread=0)
+                        display_name=COMMON_NAME,chat_updated_at=None,unread=0,
+                        acceptance_at=DATE,acceptance_seen_at=None)
                     device_contacts[b['device']]=COMMON_CONTACT
                     threads[COMMON_CONTACT]=[]
+                    state['linked']=True
                     if state.pop('drop_common_response', False):
                         done({'error':'接続結果を確認できません。'},503)
                         return
@@ -105,6 +108,7 @@ def check_notices(browser,base):
                     done({'error':'リンクの有効期限または使用状況をご確認ください。'},401)
                     return
                 start['contact']['linked_at']=DATE
+                start['contact'].update(acceptance_at=DATE,acceptance_seen_at=None)
                 device_contacts[b['device']] = FIRST_CONTACT
             state['linked']=True;done({'contact':summary()})
         elif a=='chat-unread':
@@ -155,7 +159,21 @@ def check_notices(browser,base):
             if a=='owner-list':
                 if state['delay_list']:
                     state['delay_list']=False;delayed.append(r);return
-                done({'contacts':[dict(VISITOR,unread=state['unread']),*state['saved'],*public_registrations.values(),*(item['contact'] for item in owner_starts.values())],'ownerPushEnabled':state['owner_enabled']})
+                rows = [dict(VISITOR,unread=state['unread']),*state['saved'],*public_registrations.values(),
+                        *(item['contact'] for item in owner_starts.values()),*archive_rows]
+                done({'contacts':[c for c in rows if c.get('entry_type')=='manual' or not c.get('chat_hidden_at')],
+                      'ownerPushEnabled':state['owner_enabled']})
+            elif a=='owner-ack-acceptance':
+                recipients = [*public_registrations.values(),*(item['contact'] for item in owner_starts.values())]
+                row = next(c for c in recipients if c['id']==b['contactId'])
+                assert b['acceptanceAt']==row['acceptance_at'] and not row.get('revoked_at')
+                row['acceptance_seen_at']=DATE
+                done({'ok':True})
+            elif a=='owner-hide-revoked':
+                row = next(c for c in archive_rows if c['id']==b['contactId'])
+                assert row.get('revoked_at') and b['revokedAt']==row['revoked_at']
+                row['chat_hidden_at']=DATE
+                done({'ok':True})
             elif a=='owner-start-chat':
                 assert b['name']==FIRST_NAME and b['body']==FIRST_BODY
                 assert not b.get('email') and not b.get('phone')
@@ -480,6 +498,12 @@ def check_notices(browser,base):
     expect(another.locator('#card-receive-open')).to_be_visible()
     expect(another.locator('#card-chat-start')).to_be_visible()
     expect(another.locator('#card-chat-start')).to_have_attribute('href',card_url+'notices.html#thread='+COMMON_CONTACT)
+    another.locator('#card-receive-open').click()
+    expect(another.locator('#chat-accepted')).to_contain_text('招待を受け取りました')
+    expect(another.locator('#chat-accepted')).to_contain_text('送信は不要')
+    expect(another.locator('#chat-form')).to_be_hidden()
+    another.locator('#chat-compose-open').click()
+    expect(another.locator('#chat-body')).to_be_visible()
     assert len(public_registrations)==1
     assert requests.count('chat-send')==before.count('chat-send')
     assert requests.count('subscribe')==before.count('subscribe')
@@ -487,11 +511,20 @@ def check_notices(browser,base):
     assert threads[COMMON_CONTACT]==[]
 
     page.locator('#tab-chats').click()
-    page.locator('#reload').click()
-    page.locator('.contact-row').filter(has_text=COMMON_NAME).click()
+    page.evaluate("window.dispatchEvent(new Event('focus'))")
+    acceptances=page.locator('#owner-acceptances')
+    alert=acceptances.locator(f'[data-contact-id="{COMMON_CONTACT}"]')
+    expect(alert).to_contain_text(COMMON_NAME)
+    expect(page.locator('#unread-count')).to_have_text('')
+    alert.click()
     expect(page.locator('#selected-name')).to_have_text(COMMON_NAME)
     expect(page.locator('#send-panel')).to_be_visible()
     expect(page.locator('#history .bubble')).to_have_count(0)
+    expect(alert).to_have_count(0)
+    assert requests.count('owner-ack-acceptance')==1
+    page.reload()
+    expect(page.locator('#owner-console')).to_be_visible()
+    expect(alert).to_have_count(0)
     # The already prepared first message can be copied explicitly to this
     # verified recipient. Choosing a recipient must not itself send anything.
     page.locator('.contact-row').filter(has_text=FIRST_NAME).click()
@@ -553,6 +586,51 @@ def check_notices(browser,base):
     receiver.wait_for_function('window.badgeCalls.at(-1) === 0')
     assert requests.count('subscribe')==before.count('subscribe')
     new_recipient.close()
+
+    # A personal invite also signals acceptance before the visitor writes.
+    page.evaluate("window.dispatchEvent(new Event('focus'))")
+    private_alert=acceptances.locator(f'[data-contact-id="{FIRST_CONTACT}"]')
+    expect(private_alert).to_contain_text(FIRST_NAME)
+    # This is also the URL opened by a system notification when the admin
+    # page is closed. A remembered, authenticated owner sees the exact chat.
+    with page.expect_response(lambda r:r.url==API and r.request.method=='POST'
+                              and r.request.post_data_json.get('action')=='owner-ack-acceptance'):
+        page.goto(base+'shinji/owner/#contact='+FIRST_CONTACT)
+    expect(page.locator('#selected-name')).to_have_text(FIRST_NAME)
+    expect(private_alert).to_have_count(0)
+    assert requests.count('owner-ack-acceptance')==2
+
+    # Two identically named revoked rows must be independently removable. A
+    # saved manual contact stays in the phonebook after its chat is hidden.
+    revoked_guest='11111111-aaaa-4aaa-8aaa-111111111111'
+    revoked_manual='22222222-aaaa-4aaa-8aaa-222222222222'
+    duplicate_name='同じ呼び名の相手'
+    for cid, sample in ((revoked_guest,VISITOR),(revoked_manual,MANUAL)):
+        archive_rows.append(dict(sample,id=cid,display_name=duplicate_name,revoked_at=DATE,unread=0))
+        threads[cid]=[]
+    page.locator('#reload').click()
+    duplicates=page.locator('.contact-row').filter(has_text=duplicate_name)
+    expect(duplicates).to_have_count(2)
+    hide_guest=page.locator(f'.hide-revoked[data-contact-id="{revoked_guest}"]')
+    page.once('dialog',lambda dialog:dialog.dismiss())
+    hide_guest.click()
+    expect(duplicates).to_have_count(2)
+    assert 'owner-hide-revoked' not in requests
+    page.once('dialog',lambda dialog:dialog.accept())
+    hide_guest.click()
+    expect(duplicates).to_have_count(1)
+    duplicates.click()
+    expect(page.locator('#hide-selected')).to_be_visible()
+    page.once('dialog',lambda dialog:dialog.accept())
+    page.locator('#hide-selected').click()
+    expect(duplicates).to_have_count(0)
+    assert requests.count('owner-hide-revoked')==2
+    page.reload()
+    expect(page.locator('.contact-row').filter(has_text=FIRST_NAME)).to_have_count(1)
+    expect(duplicates).to_have_count(0)
+    page.locator('#tab-contacts').click()
+    expect(duplicates).to_have_count(1)
+    expect(duplicates).to_contain_text(MANUAL['email'])
 
     # Remembered login survives closing/reopening a tab. The server validates it.
     assert page.evaluate("localStorage.getItem('ssyr-owner-remember-v1')")==SESSION

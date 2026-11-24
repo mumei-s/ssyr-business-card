@@ -54,6 +54,8 @@ footer{display:flex;flex-wrap:wrap;gap:.65rem 1rem;justify-content:center;paddin
 
 /* Chat and saved contacts stay separate. */
 .compact-panel{padding:.85rem 1rem}.chat-panel{padding:.85rem}
+.chat-accepted{margin:.9rem 0;padding:.65rem .85rem;border-inline-start:3px solid #9ad8d0;background:#1c3036}
+.chat-accepted h3{color:#c1ede5}
 .chat-messages{display:flex;flex-direction:column;gap:.7rem;min-height:130px;max-height:min(55vh,430px);overflow-y:auto;overscroll-behavior:contain;padding:.7rem .2rem}
 .bubble{min-width:0;max-width:88%;padding:.68rem .8rem;border:1px solid #657985;border-radius:12px 12px 12px 3px;background:#263540;align-self:flex-start}
 .bubble.mine{align-self:flex-end;border-radius:12px 12px 3px 12px;background:linear-gradient(135deg,#544b3c,#383b39);border-color:#a5916c}
@@ -86,3 +88,8 @@ footer{display:flex;flex-wrap:wrap;gap:.65rem 1rem;justify-content:center;paddin
 #invite-qr{display:block;width:min(100%,300px);height:auto;margin:.8rem auto;image-rendering:pixelated}
 .reuse-message,.open-message-draft{margin:.45rem 0;font-size:.76rem}
 .draft-target{width:100%;min-width:0;max-width:100%;min-height:44px;color:var(--ink);background:#192329;border:1px solid #687b87;font:inherit}
+#owner-acceptances { border-color:#ada080; }
+.revoked-chat-row { margin:.45rem 0; border:1px solid #51616a; padding:0 .4rem .4rem; }
+.revoked-chat-row .contact-row { border:0; margin:0; }
+.revoked-chat-row .hide-revoked { display:block; margin-left:auto; font-size:.83rem; }
+#selected-state { white-space:normal; }

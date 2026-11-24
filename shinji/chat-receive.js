@@ -12,7 +12,7 @@
 
   function showConnected(threadId) {
     form.hidden = true;
-    status.textContent = '受け取り設定済みです。このブラウザーで名刺を開くと、新着が表示されます。';
+    status.textContent = '招待を受け取りました。メッセージを送らなくても、このブラウザーで名刺を開くと新着が表示されます。';
     open.href = N.validThreadId(threadId) ? './notices.html#thread=' + threadId : './notices.html';
     entry.href = open.href;
     open.hidden = false;

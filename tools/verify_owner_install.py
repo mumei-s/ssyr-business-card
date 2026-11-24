@@ -2,6 +2,33 @@
 import json
 from playwright.sync_api import expect
 
+def check_acceptance_notification(page,base):
+    # Use the shipped worker with synthetic push and click events. No real
+    # subscription, browser permission, or private data is involved.
+    worker=page.request.get(base+'shinji/owner/sw.js').text()
+    result=page.evaluate("""async source => {
+      const events={}, notifications=[], opened=[];
+      const scope=new URL('./',location.href).href;
+      const self={
+        addEventListener:(name,listener)=>{events[name]=listener},
+        registration:{scope,showNotification:async(title,options)=>notifications.push({title,...options})},
+        navigator:{},clients:{matchAll:async()=>[],openWindow:async url=>opened.push(String(url))}
+      };
+      new Function('self',source)(self);
+      const contactId='66666666-6666-4666-8666-666666666666';
+      let pending;
+      const waitUntil=promise=>{pending=promise};
+      events.push({data:{json:()=>({kind:'owner-acceptance',contactId,id:'receipt-1'})},waitUntil});
+      await pending;
+      if(notifications.length===1){
+        events.notificationclick({notification:{...notifications[0],close(){}},waitUntil});
+        await pending;
+      }
+      return {notifications,opened,contactId,scope};
+    }""",worker)
+    assert len(result['notifications'])==1 and '招待' in result['notifications'][0]['body']
+    assert result['opened']==[result['scope']+'#contact='+result['contactId']]
+
 def check_owner_install(browser,base):
     page=browser.new_page(viewport={'width':320,'height':740},service_workers='block')
     page.route('https://**/*',lambda r:r.abort())
@@ -15,6 +42,7 @@ def check_owner_install(browser,base):
     page.goto(base+'shinji/owner/')
     expect(page.locator('#owner-install-button')).to_be_visible()
     expect(page.locator('#login-panel')).to_be_visible()
+    check_acceptance_notification(page,base)
     expect(page.locator('#owner-console')).to_be_hidden()
     assert page.evaluate('ownerRegistrations.some(x=>x[0]==="/shinji/owner/sw.js" && x[1]==="/shinji/owner/")')
     assert not page.evaluate('ownerRegistrations.some(x=>x[1]==="/shinji/")')
