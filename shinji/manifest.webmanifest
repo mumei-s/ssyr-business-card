@@ -10,16 +10,22 @@
   "theme_color": "#101417",
   "icons": [
     {
-      "src": "./brand-96.png",
-      "sizes": "96x96",
-      "type": "image/png",
+      "src": "./app-icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
       "src": "./app-icon.svg",
-      "sizes": "any",
+      "sizes": "512x512 any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    },
+    {
+      "src": "./brand-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "./logo-spectrum.webp",

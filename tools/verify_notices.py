@@ -129,8 +129,10 @@ def check_notices(browser,base):
     expect(page.locator('#feedback')).to_contain_text('テスト通知を送信しました')
     page.locator('#news').check()
     expect(page.locator('#feedback')).to_contain_text('設定を保存しました')
+    expect(page.locator('#chat-unread')).to_have_text('未読 1件')
     page.get_by_role('button',name='既読にする').click()
     expect(page.get_by_role('button',name='既読にする')).to_have_count(0)
+    expect(page.locator('#chat-unread')).to_be_hidden()
     page.locator('#stop').click()
     expect(page.locator('#notice-state')).to_have_text('通知 OFF')
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth+1')
@@ -194,8 +196,8 @@ def check_notices(browser,base):
     page.reload()
     expect(page.locator('#owner-console')).to_be_visible()
     page.locator('#logout').click()
-    assert page.evaluate("localStorage.getItem('ssyr-owner-remember-v1')") is None
     expect(page.locator('#login-panel')).to_be_visible()
+    assert page.evaluate("localStorage.getItem('ssyr-owner-remember-v1')") is None
     assert not state['owner_session']
     page.locator('#login-password').fill('SyntheticCardPassword123')
     page.locator('#remember-owner').uncheck()
