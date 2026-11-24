@@ -49,3 +49,5 @@ time,.message small{font-size:.72rem;color:var(--muted)}
 #history-panel,#send-panel{margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--line)}
 footer{display:flex;flex-wrap:wrap;gap:.65rem 1rem;justify-content:center;padding:.7rem;color:var(--muted);font-size:.8rem}
 @media(max-width:350px){.sheet{padding-left:.75rem;padding-right:.75rem}.panel{padding:.8rem}.signature{gap:.7rem}.signature img{width:42px;height:42px}}
+
+.auth-intro{margin-bottom:1rem;color:var(--muted);line-height:1.7}.auth-options{border-top:1px solid var(--line);margin-top:1.2rem;padding-top:1rem}.auth-options summary{cursor:pointer;color:var(--accent);font-size:.9rem;padding:.4rem 0}.auth-options p{margin:.75rem 0}.auth-options>button{margin:.5rem 0}

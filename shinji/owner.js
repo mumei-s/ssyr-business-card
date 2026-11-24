@@ -5,9 +5,9 @@
  const ownerCall=(action,fields={})=>N.call(action,fields,access);
  const status=c=>c.revoked_at?'解除済み':!c.linked_at?'招待待ち':c.push_enabled_at?'通知 ON':'通知 OFF';
  const selected=()=>contacts.find(c=>c.id===selectedId);
- function hideConsole(){access='';contacts=[];selectedId='';pending=null;ready=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('otp-form').hidden=false;$('otp-code').value='';$('login-email').value='';$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href='./notices.html';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true}
+ function hideConsole(){access='';contacts=[];selectedId='';pending=null;ready=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('otp-form').hidden=false;$('otp-code').value='';$('login-email').value='';$('login-password').value='';$('email-options').open=false;$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href='./notices.html';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true}
  async function run(fn){
-   if(busy)return;busy=true;feedback();for(const b of document.querySelectorAll('button'))b.disabled=true;
+   if(busy)return;busy=true;feedback('通信中…');for(const b of document.querySelectorAll('button'))b.disabled=true;
    try{await fn()}catch(e){if(access&&(e.status===401||e.status===403)){hideConsole();feedback('再ログインしてください。',true)}else feedback(e.message||'もう一度お試しください。',true)}
    finally{busy=false;for(const b of document.querySelectorAll('button'))b.disabled=false;updateControls()}
  }
@@ -52,7 +52,7 @@
  }
  async function launchState(){
    // The card repository hosts this page on the same origin as MUUMEI.
-   try{const r=await fetch('/muumei-public/muumei-config.json',{cache:'no-store',credentials:'omit',redirect:'error'});const c=await r.json();ready=r.ok&&c.ready===true&&String(c.appUrl).replace(/\/+$/,'')==='https://mumei-s.github.io/muumei-public'}catch{ready=false}
+   try{const r=await fetch('/muumei-public/muumei-config.json',{cache:'no-store',credentials:'omit',redirect:'error',signal:AbortSignal.timeout(6000)});const c=await r.json();ready=r.ok&&c.ready===true&&String(c.appUrl).replace(/\/+$/,'')==='https://mumei-s.github.io/muumei-public'}catch{ready=false}
    $('muumei-state').textContent=ready?'正式公開を確認しました。':'正式公開前';updateControls();
  }
  const returnUrl='https://mumei-s.github.io/ssyr-business-card/shinji/owner.html';
@@ -60,14 +60,26 @@
    if(typeof token!=='string'||!token||token.length>8192)throw Error('ログインできませんでした。');
    access=token;
    try{await reload()}catch(e){access='';throw e}
-   $('login-panel').hidden=true;$('owner-console').hidden=false;$('otp-code').value='';$('login-email').value='';await launchState();feedback('ログインしました。');
+   $('login-panel').hidden=true;$('owner-console').hidden=false;$('otp-code').value='';$('login-email').value='';$('login-password').value='';feedback('ログインしました。');void launchState();
  }
  $('login-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
-   email=$('login-email').value.trim();authKey=await N.publicAuthKey();
-   await N.auth('otp?redirect_to='+encodeURIComponent(returnUrl),{email,create_user:false},authKey);
-   $('otp-form').hidden=false;
-   feedback('ログインメールを送信しました。メールの「Sign in」を長押ししてリンクをコピーし、下に貼り付けてください。');
+   email=$('login-email').value.trim();
+   const password=$('login-password').value;
+   if(!password)throw Error('パスワードを入力してください。');
+   authKey=await N.publicAuthKey();
+   const r=await N.auth('token?grant_type=password',{email,password},authKey);
+   $('login-password').value='';
+   await finishLogin(r.access_token);
  })});
+ $('mail-login').addEventListener('click',()=>{
+   if(!$('login-email').reportValidity())return;
+   void run(async()=>{
+     email=$('login-email').value.trim();authKey=await N.publicAuthKey();
+     await N.auth('otp?redirect_to='+encodeURIComponent(returnUrl),{email,create_user:false},authKey);
+     $('otp-form').hidden=false;
+     feedback('ログインメールを送信しました。届いたメールからログインしてください。');
+   });
+ });
  $('paste-login').addEventListener('click',async()=>{
    try{
      const text=await navigator.clipboard.readText();

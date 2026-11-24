@@ -5,14 +5,22 @@
  const deviceKey='ssyr-card-device-v1';
  const $=id=>document.getElementById(id);
  class ApiError extends Error{constructor(status,message){super(message);this.status=status}}
- async function jsonRequest(path,options={}){
-   const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),27000);
+ async function jsonRequest(path,options={},timeoutMs=27000){
+   const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),timeoutMs);
    try{
      const r=await fetch(path,{...options,signal:controller.signal,cache:'no-store',credentials:'omit',redirect:'error'});
      let data;try{data=await r.json()}catch{throw new ApiError(r.status,'接続できませんでした。')}
-     if(!r.ok)throw new ApiError(r.status,typeof data.error==='string'?data.error:typeof data.msg==='string'?'認証内容をご確認ください。':'通信に失敗しました。');
+     if(!r.ok){
+       const code=String(data.error_code||data.code||'');
+       if(r.status===429){
+         if(code==='over_email_send_rate_limit'||path.includes('/auth/v1/otp'))throw new ApiError(429,'認証メールの送信上限に達しています。再送せず、上のパスワードでログインしてください。');
+         throw new ApiError(429,'ログインの試行回数が上限に達しました。時間をおいてお試しください。');
+       }
+       if(path.includes('/auth/v1/token?grant_type=password')&&(r.status===400||r.status===401||r.status===403))throw new ApiError(r.status,'メールアドレスまたはパスワードをご確認ください。');
+       throw new ApiError(r.status,typeof data.error==='string'?data.error:typeof data.msg==='string'?'認証内容をご確認ください。':'通信に失敗しました。');
+     }
      return data;
-   }catch(e){if(e instanceof ApiError)throw e;throw new ApiError(0,'通信に失敗しました。もう一度お試しください。')}
+   }catch(e){if(e instanceof ApiError)throw e;if(controller.signal.aborted)throw new ApiError(0,'接続が時間内に完了しませんでした。もう一度お試しください。');throw new ApiError(0,'通信に失敗しました。もう一度お試しください。')}
    finally{clearTimeout(timer)}
  }
  const call=(action,fields={},access)=>jsonRequest(url,{method:'POST',headers:{'Content-Type':'application/json',...(access?{Authorization:'Bearer '+access}:{})},body:JSON.stringify({action,...fields})});
@@ -27,8 +35,8 @@
  function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e}
  function feedback(message='',error=false){$('feedback').textContent=message;$('feedback').classList.toggle('error',!!error)}
  function decode(s){const b=s.replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(b+'='.repeat((4-b.length%4)%4)),x=>x.charCodeAt(0))}
- async function publicAuthKey(){const c=await jsonRequest(base+'/functions/v1/public-config');if(c.url!==base||typeof c.key!=='string'||!/^sb_publishable_[A-Za-z0-9_-]+$/.test(c.key))throw Error('管理者ログインの接続を確認してください。');return c.key}
- const auth=(action,body,key)=>jsonRequest(base+'/auth/v1/'+action,{method:'POST',headers:{'Content-Type':'application/json',apikey:key},body:JSON.stringify(body)});
+ async function publicAuthKey(){const c=await jsonRequest(base+'/functions/v1/public-config',{},10000);if(c.url!==base||typeof c.key!=='string'||!/^sb_publishable_[A-Za-z0-9_-]+$/.test(c.key))throw Error('管理者ログインの接続を確認してください。');return c.key}
+ const auth=(action,body,key)=>jsonRequest(base+'/auth/v1/'+action,{method:'POST',headers:{'Content-Type':'application/json',apikey:key},body:JSON.stringify(body)},15000);
  // Accept only this project's verification links. Never navigate to a copied URL.
  function loginVerification(value,email){
    const raw=String(value||'').trim();

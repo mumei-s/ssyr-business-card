@@ -71,13 +71,22 @@ def check_notices(browser, base):
     page.route(CONFIG,lambda r:r.fulfill(json={'url':'https://slamzhgsawfnmwlejgqp.supabase.co','key':'sb_publishable_test'},headers=HEADERS))
     from urllib.parse import urlsplit,parse_qs
     verification_bodies = []
+    password_bodies = []
+    mail_requests = []
     def auth_route(r):
         if r.request.method=='OPTIONS':r.fulfill(status=204,headers=HEADERS);return
         path=urlsplit(r.request.url)
         if path.path.endswith('/otp'):
             assert r.request.post_data_json['create_user'] is False
             assert parse_qs(path.query).get('redirect_to')==['https://mumei-s.github.io/ssyr-business-card/shinji/owner.html']
-            r.fulfill(json={},headers=HEADERS)
+            mail_requests.append(r.request.post_data_json)
+            r.fulfill(status=429,json={'error_code':'over_email_send_rate_limit','msg':'email rate limit exceeded'},headers=HEADERS)
+        elif path.path.endswith('/token'):
+            assert parse_qs(path.query).get('grant_type')==['password']
+            body=r.request.post_data_json
+            password_bodies.append(body)
+            if body.get('password')=='test-password':r.fulfill(json={'access_token':'synthetic-owner'},headers=HEADERS)
+            else:r.fulfill(status=400,json={'error_code':'invalid_credentials','msg':'Invalid login credentials'},headers=HEADERS)
         elif path.path.endswith('/verify'):
             verification_bodies.append(r.request.post_data_json)
             r.fulfill(json={'access_token':'synthetic-owner'},headers=HEADERS)
@@ -103,13 +112,22 @@ def check_notices(browser, base):
     page.goto(base+'shinji/owner.html')
     expect(page.locator('#owner-console')).to_be_hidden()
     page.locator('#login-email').fill('test@example.invalid')
+    page.locator('#login-password').fill('incorrect-test-password')
     page.locator('#login-form button').click()
-    expect(page.locator('#feedback')).to_contain_text('ログインメールを送信しました')
-    expect(page.locator('#otp-form')).to_be_visible()
-    page.locator('#otp-code').fill('123456')
-    page.locator('#otp-form button[type="submit"]').click()
+    expect(page.locator('#feedback')).to_contain_text('パスワードをご確認ください')
+    expect(page.locator('#login-form button')).to_be_enabled()
+    expect(page.locator('#owner-console')).to_be_hidden()
+    page.locator('#email-options summary').click()
+    page.locator('#mail-login').click()
+    expect(page.locator('#feedback')).to_contain_text('認証メールの送信上限')
+    expect(page.locator('#mail-login')).to_be_enabled()
+    assert len(mail_requests)==1
+    page.locator('#login-password').fill('test-password')
+    page.locator('#login-form button').click()
     expect(page.locator('#owner-console')).to_be_visible()
-    assert verification_bodies[-1]=={'email':'test@example.invalid','token':'123456','type':'email'}
+    assert password_bodies[-1]=={'email':'test@example.invalid','password':'test-password'}
+    assert len(mail_requests)==1
+    assert page.locator('#login-password').input_value()==''
     page.locator('.contact-row').click()
     expect(page.locator('#send-panel')).to_be_visible()
     page.locator('#message-title').fill('テスト')
@@ -121,10 +139,11 @@ def check_notices(browser, base):
     # if the user opens the card in a different browser from their mail app.
     page.goto(base+'shinji/owner.html?login=link')
     expect(page.locator('#owner-console')).to_be_hidden()
+    page.locator('#email-options summary').click()
     page.locator('#otp-code').fill('https://foreign.invalid/auth/v1/verify?token='+'a'*64+'&type=magiclink')
     page.locator('#otp-form button[type="submit"]').click()
     expect(page.locator('#feedback')).to_contain_text('ログインメールのリンク')
-    assert len(verification_bodies)==1
+    assert len(verification_bodies)==0
     page.locator('#otp-code').fill('https://slamzhgsawfnmwlejgqp.supabase.co/auth/v1/verify?token='+'b'*64+'&type=magiclink&redirect_to=https%3A%2F%2Fold.invalid%2F')
     page.locator('#otp-form button[type="submit"]').click()
     expect(page.locator('#owner-console')).to_be_visible()
