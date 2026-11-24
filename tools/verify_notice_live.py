@@ -21,6 +21,8 @@ assert request({'action':'status','device':'invalid'})[0]==401
 assert request({'action':'owner-send','contactId':'invalid'})[0]==401
 assert request({'action':'owner-push-on','subscription':{}})[0]==401
 assert request({'action':'owner-read','contactId':'invalid'})[0]==401
+assert request({'action':'owner-ack-acceptance','contactId':'invalid'})[0]==401
+assert request({'action':'owner-hide-revoked','contactId':'invalid'})[0]==401
 assert request({'action':'owner-promote','contactId':'invalid'})[0]==401
 assert request({'action':'visitor-start','device':'invalid'})[0]==401
 assert request({'action':'chat-send','device':'invalid','body':'synthetic'})[0]==401

@@ -3,6 +3,7 @@
  const N=window.SSYRNotice,{$,el,feedback}=N;
  let device=N.getDevice(),contact=null,worker=null,key=null,busy=false,localSub=null,initial=false,pending=null,inviteCode='',lastSignature='',quietBusy=false,revision=0,preparing=false;
  let threadChoices=[];
+ let messageCount=null,writing=false;
  const drafts=new Map();
  const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
@@ -35,14 +36,22 @@
    $('chat-send').disabled=busy;$('claim-button').disabled=busy;
    for(const button of $('message-list').querySelectorAll('.message-delete'))button.disabled=busy;
    $('claim-button').textContent=inviteCode||$('invite').value.trim()?'チャットを開く':'SHINJIからの連絡を受け取る';
+   renderComposer();
+ }
+ function renderComposer(){
+   const acceptedEmpty=!!contact&&messageCount===0;
+   const optional=acceptedEmpty&&!writing&&!$('chat-body').value;
+   $('chat-accepted').hidden=!acceptedEmpty;
+   $('message-list').hidden=!messageCount;
+   $('chat-compose-open').hidden=!optional;
+   $('chat-form').hidden=optional||(N.validToken(device)&&(!contact||messageCount===null));
  }
  function badge(count){const label=$('chat-unread');label.hidden=!count;label.textContent=count?'未読 '+count+'件':'';window.dispatchEvent(new Event('ssyr-chat-unread-changed'))}
  function renderMessages(messages){
    const signature=JSON.stringify(messages);
    if(signature===lastSignature)return;
-   lastSignature=signature;
+   lastSignature=signature;messageCount=messages.length;renderComposer();
    const root=$('message-list');root.replaceChildren();
-   if(!messages.length)root.append(el('p','ここから会話を始めましょう。','muted'));
    for(const m of [...messages].reverse()){
      const mine=m.direction==='inbound';
      const article=el('article',undefined,'bubble '+(mine?'mine':'theirs'));
@@ -80,6 +89,7 @@
  }
  function forgetCurrentThread(){
    N.forgetThread(device);drafts.delete(device);device='';contact=null;pending=null;
+   writing=false;
    $('chat-body').value='';lastSignature='';renderMessages([]);render();
  }
  function activateThread(next,summary){
@@ -92,6 +102,7 @@
      if(device&&$('chat-body').value)drafts.set(device,$('chat-body').value);
      else drafts.delete(device);
      $('chat-body').value=drafts.get(next)||'';pending=null;lastSignature='';
+     messageCount=null;writing=false;
      $('message-list').replaceChildren();$('chat-unread').hidden=true;
    }
    device=next;contact=summary;clearInvite();render();
@@ -144,16 +155,17 @@
  $('dismiss-invite').addEventListener('click',()=>void run(async()=>{clearInvite();render();await refresh();feedback()}));
  $('claim-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
    if(!inviteCode&&!$('invite').value.trim()){
-     await ensureContact();feedback('受け取りを開始しました。今後はこの名刺でSHINJIからの連絡を読めます。');
+     await ensureContact();feedback('受け取り設定が完了しました。');
      await refresh();return;
    }
    const invite=inviteCode||N.inviteFrom($('invite').value);
    if(!invite)throw Error('連絡リンクを確認してください。');
    const next=await N.deviceForInvite(invite);
    const r=await N.call('claim',{invite,device:next,muumeiNews:false});
-   activateThread(next,r.contact);await refresh();feedback('チャットを開きました。');
+   activateThread(next,r.contact);await refresh();feedback('招待を受け取りました。');
  })});
  $('thread-select').addEventListener('change',()=>{const next=threadChoices[$('thread-select').selectedIndex];if(next&&next!==device)void run(async()=>{await openSaved(next);feedback()})});
+ $('chat-compose-open').addEventListener('click',()=>{writing=true;renderComposer();$('chat-body').focus()});
  $('chat-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
    const body=$('chat-body').value.trim();if(!body)throw Error('メッセージを入力してください。');
    await ensureContact();

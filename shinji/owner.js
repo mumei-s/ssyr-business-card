@@ -60,10 +60,14 @@
  function showReconnect(on){$('owner-reconnect').hidden=!on}
  function setOwnerBadge(n){try{if(n&&navigator.setAppBadge)void navigator.setAppBadge(n).catch(()=>{});else if(!n&&navigator.clearAppBadge)void navigator.clearAppBadge().catch(()=>{})}catch{}}
  const ownerCall=(action,fields={})=>N.call(action,fields,access);
- const status=c=>c.revoked_at?'解除済み':!c.linked_at?(c.owner_started?'受け取り待ち':'未接続'):c.push_enabled_at?'通知 ON':'通知 OFF';
+ const status=c=>c.revoked_at?'解除済み':!c.linked_at?(c.owner_started?'受け取り待ち':'未接続'):'受け取り済み';
+ const pushStatus=c=>c.push_enabled_at?'通知 ON':'通知 OFF';
+ const hasAcceptance=c=>!!c.acceptance_at&&!c.acceptance_seen_at&&!c.revoked_at&&!c.chat_hidden_at;
+ const canHide=c=>!!c?.revoked_at&&!c.chat_hidden_at;
  const selected=()=>contacts.find(c=>c.id===selectedId);
+ let requestedContact='';
  function clearAuthInputs(){for(const id of ['login-password','setup-password','setup-confirm','setup-code'])$(id).value='';setupCode=''}
- function hideConsole(){access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();inviteCopies.clear();saveInviteCopies();closeInvite();pending=null;clearStartRequest();setNewChatForm(false);$('new-chat-form').reset();ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
+ function hideConsole(){requestedContact='';$('owner-acceptance-list').replaceChildren();$('owner-acceptances').hidden=true;access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();inviteCopies.clear();saveInviteCopies();closeInvite();pending=null;clearStartRequest();setNewChatForm(false);$('new-chat-form').reset();ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
  async function run(fn){
    if(busy)return;
    revision++;busy=true;feedback('通信中…');
@@ -72,7 +76,7 @@
    for(const b of buttons)b.disabled=true;
    const slow=setTimeout(()=>feedback('通信に時間がかかっています。画面を再読み込みする前に、送信済みの履歴をご確認ください。'),12000);
    try{await fn()}catch(e){if(access&&(e.status===401||e.status===403)){hideConsole();feedback('再ログインしてください。',true)}else feedback(e.message||'もう一度お試しください。',true)}
-   finally{clearTimeout(slow);busy=false;for(const b of buttons)b.disabled=false;updateControls()}
+   finally{clearTimeout(slow);busy=false;for(const b of buttons)b.disabled=false;updateControls();openRequestedContact()}
  }
  function updateControls(){
    const c=selected(),registered=ownerEnabled&&!!ownerSub&&canPush&&Notification.permission==='granted';
@@ -85,28 +89,78 @@
    $('owner-push-on').disabled=busy||!access||!canPush||pushPreparing||registered;
    $('owner-push-off').disabled=busy||!access||!ownerEnabled;
    $('owner-push-test').disabled=busy||!registered;
-   $('owner-push-guide').textContent=pushPreparing?'通知を準備しています…':registered?'相手からのチャットをこの端末に通知します。テストで受信を確認できます。':canPush?'管理者通知をONにして、端末の通知を許可してください。':'通知を使う場合は管理者アプリをホーム画面に追加して開いてください。';
+   $('owner-push-guide').textContent=pushPreparing?'通知を準備しています…':registered?'招待の受け取りと新着メッセージを、この端末にも通知します。':canPush?'招待の受け取りはこの管理画面に表示されます。端末でも受け取るには「管理者通知をON」を押してください。':'招待の受け取りはこの管理画面に表示されます。端末通知を使う場合は管理者アプリをホーム画面に追加して開いてください。';
+ }
+ function renderAcceptances(){
+   const events=contacts.filter(hasAcceptance).sort((a,b)=>Date.parse(b.acceptance_at)-Date.parse(a.acceptance_at));
+   const box=$('owner-acceptances'),list=$('owner-acceptance-list');
+   box.hidden=events.length===0;
+   const rows=events.map(c=>{
+     const row=el('button',undefined,'contact-row');row.type='button';row.dataset.contactId=c.id;
+     const copy=el('span',undefined,'contact-row-text');
+     copy.append(el('strong',c.display_name+' さんが招待を受け取りました'),el('small',N.date(c.acceptance_at)));
+     row.append(copy,el('span','→'));
+     row.addEventListener('click',()=>void run(()=>openContact(c.id,'chats')));
+     return row;
+   });
+   list.replaceChildren(...rows);
+ }
+ async function openContact(id,view){
+   const contact=contacts.find(c=>c.id===id);
+   if(!contact||view==='chats'&&contact.chat_hidden_at){feedback('この会話は一覧にありません。',true);return}
+   mode=view;selectedId=id;historyPage=0;historySignature='';editing=view==='contacts';promoting=false;
+   showContact();renderContacts();
+   await history();
+   $('selected-panel').scrollIntoView({block:'start',behavior:'auto'});
+   if(hasAcceptance(contact)){
+     await ownerCall('owner-ack-acceptance',{contactId:id,acceptanceAt:contact.acceptance_at});
+     await reload(true);
+   }
+   feedback();
+ }
+ function openRequestedContact(){
+   if(!access||busy||!requestedContact)return;
+   const id=requestedContact;requestedContact='';
+   void run(async()=>{await reload(true);$('search').value='';await openContact(id,'chats')});
+ }
+ function hideRevoked(c){
+   if(busy||!canHide(c))return;
+   const question='「'+c.display_name+'」（解除 '+N.date(c.revoked_at)+'）をチャット一覧から消しますか？'+(isSaved(c)?' 電話帳の連絡先は残ります。':'');
+   if(!confirm(question))return;
+   void run(async()=>{
+     await ownerCall('owner-hide-revoked',{contactId:c.id,revokedAt:c.revoked_at});
+     if(selectedId===c.id){selectedId='';historyPage=0;editing=false;promoting=false}
+     await reload();
+     drafts.delete(c.id);
+     feedback('解除済みのチャットを一覧から消しました。');
+   });
  }
  function renderContacts(){
    const q=$('search').value.toLowerCase().trim(),list=$('contacts');
    list.replaceChildren();
-   const matches=contacts.filter(c=>mode==='contacts'?isSaved(c):c.owner_started||!!c.linked_at||!!c.chat_updated_at||!!c.unread).filter(c=>[c.display_name,c.email,c.phone,c.memo].some(v=>String(v||'').toLowerCase().includes(q)));
+   const matches=contacts.filter(c=>mode==='contacts'?isSaved(c):!c.chat_hidden_at&&(c.owner_started||!!c.linked_at||!!c.chat_updated_at||!!c.unread||!!c.revoked_at)).filter(c=>[c.display_name,c.email,c.phone,c.memo].some(v=>String(v||'').toLowerCase().includes(q)));
    $('contact-count').textContent='('+matches.length+'件)';
    $('tab-chats').setAttribute('aria-pressed',String(mode==='chats'));$('tab-contacts').setAttribute('aria-pressed',String(mode==='contacts'));
    $('new-contact').hidden=mode!=='contacts';
    $('new-chat').hidden=mode!=='chats';$('chat-list-guide').hidden=mode!=='chats';
-   const unread=contacts.reduce((n,c)=>n+(Number(c.unread)||0),0);
+   const unread=contacts.filter(c=>!c.chat_hidden_at&&!c.revoked_at).reduce((n,c)=>n+(Number(c.unread)||0),0);
    $('unread-count').textContent=unread?' '+unread:'';
-   if(location.pathname.endsWith('/owner/')||location.pathname.endsWith('/owner/index.html'))setOwnerBadge(unread);
+   if(location.pathname.endsWith('/owner/')||location.pathname.endsWith('/owner/index.html'))setOwnerBadge(unread+contacts.filter(hasAcceptance).length);
    for(const c of matches){
      const row=el('button',undefined,'contact-row'+(selectedId===c.id?' selected':''));
      row.type='button';const txt=el('span',undefined,'contact-row-text');
-     const waiting=c.entry_type==='visitor'&&c.linked_at&&!c.revoked_at&&!c.owner_started&&!c.chat_updated_at;
-     txt.append(el('strong',c.display_name),el('small',isSaved(c)?(c.email||c.phone):waiting?'受け取り登録済み':'チャットのみ'));
-     const badge=el('span',c.unread?'未読 '+c.unread:status(c),'state'+(c.unread||c.push_enabled_at?' on':''));
+     const detail=isSaved(c)?(c.email||c.phone):'';
+     const linkState=c.revoked_at?'解除 '+N.date(c.revoked_at):c.linked_at?'受け取り '+N.date(c.linked_at)+' · '+pushStatus(c):'';
+     txt.append(el('strong',c.display_name),el('small',[detail,linkState].filter(Boolean).join(' · ')||'チャットのみ'));
+     const unreadHere=!c.revoked_at&&!c.chat_hidden_at&&c.unread;
+     const badge=el('span',unreadHere?'未読 '+c.unread:status(c),'state'+(unreadHere||c.linked_at&&!c.revoked_at?' on':''));
      row.append(txt,badge);
-     row.addEventListener('click',()=>void run(async()=>{selectedId=c.id;historyPage=0;historySignature='';editing=mode==='contacts';promoting=false;showContact();renderContacts();await history();$('selected-panel').scrollIntoView({block:'start',behavior:'auto'})}));
-     list.append(row);
+     row.addEventListener('click',()=>void run(()=>openContact(c.id,mode)));
+     if(mode==='chats'&&canHide(c)){
+       const group=el('div',undefined,'revoked-chat-row'),remove=el('button','一覧から消す','hide-revoked');
+       remove.type='button';remove.dataset.contactId=c.id;remove.addEventListener('click',()=>hideRevoked(c));
+       group.append(row,remove);list.append(group);
+     }else list.append(row);
    }
    if(!list.childElementCount)list.append(el('p',mode==='chats'?'新しいチャットはありません。':'電話帳に連絡先を追加できます。','muted'));
  }
@@ -124,7 +178,8 @@
    $('edit-title').textContent=promoting?'電話帳に追加':c?'連絡先を編集':'連絡先を追加';
    if(fill){$('contact-name').value=c?.display_name||'';$('contact-email').value=c?.email||'';$('contact-phone').value=c?.phone||'';$('contact-memo').value=c?.memo||''}
    if(c){
-     $('selected-name').textContent=c.display_name;$('selected-state').textContent=status(c);$('send-panel').hidden=!c.linked_at||!!c.revoked_at;
+     $('selected-name').textContent=c.display_name;$('selected-state').textContent=status(c)+(c.linked_at&&!c.revoked_at?' · '+pushStatus(c):'');$('send-panel').hidden=!c.linked_at||!!c.revoked_at;
+     $('hide-selected').hidden=mode!=='chats'||!canHide(c);
      $('promote-contact').hidden=isSaved(c);
      const email=String(c.email||''),phone=String(c.phone||'');
      $('mail-contact').hidden=!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -140,8 +195,8 @@
    const next=r.contacts||[],changed=JSON.stringify(next)!==JSON.stringify(contacts);
    contacts=next;ownerEnabled=r.ownerPushEnabled===true;
    for(const c of contacts)currentInvite(c);
-   if(!selected())selectedId='';
-   if(!preserve||changed)renderContacts();
+   if(!selected()||mode==='chats'&&selected().chat_hidden_at)selectedId='';
+   if(!preserve||changed){renderContacts();renderAcceptances()}
    if(!preserve)showContact(true);else if(changed)showContact(false);else{syncInvite(selected());updateControls()}
    return true;
  }
@@ -352,7 +407,11 @@
  })});
  function handleSetupFragment(){
    const fragment=new URLSearchParams(location.hash.slice(1));
-   if(fragment.has('setup')){
+   if(N.validThreadId(fragment.get('contact'))){
+     requestedContact=fragment.get('contact');
+     window.history.replaceState(null,'',location.pathname+location.search);
+     openRequestedContact();
+   }else if(fragment.has('setup')){
      const code=(fragment.get('setup')||'').toUpperCase();
      window.history.replaceState(null,'',location.pathname+location.search);
      if(!access&&!busy)showSetup(code);
@@ -384,6 +443,7 @@
    if(copy)showInvite(contact,copy.token);else void run(issueInvite);
  });
  $('reissue').addEventListener('click',()=>void run(issueInvite));
+ $('hide-selected').addEventListener('click',()=>hideRevoked(selected()));
  $('revoke').addEventListener('click',()=>{if(!selectedId||!confirm('この相手の端末登録を解除しますか？'))return;void run(async()=>{await ownerCall('owner-revoke',{contactId:selectedId});closeInvite();await reload();feedback('登録を解除しました。')})});
  function activeShareUrl(){
    const c=selected();
@@ -430,7 +490,11 @@
  }
  window.addEventListener('focus',quietRefresh);
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void quietRefresh()});
- if('serviceWorker'in navigator&&navigator.serviceWorker.addEventListener)navigator.serviceWorker.addEventListener('message',e=>{if(e.data?.type==='ssyr-owner-update')void quietRefresh()});
+ if('serviceWorker'in navigator&&navigator.serviceWorker.addEventListener)navigator.serviceWorker.addEventListener('message',e=>{
+   if(e.data?.type==='ssyr-owner-open'&&N.validThreadId(e.data.contactId)){
+     requestedContact=e.data.contactId;openRequestedContact();
+   }else if(e.data?.type==='ssyr-owner-update')void quietRefresh();
+ });
  setInterval(quietRefresh,30000);
  function resumeSession(){
    const saved=loadSession();
