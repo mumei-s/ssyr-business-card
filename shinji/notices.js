@@ -16,7 +16,7 @@
    $('recipient-name').textContent=contact.displayName+' さん';
    $('notice-state').textContent=registered?'通知 ON':'通知 OFF';
    $('notice-state').classList.toggle('on',registered);
-   $('news').checked=!!contact.muumeiNews;
+   if(!busy)$('news').checked=!!contact.muumeiNews;
    $('device-guide').hidden=supported;
    $('device-guide').textContent=ios?'Safariからホーム画面に追加し、追加したアイコンから開いてください。':'対応するブラウザで名刺を開いてください。';
    $('enable').disabled=busy||!supported||!worker||!key||registered;
@@ -74,6 +74,7 @@
      const r=await N.call('claim',{invite,device,muumeiNews:$('claim-news').checked});
      contact=r.contact;$('invite').value='';await refresh();
      feedback('登録しました。続いて通知を許可してください。');
+     if(supported&&(!worker||!key))await prepare();
    });
  });
  $('enable').addEventListener('click',()=>{
@@ -96,7 +97,7 @@
  $('stop').addEventListener('click',()=>void run(async()=>{await N.call('stop',{device});if(localSub)await localSub.unsubscribe().catch(()=>{});await refresh();feedback('通知を停止しました。')}));
  $('disconnect').addEventListener('click',()=>{if(!confirm('この端末の受け取り登録を解除しますか？'))return;void run(async()=>{await N.call('disconnect',{device});if(localSub)await localSub.unsubscribe().catch(()=>{});N.clearDevice();device='';contact=null;localSub=null;$('message-list').replaceChildren();setBadge(0);feedback('端末登録を解除しました。')})});
  $('news').addEventListener('change',()=>{const selected=$('news').checked;void run(async()=>{const r=await N.call('preferences',{device,muumeiNews:selected});contact=r.contact;feedback('設定を保存しました。')})});
- $('refresh').addEventListener('click',()=>void run(refresh));
+ $('refresh').addEventListener('click',()=>void run(async()=>{if(supported&&(!worker||!key))await prepare();await refresh()}));
  window.addEventListener('focus',()=>{if(!busy&&contact)void run(refresh)});
  (async()=>{try{await refresh()}catch(e){initial=true;render();feedback(e.message,true)}try{await prepare();render()}catch(e){if(contact)feedback(e.message,true)}})();
 })();

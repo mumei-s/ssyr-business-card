@@ -21,3 +21,11 @@ assert request({'action':'status','device':'invalid'})[0]==401
 assert request({'action':'owner-send','contactId':'invalid'})[0]==401
 assert request(origin='https://foreign.invalid')[0]==403
 print('PASS live VAPID public configuration, CORS and unauthenticated rejection; no push sent')
+
+# The shared Auth config must deliver a publishable (not privileged) key.
+req=urllib.request.Request('https://slamzhgsawfnmwlejgqp.supabase.co/functions/v1/public-config',headers={'Origin':'https://mumei-s.github.io','Accept':'application/json'})
+with urllib.request.urlopen(req,timeout=25) as r:
+    config=json.load(r)
+    assert config['url']=='https://slamzhgsawfnmwlejgqp.supabase.co'
+    assert config['key'].startswith('sb_publishable_')
+print('PASS existing MUUMEI owner sign-in public configuration')
