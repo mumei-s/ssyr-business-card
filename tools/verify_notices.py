@@ -458,6 +458,8 @@ def check_notices(browser,base):
     guest.goto(card_url, wait_until='networkidle')
     entry=guest.locator('#card-chat-start')
     expect(entry).to_be_in_viewport()
+    expect(entry.locator('strong')).to_have_text('新着あり')
+    expect(entry).to_contain_text('個別チャットへの招待が届いています')
     expect(guest.locator('#card-chat-unread')).to_be_hidden()
     entry.click()
     expect(guest.locator('#card-receive-title')).to_be_focused()
@@ -476,7 +478,8 @@ def check_notices(browser,base):
         another.locator('#card-receive-name').fill(COMMON_NAME)
         another.locator('#card-receive-start').click()
     expect(another.locator('#card-receive-open')).to_be_visible()
-    expect(another.locator('#card-chat-start')).to_be_hidden()
+    expect(another.locator('#card-chat-start')).to_be_visible()
+    expect(another.locator('#card-chat-start')).to_have_attribute('href',card_url+'notices.html#thread='+COMMON_CONTACT)
     assert len(public_registrations)==1
     assert requests.count('chat-send')==before.count('chat-send')
     assert requests.count('subscribe')==before.count('subscribe')

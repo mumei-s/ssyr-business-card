@@ -23,8 +23,14 @@ img { display: block; }
 .card-chat-banner { display:flex; align-items:center; gap:.6rem; min-height:48px; margin:0 0 .8rem; padding:.55rem .85rem; border:1px solid #8fe2dd; border-radius:5px; background:#153c44; color:#f5fffe; font-size:.92rem; text-decoration:none; }
 .card-chat-banner[hidden] { display:none; }
 .card-chat-banner .icon { color:#9eeae6; }
-.card-chat-start { border-color:#586d76; background:#1c2b34; }
-.card-chat-start > span { margin-inline-start:auto; }
+.studio { row-gap:1.2rem; }
+.card-chat-top { grid-column:1 / -1; align-self:start; }
+.card-chat-top .card-chat-banner { margin:0; }
+.card-chat-start { padding:.75rem 1rem; gap:.8rem; }
+.card-chat-copy { display:grid; gap:.15rem; min-width:0; }
+.card-chat-copy strong { color:#b8eeea; font-size:.82rem; }
+.card-chat-copy > span { font-weight:650; line-height:1.5; }
+.card-chat-arrow { margin-inline-start:auto; }
 #card-chat-unread-count { margin-inline-start:auto; border-radius:1rem; padding:.15rem .55rem; background:#b8eeea; color:#122d2f; font-weight:700; white-space:nowrap; }
 /* Matching, landscape business-card faces. The contact actions live outside the card. */
 .card {
