@@ -11,6 +11,24 @@
  let remembered=false,quietBusy=false,revision=0,pushPreparing=false;
  const drafts=new Map();
  let displayedContact='',newChatRequest=null;
+ const inviteCacheKey='ssyr-owner-invite-copies-v1';
+ let inviteCopies=new Map(),displayedInvite=null;
+ try{inviteCopies=new Map(JSON.parse(sessionStorage.getItem(inviteCacheKey)||'[]'))}catch{}
+ function saveInviteCopies(){
+   try{
+     if(inviteCopies.size)sessionStorage.setItem(inviteCacheKey,JSON.stringify([...inviteCopies]));
+     else sessionStorage.removeItem(inviteCacheKey);
+   }catch{}
+ }
+ function currentInvite(c){
+   const copy=inviteCopies.get(c.id);
+   if(!copy)return null;
+   if(!N.validToken(copy.token)||c.linked_at||c.revoked_at||copy.until<=Date.now()||
+       ('invite_expires_at' in c&&Date.parse(c.invite_expires_at)!==copy.until)){
+     inviteCopies.delete(c.id);saveInviteCopies();return null;
+   }
+   return copy;
+ }
  const startRetryKey='ssyr-owner-start-retry-v1';
  function clearStartRequest(){
    newChatRequest=null;
@@ -45,7 +63,7 @@
  const status=c=>c.revoked_at?'解除済み':!c.linked_at?(c.owner_started?'受け取り待ち':'未接続'):c.push_enabled_at?'通知 ON':'通知 OFF';
  const selected=()=>contacts.find(c=>c.id===selectedId);
  function clearAuthInputs(){for(const id of ['login-password','setup-password','setup-confirm','setup-code'])$(id).value='';setupCode=''}
- function hideConsole(){access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();pending=null;clearStartRequest();setNewChatForm(false);$('new-chat-form').reset();ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href=new URL('notices.html',ROOT).href;$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
+ function hideConsole(){access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();inviteCopies.clear();saveInviteCopies();closeInvite();pending=null;clearStartRequest();setNewChatForm(false);$('new-chat-form').reset();ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
  async function run(fn){
    if(busy)return;
    revision++;busy=true;feedback('通信中…');
@@ -76,17 +94,18 @@
    $('contact-count').textContent='('+matches.length+'件)';
    $('tab-chats').setAttribute('aria-pressed',String(mode==='chats'));$('tab-contacts').setAttribute('aria-pressed',String(mode==='contacts'));
    $('new-contact').hidden=mode!=='contacts';
-   $('new-chat').hidden=mode!=='chats';
+   $('new-chat').hidden=mode!=='chats';$('chat-list-guide').hidden=mode!=='chats';
    const unread=contacts.reduce((n,c)=>n+(Number(c.unread)||0),0);
    $('unread-count').textContent=unread?' '+unread:'';
    if(location.pathname.endsWith('/owner/')||location.pathname.endsWith('/owner/index.html'))setOwnerBadge(unread);
    for(const c of matches){
      const row=el('button',undefined,'contact-row'+(selectedId===c.id?' selected':''));
      row.type='button';const txt=el('span',undefined,'contact-row-text');
-     txt.append(el('strong',c.display_name),el('small',isSaved(c)?(c.email||c.phone):'チャットのみ'));
+     const waiting=c.entry_type==='visitor'&&c.linked_at&&!c.revoked_at&&!c.owner_started&&!c.chat_updated_at;
+     txt.append(el('strong',c.display_name),el('small',isSaved(c)?(c.email||c.phone):waiting?'受け取り登録済み':'チャットのみ'));
      const badge=el('span',c.unread?'未読 '+c.unread:status(c),'state'+(c.unread||c.push_enabled_at?' on':''));
      row.append(txt,badge);
-     row.addEventListener('click',()=>void run(async()=>{selectedId=c.id;historyPage=0;historySignature='';editing=mode==='contacts';promoting=false;$('invite-panel').hidden=true;showContact();renderContacts();await history();$('selected-panel').scrollIntoView({block:'start',behavior:'auto'})}));
+     row.addEventListener('click',()=>void run(async()=>{selectedId=c.id;historyPage=0;historySignature='';editing=mode==='contacts';promoting=false;showContact();renderContacts();await history();$('selected-panel').scrollIntoView({block:'start',behavior:'auto'})}));
      list.append(row);
    }
    if(!list.childElementCount)list.append(el('p',mode==='chats'?'新しいチャットはありません。':'電話帳に連絡先を追加できます。','muted'));
@@ -94,12 +113,14 @@
  function showContact(fill=true){
    const c=selected();$('selected-panel').hidden=!c;$('edit-panel').hidden=!editing;
    if(displayedContact!==selectedId){
+     closeInvite();
      const body=$('message-body'),thread=$('history');
      if(displayedContact&&body.value)drafts.set(displayedContact,body.value);
      else drafts.delete(displayedContact);
      displayedContact=selectedId;body.value=drafts.get(selectedId)||'';
      historySignature='';thread.replaceChildren();thread.dataset.more='false';
    }
+   syncInvite(c);
    $('edit-title').textContent=promoting?'電話帳に追加':c?'連絡先を編集':'連絡先を追加';
    if(fill){$('contact-name').value=c?.display_name||'';$('contact-email').value=c?.email||'';$('contact-phone').value=c?.phone||'';$('contact-memo').value=c?.memo||''}
    if(c){
@@ -118,21 +139,82 @@
    if(!accept())return false;
    const next=r.contacts||[],changed=JSON.stringify(next)!==JSON.stringify(contacts);
    contacts=next;ownerEnabled=r.ownerPushEnabled===true;
+   for(const c of contacts)currentInvite(c);
    if(!selected())selectedId='';
    if(!preserve||changed)renderContacts();
-   if(!preserve)showContact(true);else if(changed)showContact(false);else updateControls();
+   if(!preserve)showContact(true);else if(changed)showContact(false);else{syncInvite(selected());updateControls()}
    return true;
  }
- function showInvite(value){
+ function closeInvite(){
+   displayedInvite=null;$('invite-panel').hidden=true;$('invite-link').value='';
+   $('invite-qr').width=1;$('invite-qr').hidden=true;
+   $('show-invite').setAttribute('aria-expanded','false');$('show-invite').textContent='専用QRを表示';
+ }
+ function syncInvite(contact){
+   const canInvite=contact&&!contact.linked_at&&!contact.revoked_at;
+   $('invite-handoff').hidden=!canInvite;
+   if(displayedInvite&&(!canInvite||displayedInvite!==currentInvite(contact)))closeInvite();
+ }
+ function showInvite(contact,value){
+   if(!contact||contact.id!==selectedId||!N.validToken(value))throw Error('専用リンクの発行結果を確認してください。');
+   const until=Date.parse(contact.invite_expires_at)||Date.now()+7*86400000;
+   const copy={token:value,until};
+   inviteCopies.set(contact.id,copy);saveInviteCopies();displayedInvite=copy;
    const link=new URL('notices.html',ROOT);link.searchParams.set('v','share-2');link.hash='invite='+value;
-   $('invite-link').value=link.href;$('open-invite').href=link.href;$('invite-panel').hidden=false;
-   $('invite-panel').scrollIntoView({block:'start'});
+   $('invite-link').value=link.href;$('invite-handoff').hidden=false;$('invite-panel').hidden=false;
+   $('show-invite').setAttribute('aria-expanded','true');$('show-invite').textContent='専用QRを閉じる';
+   const canvas=$('invite-qr');
+   try{window.SSYRInviteQR.draw(canvas,link.href);canvas.hidden=false;$('invite-qr-unavailable').hidden=true}
+   catch{canvas.hidden=true;$('invite-qr-unavailable').hidden=false}
+   $('invite-handoff').scrollIntoView({block:'start'});
+ }
+ async function issueInvite(){
+   const contact=selected();
+   if(!contact||contact.linked_at&&!contact.revoked_at)return;
+   if(Date.parse(contact.invite_expires_at)>Date.now()&&
+      !confirm('新しい専用QRとリンクを発行しますか？ 以前のQRとリンクは使えなくなります。'))return;
+   const result=await ownerCall('owner-invite',{contactId:contact.id});
+   if(result.contact?.id!==contact.id||!N.validToken(result.invite))throw Error('専用リンクの発行結果を確認してください。');
+   Object.assign(contact,result.contact);showContact(false);renderContacts();
+   showInvite(contact,result.invite);feedback('専用QRとリンクを発行しました。');
+ }
+ function draftTransfer(message){
+   const group=el('div'),choose=el('button','登録した相手への下書きに使う','reuse-message');
+   choose.type='button';group.append(choose);
+   choose.addEventListener('click',()=>{
+     group.replaceChildren(choose);
+     const recipients=contacts.filter(c=>c.id!==selectedId&&c.linked_at&&!c.revoked_at);
+     if(!recipients.length){
+       group.append(el('p','相手が名刺で「SHINJIからの連絡を受け取る」を押すと、ここで選べます。'));
+       return;
+     }
+     const label=el('label','下書きを開く相手'),picker=el('select',undefined,'draft-target');
+     const placeholder=el('option','相手を選んでください');placeholder.value='';picker.append(placeholder);
+     for(const c of recipients){
+       const option=el('option',c.display_name+'（登録 '+N.date(c.linked_at)+'）');option.value=c.id;picker.append(option);
+     }
+     label.append(picker);
+     const open=el('button','下書きを開く','open-message-draft');open.type='button';
+     group.append(label,open);picker.focus();
+     open.addEventListener('click',()=>{
+       const to=contacts.find(c=>c.id===picker.value&&c.linked_at&&!c.revoked_at);
+       if(!to){feedback('下書きを開く相手を選んでください。',true);return}
+       if(drafts.get(to.id)&&drafts.get(to.id)!==message&&!confirm('この相手への入力途中の下書きを置き換えますか？'))return;
+       void run(async()=>{
+         drafts.set(to.id,message);selectedId=to.id;mode='chats';historyPage=0;editing=false;promoting=false;
+         $('search').value='';showContact();renderContacts();
+         await history();$('message-body').focus();feedback('宛先と内容を確認し、「チャット送信」を押してください。');
+       });
+     });
+   });
+   return group;
  }
  async function history(accept=()=>true,markRead=true){
    if(!selectedId)return;
    const id=selectedId,page=historyPage,r=await ownerCall('owner-history',{contactId:id,page});
    if(!accept()||selectedId!==id||historyPage!==page)return;
-   const root=$('history'),rows=r.messages||[],sig=JSON.stringify([id,historyPage,rows]);
+   const waiting=selected()?.owner_started&&!selected().linked_at&&!selected().revoked_at;
+   const root=$('history'),rows=r.messages||[],sig=JSON.stringify([id,historyPage,waiting,rows]);
    root.dataset.more=String(rows.length===50);
    if(sig!==historySignature){
      historySignature=sig;root.replaceChildren();
@@ -141,7 +223,8 @@
        card.append(el('span',mine?'自分':selected()?.display_name||'相手','bubble-name'));
        if(m.title&&m.title!=='チャット')card.append(el('h3',m.title));
        card.append(el('p',m.body,'message-body'),el('time',N.date(m.created_at)+(mine&&m.read_at?' · 既読':'')));
-       if(mine&&m.push_status!=='accepted')card.append(el('small',N.pushLabels[m.push_status]||'確認中'));
+       if(mine&&m.push_status!=='accepted')card.append(el('small',waiting?'保存済み · 相手の受け取り待ち':N.pushLabels[m.push_status]||'確認中'));
+       if(waiting&&mine&&m.body)card.append(draftTransfer(m.body));
        if(mine&&m.id)card.append(N.messageDeleteButton(run,
          ()=>ownerCall('owner-delete-message',{contactId:id,id:m.id}),
          async()=>{
@@ -214,8 +297,8 @@
      selectedId=result.contact.id;historyPage=0;editing=false;promoting=false;
      $('search').value='';$('invite-panel').hidden=true;
      showContact();renderContacts();
-     if(result.invite)showInvite(result.invite);
-     feedback(result.invite?'個別チャットを作りました。相手にリンクを共有してください。':'作成済みのチャットを開きました。');
+     if(result.invite)showInvite(result.contact,result.invite);
+     feedback(result.invite?'専用QRとリンクを用意しました。':'作成済みのチャットを開きました。');
      await history();
    });
  });
@@ -294,10 +377,34 @@
    const r=await ownerCall(promoting?'owner-promote':selectedId?'owner-edit':'owner-create',{...fields,contactId:selectedId});
    selectedId=r.contact.id;historyPage=0;editing=false;promoting=false;mode='contacts';await reload();if(selected()?.linked_at)await history();feedback('電話帳に保存しました。');
  })});
- $('reissue').addEventListener('click',()=>void run(async()=>{if(!selectedId)return;const r=await ownerCall('owner-invite',{contactId:selectedId});await reload();showInvite(r.invite);feedback('招待リンクを発行しました。')}));
- $('revoke').addEventListener('click',()=>{if(!selectedId||!confirm('この相手の端末登録を解除しますか？'))return;void run(async()=>{await ownerCall('owner-revoke',{contactId:selectedId});$('invite-panel').hidden=true;await reload();feedback('登録を解除しました。')})});
- $('copy-invite').addEventListener('click',()=>void run(async()=>{try{await N.wait(navigator.clipboard.writeText($('invite-link').value));feedback('招待リンクをコピーしました。')}catch{$('invite-link').focus();$('invite-link').select();feedback('表示したリンクをコピーしてください。')}}));
- $('share-invite').addEventListener('click',()=>{const url=$('invite-link').value;if(navigator.share)void navigator.share({title:"S's-YR 受け取り登録",url}).catch(()=>{});else $('copy-invite').click()});
+ $('show-invite').addEventListener('click',()=>{
+   if(displayedInvite){closeInvite();return}
+   const contact=selected();if(!contact)return;
+   const copy=currentInvite(contact);
+   if(copy)showInvite(contact,copy.token);else void run(issueInvite);
+ });
+ $('reissue').addEventListener('click',()=>void run(issueInvite));
+ $('revoke').addEventListener('click',()=>{if(!selectedId||!confirm('この相手の端末登録を解除しますか？'))return;void run(async()=>{await ownerCall('owner-revoke',{contactId:selectedId});closeInvite();await reload();feedback('登録を解除しました。')})});
+ function activeShareUrl(){
+   const c=selected();
+   if(!c||!displayedInvite||currentInvite(c)!==displayedInvite){
+     closeInvite();feedback('リンクの有効期限または受け取り状況を確認してください。',true);return '';
+   }
+   return $('invite-link').value;
+ }
+ async function copyInvite(){
+   const url=activeShareUrl();if(!url)return;
+   try{await N.wait(navigator.clipboard.writeText(url));feedback('専用リンクをコピーしました。')}
+   catch{$('invite-link').focus();$('invite-link').select();feedback('リンクを選択しました。長押ししてコピーしてください。')}
+ }
+ $('copy-invite').addEventListener('click',()=>void run(copyInvite));
+ $('share-invite').addEventListener('click',()=>{
+   const url=activeShareUrl();if(!url)return;
+   if(!navigator.share){void run(copyInvite);return}
+   void navigator.share({title:"S's-YR 個別チャット",url}).catch(e=>{
+     if(e.name!=='AbortError'){ $('invite-link').focus();$('invite-link').select();feedback('共有できませんでした。「リンクをコピー」を使えます。',true)}
+   });
+ });
  $('send-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
    if(!selectedId)return;
    const title='チャット',body=$('message-body').value.trim();if(!body)throw Error('メッセージを入力してください。');

@@ -56,6 +56,7 @@
       const unread = new Map();
       let total = 0;
       let firstId = '';
+      let connectedId = '';
       for (let offset = 0; offset < threads.length; offset += batchSize) {
         const group = threads.slice(offset, offset + batchSize);
         const result = await N.call('chat-unread', {devices: group.map(t => t.device)});
@@ -64,6 +65,7 @@
             !result.counts.every(n => Number.isSafeInteger(n) && n >= 0)) return;
         for (const [i, thread] of group.entries()) {
           const value = result.counts[i];
+          if (!connectedId && N.validThreadId(result.threadIds?.[i])) connectedId = result.threadIds[i];
           const id = result.threadIds?.[i] || thread.id;
           if (N.validThreadId(id)) {
             unread.set(id, value);
@@ -75,6 +77,7 @@
       }
       if (stamp !== revision || document.hidden) return;
       render(total, firstId);
+      if (banner) window.dispatchEvent(new CustomEvent('ssyr-card-receive-state', {detail: {threadId: connectedId}}));
       if (threads.length) void dismissReadNotifications(unread, total, checkedAt).catch(() => {});
     } catch {
       // A timed-out read cannot confirm that a previously shown message was read.

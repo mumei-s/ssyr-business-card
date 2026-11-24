@@ -10,8 +10,8 @@
  function render(){
    $('claim-panel').hidden=(!inviteCode&&!!contact)||!initial;
    $('settings-panel').hidden=!initial||!!inviteCode;$('messages').hidden=!initial||!!inviteCode;
-   $('claim-title').textContent=inviteCode?'個別チャットへの招待':'はじめまして';
-   $('claim-info').textContent=inviteCode?'「チャットを開く」を押すと、相手からのメッセージを読めます。':'メールアドレスや会員登録は不要です。そのままメッセージを送れます。';
+   $('claim-title').textContent=inviteCode?'個別チャットへの招待':'SHINJIとの個別チャット';
+   $('claim-info').textContent=inviteCode?'「チャットを開く」を押すと、相手からのメッセージを読めます。':'連絡を受け取りたい方は、下のボタンを押してください。メッセージの送信やメールアドレスの入力は不要です。';
    $('visitor-name-label').hidden=!!inviteCode;$('invite-options').hidden=!!inviteCode;$('dismiss-invite').hidden=!inviteCode;
    const saved=N.getThreads().map(t=>t.device);
    if(saved.join()!==threadChoices.join()){
@@ -34,7 +34,7 @@
    $('refresh').disabled=busy;$('news').disabled=busy;
    $('chat-send').disabled=busy;$('claim-button').disabled=busy;
    for(const button of $('message-list').querySelectorAll('.message-delete'))button.disabled=busy;
-   $('claim-button').hidden=!inviteCode&&!$('invite').value.trim();
+   $('claim-button').textContent=inviteCode||$('invite').value.trim()?'チャットを開く':'SHINJIからの連絡を受け取る';
  }
  function badge(count){const label=$('chat-unread');label.hidden=!count;label.textContent=count?'未読 '+count+'件':'';window.dispatchEvent(new Event('ssyr-chat-unread-changed'))}
  function renderMessages(messages){
@@ -71,9 +71,8 @@
  async function ensureContact(){
    if(inviteCode||$('invite').value.trim())throw Error('個別リンクは「チャットを開く」で受け取ってください。');
    if(contact)return contact;
-   if(!N.validToken(device)){device=N.random();N.setDevice(device)}
-   const r=await N.call('visitor-start',{device,name:$('visitor-name').value.trim(),muumeiNews:$('news').checked});
-   contact=r.contact;N.rememberThread(device,contact?.id);render();return contact;
+   const result=await N.startReceiving($('visitor-name').value.trim(),$('news').checked,device);
+   device=result.device;contact=result.contact;render();return contact;
  }
  function clearInvite(){
    inviteCode='';$('invite').value='';
@@ -144,6 +143,10 @@
  $('invite').addEventListener('input',render);
  $('dismiss-invite').addEventListener('click',()=>void run(async()=>{clearInvite();render();await refresh();feedback()}));
  $('claim-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
+   if(!inviteCode&&!$('invite').value.trim()){
+     await ensureContact();feedback('受け取りを開始しました。今後はこの名刺でSHINJIからの連絡を読めます。');
+     await refresh();return;
+   }
    const invite=inviteCode||N.inviteFrom($('invite').value);
    if(!invite)throw Error('連絡リンクを確認してください。');
    const next=await N.deviceForInvite(invite);

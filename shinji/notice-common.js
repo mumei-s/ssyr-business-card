@@ -75,6 +75,63 @@
    if(!validToken(device)){device=random();localStorage.setItem(key,device)}
    return device;
  }
+ const startKey='ssyr-card-start-pending-v1';
+ function reserveStartDevice(preferred){
+   const existing=[preferred,getDevice(),...getThreads().map(t=>t.device)].find(validToken);
+   if(existing)return existing;
+   let candidate=localStorage.getItem(startKey);
+   if(!validToken(candidate)){
+     candidate=random();localStorage.setItem(startKey,candidate);
+     if(localStorage.getItem(startKey)!==candidate)throw Error('受け取りには、このブラウザーの端末保存を許可してください。');
+   }
+   return candidate;
+ }
+ // Reserve the reusable key before the request. Two tabs or a lost response
+ // must refer to the same conversation even before the first successful reply.
+ async function startDevice(preferred){
+   if(navigator.locks?.request)return navigator.locks.request(startKey,()=>reserveStartDevice(preferred));
+   if(!window.indexedDB)return reserveStartDevice(preferred);
+   return new Promise((resolve,reject)=>{
+     const opened=indexedDB.open('ssyr-card-registration',1);
+     opened.onupgradeneeded=()=>opened.result.createObjectStore('reservation');
+     opened.onerror=()=>reject(Error('このブラウザーの端末保存を確認してください。'));
+     opened.onsuccess=()=>{
+       const db=opened.result,tx=db.transaction('reservation','readwrite');
+       const turn=tx.objectStore('reservation').get('start');
+       let candidate;
+       turn.onsuccess=()=>{try{candidate=reserveStartDevice(preferred)}catch(e){tx.abort();reject(e)}};
+       tx.oncomplete=()=>{db.close();resolve(candidate)};
+       tx.onabort=()=>{db.close();reject(Error('受け取りの開始をもう一度お試しください。'))};
+     };
+   });
+ }
+ async function startReceiving(name,muumeiNews=false,preferred=''){
+   // A revoked key can still be stored on another tab. Only retire keys the
+   // server explicitly reports unlinked; a network error keeps the saved chats.
+   const active=getDevice();
+   const saved=[...new Set([preferred,active,...getThreads().map(t=>t.device)].filter(validToken))];
+   let linked='';
+   for(let offset=0;offset<saved.length&&!linked;offset+=30){
+     const devices=saved.slice(offset,offset+30);
+     const check=await call('chat-unread',{devices});
+     if(!Array.isArray(check.threadIds)||check.threadIds.length!==devices.length||
+         !check.threadIds.every(id=>id===null||validThreadId(id)))throw Error('受け取り設定を確認できません。もう一度お試しください。');
+     devices.forEach((key,i)=>{
+       if(check.threadIds[i]===null){
+         forgetThread(key);
+         if(localStorage.getItem(startKey)===key)localStorage.removeItem(startKey);
+       }else if(!linked)linked=key;
+     });
+   }
+   const device=await startDevice(linked);
+   const result=await call('visitor-start',{device,name,muumeiNews});
+   if(!result?.contact)throw Error('受け取りの開始を確認できません。もう一度お試しください。');
+   rememberThread(device,result.contact.id);
+   if(!validToken(getDevice())||getDevice()===active)setDevice(device);
+   if(localStorage.getItem(startKey)===device)localStorage.removeItem(startKey);
+   window.dispatchEvent(new Event('ssyr-chat-unread-changed'));
+   return {device,contact:result.contact};
+ }
  function inviteFrom(value){const s=String(value||'').trim();if(validToken(s))return s;try{const u=new URL(s);if(u.origin==='https://mumei-s.github.io'&&u.pathname==='/ssyr-business-card/shinji/notices.html'){const t=new URLSearchParams(u.hash.slice(1)).get('invite');if(validToken(t))return t}}catch{}return ''}
  function date(v){if(!v)return '';const d=new Date(v);return Number.isFinite(d.valueOf())?d.toLocaleString('ja-JP'):''}
  function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e}
@@ -121,5 +178,5 @@
  }
  const pushLabels={pending:'処理結果未確定',accepted:'通知サービス受付済み',failed:'通知送信失敗',expired:'端末登録期限切れ',disabled:'連絡を保存・通知OFF',unknown:'送信結果未確定'};
  function setBusy(root,busy){for(const b of root.querySelectorAll('button[type=submit]'))b.disabled=busy}
- window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,getThreads,rememberThread,forgetThread,deviceForInvite,validThreadId,inviteFrom,date,el,messageDeleteButton,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
+ window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,getThreads,rememberThread,forgetThread,startReceiving,deviceForInvite,validThreadId,inviteFrom,date,el,messageDeleteButton,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
 })();
