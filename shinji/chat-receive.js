@@ -11,16 +11,16 @@
   let lastState = '';
 
   function showConnected(threadId) {
-    entry.hidden = true;
     form.hidden = true;
     status.textContent = '受け取り設定済みです。このブラウザーで名刺を開くと、新着が表示されます。';
     open.href = N.validThreadId(threadId) ? './notices.html#thread=' + threadId : './notices.html';
+    entry.href = open.href;
     open.hidden = false;
     lastState = 'connected';
   }
 
   function showForm() {
-    entry.hidden = false;
+    entry.setAttribute('href', '#card-receive-title');
     form.hidden = false;
     open.hidden = true;
     if (lastState !== 'form') status.textContent = '';
@@ -31,6 +31,7 @@
     status.textContent = 'このブラウザーの会話は、チャット画面からも確認できます。';
     // Existing users can enter their chat during a slow connection.
     open.hidden = false;
+    entry.href = open.href;
   } else {
     showForm();
   }

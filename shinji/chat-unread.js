@@ -2,6 +2,7 @@
   'use strict';
   const N = window.SSYRNotice;
   const banner = document.getElementById('card-chat-unread');
+  const invitation = document.getElementById('card-chat-start');
   const counter = document.getElementById('card-chat-unread-count');
   const entrance = document.getElementById('receive-notices');
   const entranceNote = entrance?.querySelector('small');
@@ -19,6 +20,7 @@
       if (counter.textContent !== label) counter.textContent = label;
       banner.href = target;
       banner.hidden = total === 0;
+      if (invitation) invitation.hidden = total > 0;
       if (entrance && entranceNote) {
         entrance.setAttribute('href', total ? target : './notices.html');
         const note = total ? '新着メッセージあり · ' + label : originalNote;
