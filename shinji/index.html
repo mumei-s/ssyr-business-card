@@ -38,11 +38,13 @@
   </svg>
   <main class="studio">
     <section class="exhibit" aria-label="S's-YR　SHINJIの仕事名刺">
-      <a class="card-chat-unread" id="card-chat-unread" href="./notices.html#messages" hidden>
-        <svg class="icon" aria-hidden="true"><use href="#mail"/></svg>
-        <strong>新着メッセージあり</strong>
-        <span id="card-chat-unread-count"></span><span aria-hidden="true">→</span>
-      </a>
+      <div aria-live="polite" aria-atomic="true">
+        <a class="card-chat-unread" id="card-chat-unread" href="./notices.html#messages" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#mail"/></svg>
+          <strong>新着メッセージあり</strong>
+          <span id="card-chat-unread-count"></span><span aria-hidden="true">→</span>
+        </a>
+      </div>
       <div class="card" id="card">
         <section class="face contact-face" id="front" aria-label="名刺の表面・名前と連絡先">
           <div class="front-engraving" aria-hidden="true"></div>

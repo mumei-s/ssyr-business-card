@@ -11,6 +11,22 @@
  let remembered=false,quietBusy=false,revision=0,pushPreparing=false;
  const drafts=new Map();
  let displayedContact='',newChatRequest=null;
+ const startRetryKey='ssyr-owner-start-retry-v1';
+ function clearStartRequest(){
+   newChatRequest=null;
+   try{sessionStorage.removeItem(startRetryKey)}catch{}
+ }
+ async function getStartRequest(name,body){
+   if(newChatRequest?.name===name&&newChatRequest.body===body)return newChatRequest;
+   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify([name,body])));
+   const fingerprint=Array.from(new Uint8Array(digest),n=>n.toString(16).padStart(2,'0')).join('');
+   let saved;try{saved=JSON.parse(sessionStorage.getItem(startRetryKey))}catch{}
+   if(saved?.fingerprint!==fingerprint||!N.validThreadId(saved.requestId)||!N.validToken(saved.invite)){
+     saved={fingerprint,requestId:N.requestId(),invite:N.random()};
+     try{sessionStorage.setItem(startRetryKey,JSON.stringify(saved))}catch{}
+   }
+   return newChatRequest={name,body,requestId:saved.requestId,invite:saved.invite};
+ }
  function loadSession(){
    try{const v=localStorage.getItem(rememberKey);if(validSession(v)){remembered=true;return v}}catch{}
    try{return sessionStorage.getItem(sessionKey)||''}catch{return ''}
@@ -29,7 +45,7 @@
  const status=c=>c.revoked_at?'解除済み':!c.linked_at?(c.owner_started?'受け取り待ち':'未接続'):c.push_enabled_at?'通知 ON':'通知 OFF';
  const selected=()=>contacts.find(c=>c.id===selectedId);
  function clearAuthInputs(){for(const id of ['login-password','setup-password','setup-confirm','setup-code'])$(id).value='';setupCode=''}
- function hideConsole(){access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();pending=null;newChatRequest=null;setNewChatForm(false);$('new-chat-form').reset();ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href=new URL('notices.html',ROOT).href;$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
+ function hideConsole(){access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();pending=null;clearStartRequest();setNewChatForm(false);$('new-chat-form').reset();ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href=new URL('notices.html',ROOT).href;$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
  async function run(fn){
    if(busy)return;
    revision++;busy=true;feedback('通信中…');
@@ -189,12 +205,10 @@
    void run(async()=>{
      const name=$('new-chat-name').value.trim(),body=$('new-chat-body').value.trim();
      if(!body)throw Error('最初のメッセージを入力してください。');
-     if(!newChatRequest||newChatRequest.name!==name||newChatRequest.body!==body){
-       newChatRequest={name,body,requestId:N.requestId(),invite:N.random()};
-     }
-     const result=await ownerCall('owner-start-chat',newChatRequest);
-     if(!result?.contact?.id||(result.invite!==null&&result.invite!==newChatRequest.invite))throw Error('作成結果を確認できません。同じ内容でもう一度お試しください。');
-     newChatRequest=null;
+     const request=await getStartRequest(name,body);
+     const result=await ownerCall('owner-start-chat',request);
+     if(!result?.contact?.id||(result.invite!==null&&result.invite!==request.invite))throw Error('作成結果を確認できません。同じ内容でもう一度お試しください。');
+     clearStartRequest();
      $('new-chat-form').reset();setNewChatForm(false);
      contacts=[result.contact,...contacts.filter(c=>c.id!==result.contact.id)];
      selectedId=result.contact.id;historyPage=0;editing=false;promoting=false;

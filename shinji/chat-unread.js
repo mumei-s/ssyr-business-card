@@ -3,6 +3,9 @@
   const N = window.SSYRNotice;
   const banner = document.getElementById('card-chat-unread');
   const counter = document.getElementById('card-chat-unread-count');
+  const entrance = document.getElementById('receive-notices');
+  const entranceNote = entrance?.querySelector('small');
+  const originalNote = entranceNote?.textContent;
   const signalKey = 'ssyr-card-unread-changed-v1';
   const batchSize = 30;
   let revision = 0;
@@ -11,9 +14,16 @@
 
   function render(total, firstId) {
     if (banner) {
+      const target = './notices.html' + (firstId ? '#thread=' + firstId : '#messages');
+      const label = total ? total + '件' : '';
+      if (counter.textContent !== label) counter.textContent = label;
+      banner.href = target;
       banner.hidden = total === 0;
-      counter.textContent = total ? total + '件' : '';
-      banner.href = './notices.html' + (firstId ? '#thread=' + firstId : '#messages');
+      if (entrance && entranceNote) {
+        entrance.setAttribute('href', total ? target : './notices.html');
+        const note = total ? '新着メッセージあり · ' + label : originalNote;
+        if (entranceNote.textContent !== note) entranceNote.textContent = note;
+      }
     }
     try {
       const operation = total ? navigator.setAppBadge?.(total) : navigator.clearAppBadge?.();

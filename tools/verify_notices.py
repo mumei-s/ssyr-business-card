@@ -244,7 +244,7 @@ def check_notices(browser,base):
     page.locator('#claim-button').click()
     expect(page.locator('#feedback')).to_contain_text('リンク')
     assert page.evaluate("localStorage.getItem('ssyr-card-device-v1')")==guest_device
-    page.goto(base+'shinji/notices.html')
+    page.locator('#dismiss-invite').click()
     expect(page.locator('#message-list')).to_contain_text('相談です')
 
     # An existing personal invite adds a separate thread, only on acceptance.
