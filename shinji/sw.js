@@ -23,8 +23,8 @@ self.addEventListener('push', event => {
   const test = payload.kind === 'test';
   const threadId = uuid(payload.threadId) ? payload.threadId : null;
   event.waitUntil((async () => {
-    await self.registration.showNotification("S's-YR", {
-      body: test ? 'テスト通知です。' : '新しいチャットメッセージが届きました。',
+    await self.registration.showNotification('SHINJI', {
+      body: test ? 'テスト通知です。' : '新しいメッセージが届きました。',
       icon: new URL('brand-96.png', scope).href,
       tag: test ? 'ssyr-test' : uuid(payload.id) ? payload.id : 'ssyr-chat',
       data: {kind: payload.kind, threadId}

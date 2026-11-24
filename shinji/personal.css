@@ -25,6 +25,7 @@ img { display: block; }
 .card-chat-banner .icon { color:#9eeae6; }
 .studio { row-gap:1.2rem; }
 .card-chat-top { grid-column:1 / -1; align-self:start; }
+.card-chat-top:not(:has(.card-chat-banner:not([hidden]))) { display:none; }
 .card-chat-top .card-chat-banner { margin:0; }
 .card-chat-start { padding:.75rem 1rem; gap:.8rem; }
 .card-chat-copy { display:grid; gap:.15rem; min-width:0; }
