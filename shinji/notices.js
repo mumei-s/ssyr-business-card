@@ -1,7 +1,8 @@
 (() => {
  'use strict';
  const N=window.SSYRNotice,{$,el,feedback}=N;
- let device=N.getDevice(),contact=null,worker=null,key=null,busy=false,localSub=null,initial=false,pending=null,inviteCode='',lastSignature='',quietBusy=false,revision=0,preparing=false;
+ let device=N.getDevice(),contact=null,worker=null,key=null,busy=false,initial=false,pending=null,inviteCode='',lastSignature='',quietBusy=false,revision=0,preparing=false;
+ let localBinding='',subscriptionCheck=0,pendingRepair=null;
  let threadChoices=[];
  let messageCount=null,writing=false;
  const drafts=new Map();
@@ -23,13 +24,20 @@
    }
    $('thread-picker').hidden=!saved.length||(saved.length===1&&saved[0]===device);
    $('thread-select').value=String(saved.indexOf(device));$('thread-select').disabled=busy;
-   const registered=!!contact?.enabled&&!!localSub&&supported&&Notification.permission==='granted';
-   $('notice-state').textContent=registered?'通知 ON':'通知 OFF';
+   const permission=supported?Notification.permission:'';
+   const registered=!!contact?.enabled&&!!localBinding&&contact.pushBinding===localBinding&&permission==='granted';
+   const needsRepair=!!contact?.enabled&&!registered;
+   $('notice-state').textContent=registered?'通知 ON':needsRepair?'通知 要確認':'通知 OFF';
    $('notice-state').classList.toggle('on',registered);
    if(!busy)$('news').checked=!!contact?.muumeiNews;
-   $('device-guide').hidden=supported&&!preparing&&!!worker&&!!key;
-   $('device-guide').textContent=preparing?'通知を準備しています。チャットはそのまま使えます。':supported?'通知の準備を再試行できます。':ios?'Safariで名刺をホーム画面に追加し、追加したアイコンから開くと通知を設定できます。':'通知の設定には、対応するブラウザで名刺を開いてください。チャットはこのまま使えます。';
-   $('enable').disabled=busy||!supported||preparing||registered;
+   const guide=!supported?(ios?'Safariで名刺をホーム画面に追加し、そのアイコンから開いてください。':'端末通知に対応したブラウザで名刺を開いてください。'):
+     permission==='denied'?'このサイトの通知がブロックされています。ブラウザのサイト設定で通知を許可してから、名刺に戻ってください。':
+     preparing?'通知を準備しています…':!worker?'「通知をONにする」または「通知を再設定」を押して、この端末の登録を確認してください。':
+     needsRepair?'保存された通知設定と、この端末の登録が一致していません。「通知を再設定」で登録し直せます。':'';
+   $('device-guide').hidden=!guide;
+   $('device-guide').textContent=guide;
+   $('push-guide').textContent=registered?'この会話の新着をこの端末に通知します。':!supported||permission==='denied'?'新着はこの名刺からも確認できます。':'SHINJIからの新着をこの端末で受け取るには、この会話の通知をONにしてください。';
+   $('enable').disabled=busy||!supported||preparing||registered||permission==='denied';
    $('enable').textContent=contact?.enabled&&!registered?'通知を再設定':'通知をONにする';
    $('test').disabled=busy||!registered;
    $('stop').disabled=busy||!contact?.enabled;
@@ -57,7 +65,7 @@
    for(const m of [...messages].reverse()){
      const mine=m.direction==='inbound';
      const article=el('article',undefined,'bubble '+(mine?'mine':'theirs'));
-     article.append(el('span',mine?'自分':"S's-YR",'bubble-name'));
+     article.append(el('span',mine?'自分':'SHINJI','bubble-name'));
      if(m.title&&m.title!=='チャット')article.append(el('h3',m.title));
      article.append(el('p',m.body,'message-body'),el('time',N.date(m.created_at)+(mine&&m.read_at?' · 既読':'')));
      if(mine&&m.id)article.append(N.messageDeleteButton(run,()=>N.call('chat-delete',{device,id:m.id}),refresh));
@@ -77,7 +85,7 @@
    catch(e){if(!accept())return;if(e.status===401){forgetCurrentThread()}else throw e}
    initial=true;render();
    // The chat must not wait for the browser's PushManager to respond.
-   if(worker){const reg=worker;void N.wait(reg.pushManager.getSubscription(),4000).then(sub=>{if(worker===reg&&accept()){localSub=sub;render()}}).catch(()=>{})}
+   void inspectSubscription();
  }
  function registrationName(){
    if(inviteCode||$('invite').value.trim())throw Error('個別リンクは「チャットを開く」で受け取ってください。');
@@ -111,7 +119,7 @@
      messageCount=null;writing=false;
      $('message-list').replaceChildren();$('chat-unread').hidden=true;
    }
-   device=next;contact=summary;clearInvite();render();
+   device=next;contact=summary;clearInvite();render();void inspectSubscription();
  }
  async function openSaved(next){
    let r;
@@ -131,6 +139,43 @@
    }
    await refresh();throw Error('通知の会話をこのブラウザで確認できませんでした。');
  }
+ function matchesServerKey(sub){
+   const existing=sub?.options?.applicationServerKey;
+   if(!existing)return true;
+   const bytes=new Uint8Array(existing);
+   return !!key&&bytes.length===key.length&&bytes.every((value,i)=>value===key[i]);
+ }
+ async function bindingOf(sub){
+   if(!sub)return '';
+   const {endpoint,keys}=sub.toJSON();
+   if(!endpoint||!keys?.p256dh||!keys?.auth)return '';
+   const contents=new TextEncoder().encode(JSON.stringify([endpoint,keys.p256dh,keys.auth]));
+   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',contents)),n=>n.toString(16).padStart(2,'0')).join('');
+ }
+ async function inspectSubscription(){
+   const reg=worker;
+   if(!reg)return;
+   const check=++subscriptionCheck;
+   try{
+     const sub=await N.wait(reg.pushManager.getSubscription(),4000);
+     const binding=matchesServerKey(sub)?await bindingOf(sub):'';
+     if(check!==subscriptionCheck||worker!==reg)return;
+     localBinding=binding;render();
+     // Repair only this previously enabled chat. The server compares the old
+     // binding so a concurrent opt-out cannot be overwritten.
+     const previous=contact?.pushBinding,secret=device;
+     if(!contact?.enabled||!N.validToken(previous)||!binding||previous===binding||
+        Notification.permission!=='granted'||pendingRepair===secret)return;
+     pendingRepair=secret;
+     try{
+       const result=await N.call('subscribe',{device:secret,expectedPushBinding:previous,subscription:sub.toJSON()});
+       if(device===secret&&contact?.pushBinding===previous&&result.contact?.id===contact.id){
+         contact={...contact,enabled:result.contact.enabled,pushBinding:result.contact.pushBinding};render();
+       }
+     }catch{/* Keep the manual repair action available until status confirms a match. */}
+     finally{if(pendingRepair===secret)pendingRepair=null}
+   }catch{if(check===subscriptionCheck&&worker===reg){localBinding='';render()}}
+ }
  async function prepare(){
    if(!supported||preparing)return;
    preparing=true;render();
@@ -138,10 +183,11 @@
      const [v,reg]=await N.wait(Promise.all([N.config(),navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'})]),9000,'通知の準備を再試行してください。');
      if(v.ok!==true||typeof v.vapidPublicKey!=='string')throw Error('通知への接続を確認できません。');
      const k=N.decode(v.vapidPublicKey);if(k.length!==65||k[0]!==4)throw Error('通知への接続を確認できません。');
-     const active=await N.wait(navigator.serviceWorker.ready,6000,'通知の準備を再試行してください。');
-     if(active.scope!==new URL('./',location.href).href||reg.scope!==active.scope)throw Error('名刺アプリから開いてください。');
-     worker=active;key=k;localSub=await N.wait(worker.pushManager.getSubscription(),5000);
-   }catch(e){worker=null;key=null;throw e}
+     if(reg.scope!==new URL('./',location.href).href)throw Error('名刺アプリから開いてください。');
+     for(let i=0;i<24&&!reg.active;i++)await new Promise(resolve=>setTimeout(resolve,250));
+     if(!reg.active)throw Error('受信者用の通知の準備を再試行してください。');
+     worker=reg;key=k;void inspectSubscription();
+   }catch(e){worker=null;key=null;localBinding='';throw e}
    finally{preparing=false;render()}
  }
  async function run(task){
@@ -187,17 +233,25 @@
  $('enable').addEventListener('click',()=>{
    if(busy||!supported||preparing)return;
    try{registrationName()}catch(e){feedback(e.message,true);return}
-   const permission=N.wait(Notification.requestPermission(),15000,'通知の許可画面が応答しません。ブラウザーの通知設定をご確認ください。');
+   const permission=N.wait(Notification.permission==='granted'?Promise.resolve('granted'):Notification.requestPermission(),15000,'通知の許可画面が応答しません。ブラウザーの通知設定をご確認ください。');
    void run(async()=>{
      if(await permission!=='granted')throw Error('ブラウザの通知設定から許可してください。');
      if(!worker||!key)await prepare();
      if(!worker||!key)throw Error('通知を準備できませんでした。もう一度お試しください。');
      await ensureContact();
-     let sub=await N.wait(worker.pushManager.getSubscription()),created=false;
-     if(sub){const existing=sub.options?.applicationServerKey;if(existing){const bytes=new Uint8Array(existing);if(bytes.length!==key.length||!bytes.every((n,i)=>n===key[i])){await N.wait(sub.unsubscribe());sub=null}}}
-     if(!sub){sub=await N.wait(worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key}),10000);created=true}
-     try{const r=await N.call('subscribe',{device,subscription:sub.toJSON()});contact=r.contact;localSub=sub;feedback('通知をONにしました。')}
-     catch(e){if(created)await N.wait(sub.unsubscribe()).catch(()=>{});throw e}
+     subscriptionCheck++;
+     let sub=await N.wait(worker.pushManager.getSubscription());
+     if(sub&&!matchesServerKey(sub)){await N.wait(sub.unsubscribe());sub=null}
+     if(!sub)sub=await N.wait(worker.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key}),10000);
+     const binding=await bindingOf(sub);
+     if(!binding)throw Error('端末の通知登録を確認できません。');
+     localBinding=binding;
+     // A timeout can follow a successful server write. Keep the endpoint
+     // available for this and other chat tabs to retry instead of invalidating it.
+     const r=await N.call('subscribe',{device,subscription:sub.toJSON()});
+     contact=r.contact;
+     if(!contact?.enabled||contact.pushBinding!==binding)throw Error('通知の登録結果を確認できません。もう一度お試しください。');
+     feedback('この会話の通知をONにしました。');
    });
  });
  $('test').addEventListener('click',()=>void run(async()=>{const r=await N.call('test',{device});feedback(r.status==='accepted'?'テスト通知を送信しました。端末に表示されるかご確認ください。':N.pushLabels[r.status]||'通知の送信結果を確認できませんでした。',r.status!=='accepted');await refresh()}));

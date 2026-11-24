@@ -278,7 +278,7 @@
        card.append(el('span',mine?'自分':selected()?.display_name||'相手','bubble-name'));
        if(m.title&&m.title!=='チャット')card.append(el('h3',m.title));
        card.append(el('p',m.body,'message-body'),el('time',N.date(m.created_at)+(mine&&m.read_at?' · 既読':'')));
-       if(mine&&m.push_status!=='accepted')card.append(el('small',waiting?'保存済み · 相手の受け取り待ち':N.pushLabels[m.push_status]||'確認中'));
+       if(mine)card.append(el('small',waiting?'保存済み · 相手の受け取り待ち':N.pushLabels[m.push_status]||'確認中'));
        if(waiting&&mine&&m.body)card.append(draftTransfer(m.body));
        if(mine&&m.id)card.append(N.messageDeleteButton(run,
          ()=>ownerCall('owner-delete-message',{contactId:id,id:m.id}),
@@ -461,7 +461,7 @@
  $('share-invite').addEventListener('click',()=>{
    const url=activeShareUrl();if(!url)return;
    if(!navigator.share){void run(copyInvite);return}
-   void navigator.share({title:"S's-YR 個別チャット",url}).catch(e=>{
+   void navigator.share({title:'SHINJIとの個別チャット',url}).catch(e=>{
      if(e.name!=='AbortError'){ $('invite-link').focus();$('invite-link').select();feedback('共有できませんでした。「リンクをコピー」を使えます。',true)}
    });
  });

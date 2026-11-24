@@ -1,5 +1,7 @@
 """Synthetic browser interactions: no real recipient, mailbox or push is used."""
 import base64
+import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlsplit
 from uuid import UUID
@@ -26,6 +28,40 @@ DATE='2026-11-24T00:00:00Z'
 MANUAL={'id':CID,'display_name':'既知の相手','email':'test@example.invalid','phone':'','memo':'','linked_at':DATE,'push_enabled_at':DATE,'revoked_at':None,'muumei_news':False,'entry_type':'manual','unread':0}
 VISITOR={'id':VID,'display_name':'ゲストさん','email':'','phone':'','memo':'','linked_at':DATE,'push_enabled_at':None,'revoked_at':None,'muumei_news':False,'entry_type':'visitor','chat_updated_at':DATE,'unread':1}
 
+def check_recipient_notification(page,base):
+    # Dispatch a synthetic push to the shipped recipient worker. Browser or
+    # operating system permissions are not needed to check its routing logic.
+    source=page.request.get(base+'shinji/sw.js').text()
+    result=page.evaluate("""async source => {
+      const listeners={}, notices=[], opened=[], refreshed=[];
+      const scope=new URL('./',location.href).href;
+      const self={
+        addEventListener:(name,listener)=>{listeners[name]=listener},
+        registration:{scope,showNotification:async(title,options)=>notices.push({title,...options})},
+        navigator:{}, clients:{
+          matchAll:async()=>['notices.html','owner/'].map(path=>({
+            url:new URL(path,scope).href,postMessage:msg=>refreshed.push([path,msg.type])
+          })), openWindow:async url=>opened.push(String(url))
+        }
+      };
+      new Function('self',source)(self);
+      let pending;
+      const waitUntil=p=>{pending=p};
+      const threadId='66666666-6666-4666-8666-666666666666';
+      for(const kind of ['owner-message','message']){
+        listeners.push({data:{json:()=>({kind,threadId,id:threadId})},waitUntil});
+        await pending;
+      }
+      if(notices.length===1){
+        listeners.notificationclick({notification:{...notices[0],close(){}},waitUntil});
+        await pending;
+      }
+      return {notices,opened,refreshed,target:new URL('notices.html#thread='+threadId,scope).href};
+    }""",source)
+    assert len(result['notices'])==1 and result['notices'][0]['title']=='SHINJI'
+    assert result['opened']==[result['target']]
+    assert result['refreshed']==[['notices.html','ssyr-chat-update']]
+
 def check_notices(browser,base):
     ctx=browser.new_context(viewport={'width':320,'height':760},service_workers='block')
     page=ctx.new_page()
@@ -44,13 +80,16 @@ def check_notices(browser,base):
     state={'delay_status':False,'delay_list':False,'linked':False,'enabled':False,'news':False,'owner_setup':False,'owner_session':False,'owner_enabled':False,'unread':1,'saved':[dict(MANUAL)]}
     page.add_init_script("""(() => {
       const scopes=new Map();
+      let rotation='';
+      window.rotateRecipientSubscription=()=>{rotation='-rotated'};
       function makeReg(scope,owner){
         let local=null;
         return {scope,active:{state:'activated'},pushManager:{
          getSubscription:async()=>local,
          subscribe:async opts=>{
           local={options:{applicationServerKey:opts.applicationServerKey.buffer},
-           toJSON:()=>({endpoint:'https://fcm.googleapis.com/'+(owner?'owner-synthetic':'recipient-synthetic'),keys:{p256dh:'synthetic',auth:'synthetic'}}),
+           get endpoint(){return 'https://fcm.googleapis.com/'+(owner?'owner-synthetic':'recipient-synthetic'+rotation)},
+           toJSON(){return {endpoint:this.endpoint,keys:{p256dh:'synthetic',auth:'synthetic'}}},
            unsubscribe:async()=>{local=null;return true}};return local
          }
         }};
@@ -62,7 +101,7 @@ def check_notices(browser,base):
         const scope=new URL(opts.scope,location.href).href;
         if(!scopes.has(scope))scopes.set(scope,makeReg(scope,scope.endsWith('/owner/')));
         return scopes.get(scope);
-       },ready:Promise.resolve(recipient),addEventListener(){}}});
+       },ready:new Promise(()=>{}),addEventListener(){}}});
       Object.defineProperty(window,'Notification',{configurable:true,value:{permission:'default',requestPermission:async()=>{Notification.permission='granted';return 'granted'}}});
       window.PushManager=function(){};
     })()""")
@@ -74,7 +113,7 @@ def check_notices(browser,base):
             r.fulfill(json={'ok':True,'version':1,'vapidPublicKey':key},headers=HEADERS);return
         b=r.request.post_data_json;a=b['action'];requests.append(a)
         def done(body,status=200):r.fulfill(status=status,json=body,headers=HEADERS)
-        def summary():return {'id':device_contacts.get(b.get('device')),'displayName':{VID:'ゲストさん',CID:'既知の相手',FIRST_CONTACT:FIRST_NAME,COMMON_CONTACT:COMMON_NAME}.get(device_contacts.get(b.get('device')),'ゲスト'),'enabled':state['enabled'],'muumeiNews':state['news']}
+        def summary():return {'id':device_contacts.get(b.get('device')),'displayName':{VID:'ゲストさん',CID:'既知の相手',FIRST_CONTACT:FIRST_NAME,COMMON_CONTACT:COMMON_NAME}.get(device_contacts.get(b.get('device')),'ゲスト'),'enabled':state['enabled'],'pushBinding':state.get('binding') if state['enabled'] else None,'muumeiNews':state['news']}
         if a=='visitor-start':
             assert len(bytes.fromhex(b['device']))==32
             if not str(b.get('name','')).replace('\u200b','').strip() and b['device'] not in device_contacts:
@@ -137,7 +176,13 @@ def check_notices(browser,base):
             threads[VID] = [m for m in threads[VID] if m['id'] != b['id']]
             done({'ok':True})
         elif a=='subscribe':
-            assert b['subscription']['endpoint']=='https://fcm.googleapis.com/recipient-synthetic'
+            subscription=b['subscription']
+            data=[subscription['endpoint'],subscription['keys']['p256dh'],subscription['keys']['auth']]
+            if data[0].endswith('-rotated'):
+                assert b.get('expectedPushBinding')==state.get('binding') and state['enabled']
+            else:
+                assert data[0]=='https://fcm.googleapis.com/recipient-synthetic'
+            state['binding']=hashlib.sha256(json.dumps(data,separators=(',',':')).encode()).hexdigest()
             state['enabled']=True;done({'contact':summary()})
         elif a=='test':done({'status':'accepted'})
         elif a=='stop':state['enabled']=False;done({'ok':True})
@@ -231,6 +276,7 @@ def check_notices(browser,base):
     page.route(AUTH+'**',reject_auth)
     # Direct, invite-free conversation is the default.
     page.goto(base+'shinji/notices.html')
+    check_recipient_notification(page,base)
     expect(page.locator('#messages')).to_be_visible()
     name=page.locator('#visitor-name')
     expect(page.locator('#visitor-name-label')).to_contain_text('SHINJIにわかる名前を入力してください')
@@ -272,6 +318,7 @@ def check_notices(browser,base):
     delayed.pop().fulfill(json={'contact':{'displayName':'STALE','enabled':False,'muumeiNews':False},'messages':[]},headers=HEADERS)
     expect(page.locator('#message-list .mine').last).to_contain_text('通信待ち中も送信')
     legacy_notice = page.locator('#message-list article').filter(has_text='受信した連絡')
+    expect(legacy_notice.locator('.bubble-name')).to_have_text('SHINJI')
     expect(legacy_notice.get_by_role('button',name='削除')).to_have_count(0)
     sent = page.locator('#message-list article').filter(has_text='通信待ち中も送信')
     page.once('dialog',lambda dialog:dialog.dismiss())
@@ -286,6 +333,14 @@ def check_notices(browser,base):
     expect(page.locator('#enable')).to_be_enabled()
     page.locator('#enable').click()
     expect(page.locator('#notice-state')).to_have_text('通知 ON')
+    # A browser replaces its subscription while the server still has the old one.
+    # When already opted in, repair this chat with the new recipient endpoint.
+    subscriptions=requests.count('subscribe')
+    with page.expect_response(lambda r:r.url==API and r.request.method=='POST' and
+                              r.request.post_data_json.get('action')=='subscribe'):
+        page.evaluate("rotateRecipientSubscription(); window.dispatchEvent(new Event('focus'))")
+    expect(page.locator('#notice-state')).to_have_text('通知 ON')
+    assert requests.count('subscribe')==subscriptions+1
     page.locator('#settings-panel details summary').click()
     page.locator('#test').click()
     expect(page.locator('#feedback')).to_contain_text('テスト通知を送信しました')
@@ -297,6 +352,9 @@ def check_notices(browser,base):
     expect(page.locator('#chat-unread')).to_be_hidden()
     page.locator('#stop').click()
     expect(page.locator('#notice-state')).to_have_text('通知 OFF')
+    page.locator('#refresh').click()
+    expect(page.locator('#feedback')).to_contain_text('更新しました')
+    assert requests.count('subscribe')==subscriptions+1
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth+1')
     # Opening a bad invite must leave an already linked browser's chat intact.
     page.goto(base+'shinji/notices.html#invite='+'e'*64)
@@ -388,6 +446,7 @@ def check_notices(browser,base):
     expect(peer_reply).to_be_visible()
     expect(peer_reply.get_by_role('button',name='削除')).to_have_count(0)
     reply = page.locator('#history article').filter(has_text='テスト返信')
+    expect(reply).to_contain_text('通知サービス受付済み')
     page.once('dialog',lambda dialog:dialog.dismiss())
     reply.get_by_role('button',name='削除').click()
     assert 'owner-delete-message' not in requests
@@ -527,8 +586,26 @@ def check_notices(browser,base):
         another.locator('#card-receive-name').fill(COMMON_NAME)
         another.locator('#card-receive-start').click()
     expect(another.locator('#card-receive-open')).to_be_visible()
-    expect(another.locator('#card-chat-start')).to_be_visible()
-    expect(another.locator('#card-chat-start')).to_have_attribute('href',card_url+'notices.html#thread='+COMMON_CONTACT)
+    expect(another.locator('#card-chat-start')).to_be_hidden()
+    expect(another.locator('#card-receive-open')).to_have_attribute('href','./notices.html#thread='+COMMON_CONTACT)
+    # A fresh page with a saved credential must not show the invite while its
+    # unread request is pending, or if that request temporarily fails.
+    def delay_unread(r):
+        if r.request.method=='POST' and r.request.post_data_json.get('action')=='chat-unread':
+            delayed.append(r)
+        else:
+            route(r)
+    another.route(API,delay_unread)
+    another.reload(wait_until='domcontentloaded')
+    expect(another.locator('#card-receive-open')).to_be_visible()
+    for _ in range(40):
+        if delayed:break
+        another.wait_for_timeout(50)
+    assert delayed
+    expect(another.locator('#card-chat-start')).to_be_hidden()
+    delayed.pop().fulfill(status=503,json={'error':'一時的な通信失敗'},headers=HEADERS)
+    expect(another.locator('#card-chat-start')).to_be_hidden()
+    another.unroute(API,delay_unread)
     another.locator('#card-receive-open').click()
     expect(another.locator('#chat-accepted')).to_contain_text('招待を受け取りました')
     expect(another.locator('#chat-accepted')).to_contain_text('送信は不要')
@@ -614,6 +691,7 @@ def check_notices(browser,base):
     with receiver.expect_response(lambda response: response.url==API and response.request.method=='POST' and response.request.post_data_json.get('action')=='chat-unread'):
         receiver.goto(base+'shinji/')
     expect(receiver.locator('#card-chat-unread')).to_be_hidden()
+    expect(receiver.locator('#card-chat-start')).to_be_hidden()
     receiver.wait_for_function('window.badgeCalls.at(-1) === 0')
     assert requests.count('subscribe')==before.count('subscribe')
     new_recipient.close()

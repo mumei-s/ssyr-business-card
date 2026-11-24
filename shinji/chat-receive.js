@@ -10,31 +10,36 @@
   let busy = false;
   let lastState = '';
 
-  function showConnected(threadId) {
+  function showConnected(threadId, confirmed = true) {
+    entry.hidden = true;
     form.hidden = true;
-    status.textContent = '招待を受け取りました。メッセージを送らなくても、このブラウザーで名刺を開くと新着が表示されます。';
+    status.textContent = confirmed
+      ? '招待を受け取りました。メッセージを送らなくても、新着はこの名刺に表示されます。端末通知のON・OFFは、チャットを開いて設定できます。'
+      : 'このブラウザーの会話は、チャット画面から確認できます。';
     open.href = N.validThreadId(threadId) ? './notices.html#thread=' + threadId : './notices.html';
-    entry.href = open.href;
     open.hidden = false;
     lastState = 'connected';
   }
 
   function showForm() {
-    entry.setAttribute('href', '#card-receive-title');
+    entry.hidden = false;
     form.hidden = false;
     open.hidden = true;
     if (lastState !== 'form') status.textContent = '';
     lastState = 'form';
   }
 
-  if (N.getThreads().length) {
-    status.textContent = 'このブラウザーの会話は、チャット画面からも確認できます。';
-    // Existing users can enter their chat during a slow connection.
-    open.hidden = false;
-    entry.href = open.href;
-  } else {
-    showForm();
+  function showSavedState() {
+    if (busy) return;
+    const threads = N.getThreads();
+    if (threads.length) showConnected(threads.find(thread => N.validThreadId(thread.id))?.id, false);
+    else showForm();
   }
+  showSavedState();
+  window.addEventListener('pageshow', event => { if (event.persisted) showSavedState(); });
+  window.addEventListener('storage', event => {
+    if (!event.key || event.key === 'ssyr-card-device-v1' || event.key.startsWith('ssyr-card-thread-v1:')) showSavedState();
+  });
 
   window.addEventListener('ssyr-card-receive-state', event => {
     if (busy) return;

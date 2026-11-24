@@ -2,7 +2,6 @@
   'use strict';
   const N = window.SSYRNotice;
   const banner = document.getElementById('card-chat-unread');
-  const invitation = document.getElementById('card-chat-start');
   const counter = document.getElementById('card-chat-unread-count');
   const entrance = document.getElementById('receive-notices');
   const entranceNote = entrance?.querySelector('small');
@@ -20,7 +19,6 @@
       if (counter.textContent !== label) counter.textContent = label;
       banner.href = target;
       banner.hidden = total === 0;
-      if (invitation) invitation.hidden = total > 0;
       if (entrance && entranceNote) {
         entrance.setAttribute('href', total ? target : './notices.html');
         const note = total ? '新着メッセージあり · ' + label : originalNote;
@@ -64,12 +62,14 @@
         const result = await N.call('chat-unread', {devices: group.map(t => t.device)});
         if (stamp !== revision || document.hidden) return;
         if (!Array.isArray(result.counts) || result.counts.length !== group.length ||
-            !result.counts.every(n => Number.isSafeInteger(n) && n >= 0)) return;
+            !result.counts.every(n => Number.isSafeInteger(n) && n >= 0) ||
+            !Array.isArray(result.threadIds) || result.threadIds.length !== group.length ||
+            !result.threadIds.every((id, i) => N.validThreadId(id) || (id === null && result.counts[i] === 0))) return;
         for (const [i, thread] of group.entries()) {
           const value = result.counts[i];
-          if (!connectedId && N.validThreadId(result.threadIds?.[i])) connectedId = result.threadIds[i];
-          const id = result.threadIds?.[i] || thread.id;
-          if (N.validThreadId(id)) {
+          const id = result.threadIds[i];
+          if (id) {
+            if (!connectedId) connectedId = id;
             unread.set(id, value);
             if (id !== thread.id) N.rememberThread(thread.device, id);
             if (value && !firstId) firstId = id;
