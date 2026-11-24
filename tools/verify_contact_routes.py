@@ -92,6 +92,9 @@ def check_contact_routes(browser, base, root):
                 page.goto(base + edition + route, wait_until='domcontentloaded')
                 links = page.locator('a[data-add-contact]')
                 assert links.count() > 0
+                if edition and route == 'index.html':
+                    assert links.count() == 1
+                    assert page.locator('#contact [data-add-contact]').count() == 1
                 for link in links.all():
                     expect(link).to_be_visible()
                     assert link.get_attribute('download') is None
