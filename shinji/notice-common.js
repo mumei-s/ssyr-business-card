@@ -43,6 +43,24 @@
  function inviteFrom(value){const s=String(value||'').trim();if(validToken(s))return s;try{const u=new URL(s);if(u.origin==='https://mumei-s.github.io'&&u.pathname==='/ssyr-business-card/shinji/notices.html'){const t=new URLSearchParams(u.hash.slice(1)).get('invite');if(validToken(t))return t}}catch{}return ''}
  function date(v){if(!v)return '';const d=new Date(v);return Number.isFinite(d.valueOf())?d.toLocaleString('ja-JP'):''}
  function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e}
+ function messageDeleteButton(run,remove,refresh){
+   const button=el('button','削除','message-delete');
+   button.type='button';
+   button.addEventListener('click',()=>{
+     if(!confirm('このメッセージを自分と相手の会話履歴から削除しますか？'))return;
+     void run(async()=>{
+       const result=await remove();
+       if(result?.ok!==true)throw Error('削除の結果を確認できません。履歴を更新してください。');
+       button.closest('.bubble')?.remove();
+       try{await refresh();feedback('メッセージを削除しました。')}
+       catch(e){
+         if(e.status===401||e.status===403)throw e;
+         feedback('メッセージを削除しました。最新の履歴は「更新」で確認できます。',true);
+       }
+     });
+   });
+   return button;
+ }
  function feedback(message='',error=false){$('feedback').textContent=message;$('feedback').classList.toggle('error',!!error)}
  function decode(s){const b=s.replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(b+'='.repeat((4-b.length%4)%4)),x=>x.charCodeAt(0))}
  async function publicAuthKey(){const c=await jsonRequest(base+'/functions/v1/public-config',{},10000);if(c.url!==base||typeof c.key!=='string'||!/^sb_publishable_[A-Za-z0-9_-]+$/.test(c.key))throw Error('管理者ログインの接続を確認してください。');return c.key}
@@ -68,5 +86,5 @@
  }
  const pushLabels={pending:'処理結果未確定',accepted:'通知サービス受付済み',failed:'通知送信失敗',expired:'端末登録期限切れ',disabled:'連絡を保存・通知OFF',unknown:'送信結果未確定'};
  function setBusy(root,busy){for(const b of root.querySelectorAll('button[type=submit]'))b.disabled=busy}
- window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,inviteFrom,date,el,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
+ window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,inviteFrom,date,el,messageDeleteButton,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
 })();

@@ -9,6 +9,8 @@
  const sessionKey='ssyr-owner-session-v1',rememberKey='ssyr-owner-remember-v1';
  const validSession=v=>typeof v==='string'&&/^ssyr1_[a-f0-9]{64}$/.test(v);
  let remembered=false,quietBusy=false,revision=0,pushPreparing=false;
+ const drafts=new Map();
+ let displayedContact='';
  function loadSession(){
    try{const v=localStorage.getItem(rememberKey);if(validSession(v)){remembered=true;return v}}catch{}
    try{return sessionStorage.getItem(sessionKey)||''}catch{return ''}
@@ -27,7 +29,7 @@
  const status=c=>c.revoked_at?'解除済み':!c.linked_at?'未接続':c.push_enabled_at?'通知 ON':'通知 OFF';
  const selected=()=>contacts.find(c=>c.id===selectedId);
  function clearAuthInputs(){for(const id of ['login-password','setup-password','setup-confirm','setup-code'])$(id).value='';setupCode=''}
- function hideConsole(){access='';saveSession('');showReconnect(false);contacts=[];selectedId='';pending=null;ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href=new URL('notices.html',ROOT).href;$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
+ function hideConsole(){access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();pending=null;ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href=new URL('notices.html',ROOT).href;$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
  async function run(fn){
    if(busy)return;
    revision++;busy=true;feedback('通信中…');
@@ -74,6 +76,13 @@
  }
  function showContact(fill=true){
    const c=selected();$('selected-panel').hidden=!c;$('edit-panel').hidden=!editing;
+   if(displayedContact!==selectedId){
+     const body=$('message-body'),thread=$('history');
+     if(displayedContact&&body.value)drafts.set(displayedContact,body.value);
+     else drafts.delete(displayedContact);
+     displayedContact=selectedId;body.value=drafts.get(selectedId)||'';
+     historySignature='';thread.replaceChildren();thread.dataset.more='false';
+   }
    $('edit-title').textContent=promoting?'電話帳に追加':c?'連絡先を編集':'連絡先を追加';
    if(fill){$('contact-name').value=c?.display_name||'';$('contact-email').value=c?.email||'';$('contact-phone').value=c?.phone||'';$('contact-memo').value=c?.memo||''}
    if(c){
@@ -116,6 +125,12 @@
        if(m.title&&m.title!=='チャット')card.append(el('h3',m.title));
        card.append(el('p',m.body,'message-body'),el('time',N.date(m.created_at)+(mine&&m.read_at?' · 既読':'')));
        if(mine&&m.push_status!=='accepted')card.append(el('small',N.pushLabels[m.push_status]||'確認中'));
+       if(mine&&m.id)card.append(N.messageDeleteButton(run,
+         ()=>ownerCall('owner-delete-message',{contactId:id,id:m.id}),
+         async()=>{
+           if(historyPage>0&&!root.querySelector('.bubble'))historyPage--;
+           await history();
+         }));
        root.append(card);
      }
      if(!rows.length)root.append(el('p','会話はまだありません。','muted'));
