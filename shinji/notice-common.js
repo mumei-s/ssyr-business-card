@@ -40,6 +40,41 @@
  function getDevice(){try{return localStorage.getItem(deviceKey)||''}catch{return ''}}
  function setDevice(v){localStorage.setItem(deviceKey,v);if(localStorage.getItem(deviceKey)!==v)throw Error('端末の保存設定をご確認ください。')}
  function clearDevice(){try{localStorage.removeItem(deviceKey)}catch{}}
+ const threadPrefix='ssyr-card-thread-v1:';
+ const validThreadId=id=>typeof id==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id);
+ function getThreads(){
+   try{
+     const threads=[];
+     for(let i=0;i<localStorage.length;i++){
+       const key=localStorage.key(i);
+       if(!key?.startsWith(threadPrefix))continue;
+       const device=key.slice(threadPrefix.length);if(!validToken(device))continue;
+       let row;try{row=JSON.parse(localStorage.getItem(key))}catch{continue}
+       threads.push({device,id:validThreadId(row?.id)?row.id:'',added:Number(row?.added)||0});
+     }
+     const active=getDevice();
+     if(validToken(active)&&!threads.some(t=>t.device===active))threads.push({device:active,id:'',added:0});
+     return threads.sort((a,b)=>a.added-b.added||a.device.localeCompare(b.device));
+   }catch{return []}
+ }
+ function rememberThread(device,id){
+   if(!validToken(device))return;
+   const key=threadPrefix+device,raw=localStorage.getItem(key);
+   let old;try{old=JSON.parse(raw)}catch{}
+   const value=JSON.stringify({id:validThreadId(id)?id:old?.id||'',added:old?.added??Date.now()});
+   if(raw!==value)localStorage.setItem(key,value);
+ }
+ function forgetThread(device){
+   localStorage.removeItem(threadPrefix+device);
+   if(getDevice()===device)clearDevice();
+ }
+ async function deviceForInvite(invite){
+   const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(invite));
+   const key='ssyr-claim-v1:'+Array.from(new Uint8Array(bytes),n=>n.toString(16).padStart(2,'0')).join('');
+   let device=localStorage.getItem(key);
+   if(!validToken(device)){device=random();localStorage.setItem(key,device)}
+   return device;
+ }
  function inviteFrom(value){const s=String(value||'').trim();if(validToken(s))return s;try{const u=new URL(s);if(u.origin==='https://mumei-s.github.io'&&u.pathname==='/ssyr-business-card/shinji/notices.html'){const t=new URLSearchParams(u.hash.slice(1)).get('invite');if(validToken(t))return t}}catch{}return ''}
  function date(v){if(!v)return '';const d=new Date(v);return Number.isFinite(d.valueOf())?d.toLocaleString('ja-JP'):''}
  function el(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e}
@@ -86,5 +121,5 @@
  }
  const pushLabels={pending:'処理結果未確定',accepted:'通知サービス受付済み',failed:'通知送信失敗',expired:'端末登録期限切れ',disabled:'連絡を保存・通知OFF',unknown:'送信結果未確定'};
  function setBusy(root,busy){for(const b of root.querySelectorAll('button[type=submit]'))b.disabled=busy}
- window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,inviteFrom,date,el,messageDeleteButton,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
+ window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,getThreads,rememberThread,forgetThread,deviceForInvite,validThreadId,inviteFrom,date,el,messageDeleteButton,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
 })();

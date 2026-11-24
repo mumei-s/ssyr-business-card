@@ -10,7 +10,7 @@
  const validSession=v=>typeof v==='string'&&/^ssyr1_[a-f0-9]{64}$/.test(v);
  let remembered=false,quietBusy=false,revision=0,pushPreparing=false;
  const drafts=new Map();
- let displayedContact='';
+ let displayedContact='',newChatRequest=null;
  function loadSession(){
    try{const v=localStorage.getItem(rememberKey);if(validSession(v)){remembered=true;return v}}catch{}
    try{return sessionStorage.getItem(sessionKey)||''}catch{return ''}
@@ -26,10 +26,10 @@
  function showReconnect(on){$('owner-reconnect').hidden=!on}
  function setOwnerBadge(n){try{if(n&&navigator.setAppBadge)void navigator.setAppBadge(n).catch(()=>{});else if(!n&&navigator.clearAppBadge)void navigator.clearAppBadge().catch(()=>{})}catch{}}
  const ownerCall=(action,fields={})=>N.call(action,fields,access);
- const status=c=>c.revoked_at?'解除済み':!c.linked_at?'未接続':c.push_enabled_at?'通知 ON':'通知 OFF';
+ const status=c=>c.revoked_at?'解除済み':!c.linked_at?(c.owner_started?'受け取り待ち':'未接続'):c.push_enabled_at?'通知 ON':'通知 OFF';
  const selected=()=>contacts.find(c=>c.id===selectedId);
  function clearAuthInputs(){for(const id of ['login-password','setup-password','setup-confirm','setup-code'])$(id).value='';setupCode=''}
- function hideConsole(){access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();pending=null;ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href=new URL('notices.html',ROOT).href;$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
+ function hideConsole(){access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();pending=null;newChatRequest=null;setNewChatForm(false);$('new-chat-form').reset();ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href=new URL('notices.html',ROOT).href;$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
  async function run(fn){
    if(busy)return;
    revision++;busy=true;feedback('通信中…');
@@ -56,10 +56,11 @@
  function renderContacts(){
    const q=$('search').value.toLowerCase().trim(),list=$('contacts');
    list.replaceChildren();
-   const matches=contacts.filter(c=>mode==='contacts'?isSaved(c):!!c.linked_at||!!c.chat_updated_at||!!c.unread).filter(c=>[c.display_name,c.email,c.phone,c.memo].some(v=>String(v||'').toLowerCase().includes(q)));
+   const matches=contacts.filter(c=>mode==='contacts'?isSaved(c):c.owner_started||!!c.linked_at||!!c.chat_updated_at||!!c.unread).filter(c=>[c.display_name,c.email,c.phone,c.memo].some(v=>String(v||'').toLowerCase().includes(q)));
    $('contact-count').textContent='('+matches.length+'件)';
    $('tab-chats').setAttribute('aria-pressed',String(mode==='chats'));$('tab-contacts').setAttribute('aria-pressed',String(mode==='contacts'));
    $('new-contact').hidden=mode!=='contacts';
+   $('new-chat').hidden=mode!=='chats';
    const unread=contacts.reduce((n,c)=>n+(Number(c.unread)||0),0);
    $('unread-count').textContent=unread?' '+unread:'';
    if(location.pathname.endsWith('/owner/')||location.pathname.endsWith('/owner/index.html'))setOwnerBadge(unread);
@@ -174,8 +175,36 @@
  $('owner-push-off').addEventListener('click',()=>void run(async()=>{await ownerCall('owner-push-off');ownerEnabled=false;if(ownerSub)await N.wait(ownerSub.unsubscribe()).catch(()=>{});ownerSub=null;feedback('管理者通知をOFFにしました。')}));
  $('owner-push-test').addEventListener('click',()=>void run(async()=>{const r=await ownerCall('owner-push-test');feedback(r.status==='accepted'?'管理者テスト通知を送信しました。':N.pushLabels[r.status]||'送信結果未確定',r.status!=='accepted');if(r.status==='expired'){ownerEnabled=false;ownerSub=null}}));
  function changeMode(next){
-   if(busy)return;revision++;mode=next;selectedId='';editing=false;promoting=false;historyPage=0;historySignature='';$('invite-panel').hidden=true;showContact();renderContacts();feedback();
+   if(busy)return;revision++;mode=next;selectedId='';editing=false;promoting=false;historyPage=0;historySignature='';$('invite-panel').hidden=true;setNewChatForm(false);showContact();renderContacts();feedback();
  }
+ function setNewChatForm(open){
+   $('new-chat-form').hidden=!open;
+   $('new-chat').setAttribute('aria-expanded',String(open));
+   if(open)$('new-chat-name').focus();
+ }
+ $('new-chat').addEventListener('click',()=>setNewChatForm($('new-chat-form').hidden));
+ $('cancel-new-chat').addEventListener('click',()=>setNewChatForm(false));
+ $('new-chat-form').addEventListener('submit',event=>{
+   event.preventDefault();
+   void run(async()=>{
+     const name=$('new-chat-name').value.trim(),body=$('new-chat-body').value.trim();
+     if(!body)throw Error('最初のメッセージを入力してください。');
+     if(!newChatRequest||newChatRequest.name!==name||newChatRequest.body!==body){
+       newChatRequest={name,body,requestId:N.requestId(),invite:N.random()};
+     }
+     const result=await ownerCall('owner-start-chat',newChatRequest);
+     if(!result?.contact?.id||(result.invite!==null&&result.invite!==newChatRequest.invite))throw Error('作成結果を確認できません。同じ内容でもう一度お試しください。');
+     newChatRequest=null;
+     $('new-chat-form').reset();setNewChatForm(false);
+     contacts=[result.contact,...contacts.filter(c=>c.id!==result.contact.id)];
+     selectedId=result.contact.id;historyPage=0;editing=false;promoting=false;
+     $('search').value='';$('invite-panel').hidden=true;
+     showContact();renderContacts();
+     if(result.invite)showInvite(result.invite);
+     feedback(result.invite?'個別チャットを作りました。相手にリンクを共有してください。':'作成済みのチャットを開きました。');
+     await history();
+   });
+ });
  $('tab-chats').addEventListener('click',()=>changeMode('chats'));
  $('tab-contacts').addEventListener('click',()=>changeMode('contacts'));
  $('promote-contact').addEventListener('click',()=>{if(busy||!selected())return;revision++;editing=true;promoting=true;showContact();$('edit-panel').scrollIntoView({block:'start'});$('contact-name').focus()});
