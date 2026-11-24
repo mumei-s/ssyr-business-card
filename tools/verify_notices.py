@@ -456,6 +456,11 @@ def check_notices(browser,base):
     card_url=base+'shinji/'
     before=list(requests)
     guest.goto(card_url, wait_until='networkidle')
+    entry=guest.locator('#card-chat-start')
+    expect(entry).to_be_in_viewport()
+    expect(guest.locator('#card-chat-unread')).to_be_hidden()
+    entry.click()
+    expect(guest.locator('#card-receive-title')).to_be_focused()
     expect(guest.locator('#card-receive-start')).to_be_visible()
     assert not public_registrations and requests.count('visitor-start')==before.count('visitor-start')
     guest.locator('#card-receive-name').fill(COMMON_NAME)
@@ -471,6 +476,7 @@ def check_notices(browser,base):
         another.locator('#card-receive-name').fill(COMMON_NAME)
         another.locator('#card-receive-start').click()
     expect(another.locator('#card-receive-open')).to_be_visible()
+    expect(another.locator('#card-chat-start')).to_be_hidden()
     assert len(public_registrations)==1
     assert requests.count('chat-send')==before.count('chat-send')
     assert requests.count('subscribe')==before.count('subscribe')
@@ -496,6 +502,7 @@ def check_notices(browser,base):
     expect(page.locator('#history .mine')).to_contain_text(FIRST_BODY)
     another.goto(card_url)
     expect(another.locator('#card-chat-unread-count')).to_contain_text('1件')
+    expect(another.locator('#card-chat-start')).to_be_hidden()
     another.locator('#card-chat-unread').click()
     expect(another.locator('#message-list .theirs')).to_contain_text(FIRST_BODY)
     expect(another.locator('#message-list .mine')).to_have_count(0)

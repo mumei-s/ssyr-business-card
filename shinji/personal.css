@@ -20,9 +20,11 @@ img { display: block; }
 .icon { width: 1.22rem; height: 1.22rem; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .studio { max-width: 68rem; min-height: 100svh; padding: clamp(2.4rem,6vw,5.5rem) clamp(1.4rem,5vw,4.2rem); margin-inline: auto; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.04fr); gap: clamp(2.7rem,6.3vw,5.4rem); align-items: center; }
 .exhibit { min-width: 0; width: 100%; max-width: 28rem; margin-inline: auto; }
-.card-chat-unread { display:flex; align-items:center; gap:.6rem; min-height:48px; margin:0 0 .8rem; padding:.55rem .85rem; border:1px solid #8fe2dd; border-radius:5px; background:#153c44; color:#f5fffe; font-size:.92rem; text-decoration:none; }
-.card-chat-unread[hidden] { display:none; }
-.card-chat-unread .icon { color:#9eeae6; }
+.card-chat-banner { display:flex; align-items:center; gap:.6rem; min-height:48px; margin:0 0 .8rem; padding:.55rem .85rem; border:1px solid #8fe2dd; border-radius:5px; background:#153c44; color:#f5fffe; font-size:.92rem; text-decoration:none; }
+.card-chat-banner[hidden] { display:none; }
+.card-chat-banner .icon { color:#9eeae6; }
+.card-chat-start { border-color:#586d76; background:#1c2b34; }
+.card-chat-start > span { margin-inline-start:auto; }
 #card-chat-unread-count { margin-inline-start:auto; border-radius:1rem; padding:.15rem .55rem; background:#b8eeea; color:#122d2f; font-weight:700; white-space:nowrap; }
 /* Matching, landscape business-card faces. The contact actions live outside the card. */
 .card {
