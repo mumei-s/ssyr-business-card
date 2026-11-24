@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#16191e">
   <title>川合 伸次の電話帳登録 | S's-YR</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/contact-import.css?v=direct-2">
-  <script defer src="./assets/contact-import.js?v=direct-3-review"></script>
+  <link rel="stylesheet" href="./assets/contact-import.css?v=direct-4">
+  <script defer src="./assets/contact-import.js?v=direct-4"></script>
 </head>
 <body class="contact-page">
   <main class="contact-options" id="contact-options">
@@ -15,12 +15,10 @@
     <p class="contact-name">川合 伸次</p>
     <p class="contact-hint" id="fallback-hint">電話帳が開かない場合は、次の方法を選び、内容を確認して保存してください。</p>
     <nav class="contact-methods" aria-label="連絡先の登録方法">
-      <a data-vcard-contact href="./contact.vcf" type="text/vcard">連絡先を開く（vCard）</a>
-      <a data-google-contact href="https://contacts.google.com/new?givenname=%E4%BC%B8%E6%AC%A1&amp;familyname=%E5%B7%9D%E5%90%88&amp;email=ss526s-syr%40yahoo.co.jp&amp;phone=080-9119-0044" referrerpolicy="no-referrer">Google コンタクトで登録（別の方法）</a>
+      <a data-google-contact href="https://contacts.google.com/new?givenname=%E4%BC%B8%E6%AC%A1&amp;familyname=%E5%B7%9D%E5%90%88&amp;email=ss526s-syr%40yahoo.co.jp&amp;phone=080-9119-0044" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">Google コンタクトで登録（ダウンロード不要）</a>
     </nav>
-    <p class="contact-note">Android：ファイルが保存された場合は、連絡帳アプリのファイル取り込み機能から contact.vcf を選択してください。</p>
-    <p class="contact-note">iPhone：連絡先のプレビューが表示されたら新規連絡先として追加してください。ファイルが保存された場合はファイルアプリから開き、取り込めない場合は下の項目を手入力してください。</p>
-    <p class="contact-note">Google コンタクトはログインが必要な場合があります。自動入力されない項目は下の情報を入力してください。同じアカウントで連絡先の同期を有効にすると端末に反映されます。</p>
+    <p class="contact-note">Google コンタクトでは会社・役職が自動入力されません。下の「屋号」「肩書」をコピーし、登録画面の「会社」「役職」に貼り付けて保存してください。別タブが開く場合はタブを切り替えてコピーできます。</p>
+    <p class="contact-note">Google アカウントへのログインが必要な場合があります。保存先と端末の連絡先同期設定をご確認ください。</p>
     <dl class="contact-fields">
       <div><dt>氏名</dt><dd>川合 伸次</dd></div>
       <div><dt>屋号</dt><dd>S's-YR</dd></div>
@@ -28,7 +26,13 @@
       <div><dt>メール</dt><dd>ss526s-syr@yahoo.co.jp</dd></div>
       <div><dt>電話</dt><dd>080-9119-0044</dd></div>
     </dl>
-    <p class="contact-note">端末の電話帳に手入力する場合は、上の項目を長押ししてコピーし、新しい連絡先に貼り付けてください。</p>
+    <p class="contact-note">コピーが使えない場合は、上の項目を長押ししてコピーできます。</p>
+    <p class="contact-note contact-copy-status" data-copy-status role="status" aria-live="polite"></p>
+    <section class="contact-last-resort" aria-label="ファイルを使った登録方法">
+      <h2>全項目をまとめて取り込む（予備の方法）</h2>
+      <a data-vcard-contact href="./contact.vcf" type="text/vcard">連絡先ファイル（VCF）を開く・保存</a>
+      <p class="contact-note">Android：ダウンロードされた場合は、連絡帳アプリのファイル取り込み機能で contact.vcf を選択してください。iPhone：プレビューが出れば新規連絡先として追加し、保存された場合はファイルアプリから開いてください。</p>
+    </section>
     <a class="contact-back" href="./">名刺に戻る</a>
   </main>
 </body>

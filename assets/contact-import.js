@@ -2,6 +2,50 @@
   const script = document.currentScript;
   const name = script?.dataset.contactName;
   const edition = script?.dataset.contactEdition;
+  // Registration guide only: copying requires a user gesture. No auto-write.
+  const fields = document.querySelector('.contact-fields');
+  const status = document.querySelector('[data-copy-status]');
+  if (fields && status) {
+    for (const row of fields.querySelectorAll('div')) {
+      const label = row.querySelector('dt');
+      const field = row.querySelector('dd');
+      if (!label || !field) continue;
+      const value = field.textContent.trim();
+      const caption = label.textContent.trim();
+      if (!value || !caption) continue;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'contact-copy';
+      button.setAttribute('aria-label', caption + 'をコピー');
+      button.textContent = 'コピー';
+      const report = (message) => { status.textContent = caption + '：' + message; };
+      button.addEventListener('click', async () => {
+        try {
+          if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(value);
+            report('コピーしました');
+            return;
+          }
+        } catch (_) { /* Continue to selection-based fallback. */ }
+        let selection;
+        try {
+          selection = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(field);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          if (document.execCommand('copy')) {
+            selection.removeAllRanges();
+            report('コピーしました');
+            return;
+          }
+        } catch (_) { /* Leave the value selected when possible. */ }
+        report('長押ししてコピーしてください');
+      });
+      row.append(button);
+    }
+  }
+
   const actions = [...document.querySelectorAll('a[data-add-contact]')];
   if (!actions.length || !name || !['business', 'shinji'].includes(edition)) return;
 

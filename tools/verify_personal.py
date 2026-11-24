@@ -28,7 +28,7 @@ def check_identity(root):
         assert not re.search(r'assets/(?:lettering/(?:name|phone)|qr-(?:contact|introduction)|og-card)\.svg', text), file
 
     contact = (personal / 'contact.vcf').read_text().splitlines()
-    assert 'FN:SHINJI' in contact and 'N:;SHINJI;;;' in contact, 'Save SHINJI as a given name'
+    assert 'FN:SHINJI' in contact and 'N:SHINJI;;;;' in contact, 'Save SHINJI as a family name'
     assert any(line.upper().startswith('EMAIL') and line.split(':', 1)[-1] == EMAIL for line in contact)
     assert not any(re.match(r'(TEL|URL|X-PHONETIC-[^:;]+)(:|;)', line, re.I) for line in contact)
 

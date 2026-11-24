@@ -43,7 +43,7 @@ def card_fields(root, edition):
     assert 'VERSION:3.0' in rows
     f = {line.split(':', 1)[0].split(';', 1)[0]: line.split(':', 1)[1] for line in rows if ':' in line}
     assert f['ORG'] == "S's-YR" and f['TITLE'] == '代表'
-    if edition: assert f['FN'] == 'SHINJI' and 'TEL' not in f and 'URL' not in f and not any('PHONETIC' in k for k in f)
+    if edition: assert f['FN'] == 'SHINJI' and f['N'] == 'SHINJI;;;;' and 'TEL' not in f and 'URL' not in f and not any('PHONETIC' in k for k in f)
     else: assert f['FN'] == '川合 伸次' and f.get('TEL') and f.get('URL')
     return raw, f
 
@@ -66,6 +66,21 @@ def check_contact_routes(browser, base, root):
         ctx = browser.new_context(user_agent=ua, java_script_enabled=label != 'JS disabled', viewport={'width':320,'height':780})
         ctx.route('https://**/*', lambda route: route.abort())
         page = ctx.new_page()
+        if label != 'JS disabled':
+            # Browser integration: deterministic clipboard success/failure without
+            # reading or modifying the real host clipboard.
+            page.add_init_script("""(() => {
+                window.__copiedContact = [];
+                window.__denyContactCopy = false;
+                Object.defineProperty(navigator, 'clipboard', {
+                    configurable: true, value: { writeText(value) {
+                        if (window.__denyContactCopy) return Promise.reject(new Error('denied'));
+                        window.__copiedContact.push(value);
+                        return Promise.resolve();
+                    }}
+                });
+                document.execCommand = () => false;
+            })();""")
         errors = []; page.on('pageerror', lambda error: errors.append(str(error)))
         for edition in ('', 'shinji/'):
             raw, fields = card_fields(root, edition)
@@ -109,9 +124,25 @@ def check_contact_routes(browser, base, root):
                 google = page.locator('[data-google-contact]'); expect(google).to_be_visible()
                 q = parse_qs(urlsplit(google.get_attribute('href')).query)
                 assert q['email'] == [fields['EMAIL']]
-                if edition: assert q['givenname'] == ['SHINJI'] and 'phone' not in q and 'familyname' not in q
+                if edition: assert q['familyname'] == ['SHINJI'] and 'phone' not in q and 'givenname' not in q
                 else: assert q['familyname'] == ['川合'] and q['givenname'] == ['伸次'] and q.get('phone') == [fields['TEL']]
                 assert page.locator('.contact-fields').count() == 1
+                assert google.evaluate("(a) => !!(a.compareDocumentPosition(document.querySelector('[data-vcard-contact]')) & Node.DOCUMENT_POSITION_FOLLOWING)")
+                assert google.get_attribute('target') == '_blank'
+                if label == 'JS disabled':
+                    assert page.locator('.contact-copy').count() == 0
+                else:
+                    expect(page.locator('.contact-copy')).to_have_count(4 if edition else 5)
+                    for caption, key in (('屋号', 'ORG'), ('肩書', 'TITLE')):
+                        button = page.get_by_role('button', name=caption + 'をコピー')
+                        expect(button).to_be_visible()
+                        button.click()
+                        expect(page.locator('[data-copy-status]')).to_have_text(caption + '：コピーしました')
+                        assert page.evaluate('window.__copiedContact.at(-1)') == fields[key]
+                    page.evaluate('window.__denyContactCopy = true')
+                    page.get_by_role('button', name='肩書をコピー').click()
+                    expect(page.locator('[data-copy-status]')).to_have_text('肩書：長押ししてコピーしてください')
+                    assert page.evaluate('window.__copiedContact.length') == 2
                 expect(page.locator('.contact-back')).to_be_visible()
                 assert page.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
                 cases += 1
