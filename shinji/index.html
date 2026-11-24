@@ -14,7 +14,7 @@
   <meta property="og:image:alt" content="プラチナシルバーと群青の刷り模様に描いたSHINJIのレタリング">
   <link rel="manifest" href="./manifest.webmanifest?v=badge-2">
   <link rel="apple-touch-icon" href="./logo-spectrum.webp">
-  <link rel="stylesheet" href="./personal.css?v=receive-1">
+  <link rel="stylesheet" href="./personal.css?v=receive-2">
   <link rel="stylesheet" href="../assets/contact-import.css?v=direct-4">
   <script src="../assets/contact-import.js?v=direct-4" defer data-contact-name="SHINJI" data-contact-edition="shinji"></script>
   <script src="./card.js?v=foil-card-4" defer></script>
@@ -22,7 +22,7 @@
   <script src="./muumei-entry.js?v=1" defer></script>
   <script src="./game-entry.js?v=1" defer></script>
   <script src="./notice-common.js?v=receive-1" defer></script>
-  <script src="./chat-receive.js?v=receive-1" defer></script>
+  <script src="./chat-receive.js?v=receive-2" defer></script>
   <script src="./chat-unread.js?v=receive-1" defer></script>
 
   <link rel="icon" type="image/png" sizes="96x96" href="./brand-96.png?v=share-2">
@@ -39,8 +39,13 @@
   </svg>
   <main class="studio">
     <section class="exhibit" aria-label="S's-YR　SHINJIの仕事名刺">
+      <a class="card-chat-banner card-chat-start" id="card-chat-start" href="#card-receive-title" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#mail"/></svg>
+        <strong>SHINJIからのメッセージを受け取る</strong>
+        <span aria-hidden="true">↓</span>
+      </a>
       <div aria-live="polite" aria-atomic="true">
-        <a class="card-chat-unread" id="card-chat-unread" href="./notices.html#messages" hidden>
+        <a class="card-chat-banner" id="card-chat-unread" href="./notices.html#messages" hidden>
           <svg class="icon" aria-hidden="true"><use href="#mail"/></svg>
           <strong>新着メッセージあり</strong>
           <span id="card-chat-unread-count"></span><span aria-hidden="true">→</span>
@@ -97,7 +102,7 @@
         <button class="light" id="light-button" type="button" aria-pressed="true" aria-controls="back" title="表裏の光とロゴ演出をまとめて切替" hidden><svg class="icon" aria-hidden="true"><use href="#light"/></svg><span>演出</span><span class="light-state">ON</span></button>
       </div>
       <section class="card-receive" aria-labelledby="card-receive-title">
-        <h2 id="card-receive-title">SHINJIとの個別チャット</h2>
+        <h2 id="card-receive-title" tabindex="-1">SHINJIとの個別チャット</h2>
         <form id="card-receive-form" hidden>
           <p>受け取りを始めると、この名刺でSHINJIからの連絡を読めます。</p>
           <label for="card-receive-name">SHINJIに伝える呼び名（任意）</label>

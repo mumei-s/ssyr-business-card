@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const N = window.SSYRNotice;
+  const entry = document.getElementById('card-chat-start');
   const form = document.getElementById('card-receive-form');
   const name = document.getElementById('card-receive-name');
   const start = document.getElementById('card-receive-start');
@@ -10,6 +11,7 @@
   let lastState = '';
 
   function showConnected(threadId) {
+    entry.hidden = true;
     form.hidden = true;
     status.textContent = '受け取り設定済みです。このブラウザーで名刺を開くと、新着が表示されます。';
     open.href = N.validThreadId(threadId) ? './notices.html#thread=' + threadId : './notices.html';
@@ -18,6 +20,7 @@
   }
 
   function showForm() {
+    entry.hidden = false;
     form.hidden = false;
     open.hidden = true;
     if (lastState !== 'form') status.textContent = '';
