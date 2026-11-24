@@ -21,6 +21,7 @@
    $('disconnect').disabled=busy||!contact;
    $('refresh').disabled=busy;$('news').disabled=busy;
    $('chat-send').disabled=busy;$('claim-button').disabled=busy;
+   for(const button of $('message-list').querySelectorAll('.message-delete'))button.disabled=busy;
    $('claim-button').hidden=!inviteCode&&!$('invite').value.trim();
  }
  function badge(count){const label=$('chat-unread');if(label){label.hidden=!count;label.textContent=count?'未読 '+count+'件':''}try{if(count&&navigator.setAppBadge)void navigator.setAppBadge(count).catch(()=>{});if(!count&&navigator.clearAppBadge)void navigator.clearAppBadge().catch(()=>{})}catch{}}
@@ -36,6 +37,7 @@
      article.append(el('span',mine?'自分':"S's-YR",'bubble-name'));
      if(m.title&&m.title!=='チャット')article.append(el('h3',m.title));
      article.append(el('p',m.body,'message-body'),el('time',N.date(m.created_at)+(mine&&m.read_at?' · 既読':'')));
+     if(mine&&m.id)article.append(N.messageDeleteButton(run,()=>N.call('chat-delete',{device,id:m.id}),refresh));
      if(!mine&&!m.read_at){
        const b=el('button','既読にする','read-button');b.type='button';
        b.addEventListener('click',()=>void run(async()=>{await N.call('read',{device,id:m.id});await refresh()}));article.append(b);

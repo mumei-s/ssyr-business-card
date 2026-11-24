@@ -11,6 +11,8 @@ CID='b1b1b1b1-b1b1-41b1-81b1-b1b1b1b1b1b1'
 VID='c2c2c2c2-c2c2-42c2-82c2-c2c2c2c2c2c2'
 NEW='d3d3d3d3-d3d3-43d3-83d3-d3d3d3d3d3d3'
 MID='e4e4e4e4-e4e4-44e4-84e4-e4e4e4e4e4e4'
+SECOND_MID='a2a2a2a2-a2a2-42a2-82a2-a2a2a2a2a2a2'
+REPLY_ID='f5f5f5f5-f5f5-45f5-85f5-f5f5f5f5f5f5'
 DATE='2026-11-24T00:00:00Z'
 MANUAL={'id':CID,'display_name':'既知の相手','email':'test@example.invalid','phone':'','memo':'','linked_at':DATE,'push_enabled_at':DATE,'revoked_at':None,'muumei_news':False,'entry_type':'manual','unread':0}
 VISITOR={'id':VID,'display_name':'ゲストさん','email':'','phone':'','memo':'','linked_at':DATE,'push_enabled_at':None,'revoked_at':None,'muumei_news':False,'entry_type':'visitor','chat_updated_at':DATE,'unread':1}
@@ -21,7 +23,13 @@ def check_notices(browser,base):
     errors=[];requests=[];auth_requests=[]
     page.on('pageerror',lambda e:errors.append(str(e)))
     delayed=[]
-    state={'delay_status':False,'delay_list':False,'linked':False,'enabled':False,'news':False,'read':False,'owner_setup':False,'owner_session':False,'owner_enabled':False,'visitor':False,'guest_body':'','unread':1,'saved':[dict(MANUAL)]}
+    device_contacts = {}
+    threads = {
+        # Outbound notices sent before the direction field existed.
+        VID: [{'id': CID, 'title': 'テスト連絡', 'body': '受信した連絡', 'created_at': DATE, 'read_at': None}],
+        CID: [{'id': NEW, 'title': 'チャット', 'body': '既知の相手との履歴', 'direction': 'outbound', 'created_at': DATE, 'read_at': DATE}],
+    }
+    state={'delay_status':False,'delay_list':False,'linked':False,'enabled':False,'news':False,'owner_setup':False,'owner_session':False,'owner_enabled':False,'unread':1,'saved':[dict(MANUAL)]}
     page.add_init_script("""(() => {
       const scopes=new Map();
       function makeReg(scope,owner){
@@ -54,30 +62,40 @@ def check_notices(browser,base):
             r.fulfill(json={'ok':True,'version':1,'vapidPublicKey':key},headers=HEADERS);return
         b=r.request.post_data_json;a=b['action'];requests.append(a)
         def done(body,status=200):r.fulfill(status=status,json=body,headers=HEADERS)
-        def summary():return {'displayName':'ゲストさん' if state['visitor'] else '既知の相手','enabled':state['enabled'],'muumeiNews':state['news']}
+        def summary():return {'displayName':'ゲストさん' if device_contacts.get(b.get('device'))==VID else '既知の相手','enabled':state['enabled'],'muumeiNews':state['news']}
         if a=='visitor-start':
             assert len(b['device'])==64 and b['name']=='ゲストさん'
-            state['visitor']=True;state['linked']=True;done({'contact':summary()})
+            device_contacts[b['device']] = VID
+            state['linked']=True;done({'contact':summary()})
         elif a=='claim':
             assert b['invite']==INVITE and len(b['device'])==64
-            state['linked']=True;state['visitor']=False;done({'contact':summary()})
+            device_contacts[b['device']] = CID
+            state['linked']=True;done({'contact':summary()})
         elif a=='status':
             if state['delay_status']:
                 state['delay_status']=False;delayed.append(r);return
             if not state['linked']:done({'error':'未登録'},401);return
-            messages=[{'id':CID,'title':'テスト連絡','body':'受信した連絡','direction':'outbound','created_at':DATE,'read_at':DATE if state['read'] else None}]
-            if state['guest_body']:messages.insert(0,{'id':MID,'title':'チャット','body':state['guest_body'],'direction':'inbound','created_at':DATE,'read_at':None})
-            done({'contact':summary(),'messages':messages})
+            done({'contact':summary(),'messages':threads[device_contacts[b['device']]]})
         elif a=='chat-send':
-            assert state['linked'] and len(b['device'])==64 and b['requestId']
-            state['guest_body']=b['body'];done({'message':{'id':MID,'direction':'inbound','push_status':'accepted'}})
+            assert state['linked'] and device_contacts[b['device']]==VID and b['requestId']
+            mid = MID if b['body']=='相談です' else SECOND_MID
+            item = {'id':mid,'title':'チャット','body':b['body'],'direction':'inbound','created_at':DATE,'read_at':None,'push_status':'accepted'}
+            threads[VID].insert(0,item)
+            done({'message':item})
+        elif a=='chat-delete':
+            assert device_contacts[b['device']]==VID and b['id']==SECOND_MID
+            threads[VID] = [m for m in threads[VID] if m['id'] != b['id']]
+            done({'ok':True})
         elif a=='subscribe':
             assert b['subscription']['endpoint']=='https://fcm.googleapis.com/recipient-synthetic'
             state['enabled']=True;done({'contact':summary()})
         elif a=='test':done({'status':'accepted'})
         elif a=='stop':state['enabled']=False;done({'ok':True})
         elif a=='preferences':state['news']=b['muumeiNews'];done({'contact':summary()})
-        elif a=='read':state['read']=True;done({'ok':True})
+        elif a=='read':
+            row=next(m for m in threads[device_contacts[b['device']]] if m['id']==b['id'])
+            row['read_at']=DATE
+            done({'ok':True})
         elif a=='disconnect':state['linked']=False;state['enabled']=False;done({'ok':True})
         elif a=='card-owner-setup':
             if state['owner_setup'] or b.get('code')!='A'*20:done({'error':'初回設定コードの期限・使用状況を確認してください。'},401);return
@@ -96,12 +114,26 @@ def check_notices(browser,base):
                     state['delay_list']=False;delayed.append(r);return
                 done({'contacts':[dict(VISITOR,unread=state['unread']),*state['saved']],'ownerPushEnabled':state['owner_enabled']})
             elif a=='owner-history':
-                rows=[{'id':MID,'title':'チャット','body':'ゲストからの相談','direction':'inbound','created_at':DATE,'read_at':None if state['unread'] else DATE,'push_status':'accepted'}] if b['contactId']==VID else []
-                done({'messages':rows})
-            elif a=='owner-read':assert b['contactId']==VID and b['ids']==[MID];state['unread']=0;done({'ok':True})
+                if b['contactId']==CID and state.pop('delay_history', False):
+                    delayed.append(r)
+                    return
+                done({'messages':threads[b['contactId']]})
+            elif a=='owner-read':
+                assert b['contactId']==VID and b['ids']==[MID]
+                next(m for m in threads[VID] if m['id']==MID)['read_at']=DATE
+                state['unread']=0;done({'ok':True})
             elif a=='owner-send':
                 assert b['title']=='チャット' and b['body']=='テスト返信' and b['contactId']==VID
-                done({'message':{'push_status':'accepted'}})
+                item={'id':REPLY_ID,'title':'チャット','body':b['body'],'direction':'outbound','created_at':DATE,'read_at':None,'push_status':'accepted'}
+                threads[VID].insert(0,item)
+                done({'message':item})
+            elif a=='owner-delete-message':
+                assert b['contactId']==VID and b['id']==REPLY_ID
+                if state.pop('fail_delete', False):
+                    done({'error':'削除を再試行してください。'},503)
+                    return
+                threads[VID] = [m for m in threads[VID] if m['id'] != b['id']]
+                done({'ok':True})
             elif a=='owner-push-on':
                 assert b['subscription']['endpoint']=='https://fcm.googleapis.com/owner-synthetic'
                 state['owner_enabled']=True;done({'enabled':True})
@@ -137,9 +169,21 @@ def check_notices(browser,base):
     expect(page.locator('#chat-send')).to_be_enabled()
     page.locator('#chat-body').fill('通信待ち中も送信')
     page.locator('#chat-send').click()
-    expect(page.locator('#message-list .mine')).to_contain_text('通信待ち中も送信')
+    expect(page.locator('#message-list .mine').last).to_contain_text('通信待ち中も送信')
     delayed.pop().fulfill(json={'contact':{'displayName':'STALE','enabled':False,'muumeiNews':False},'messages':[]},headers=HEADERS)
-    expect(page.locator('#message-list .mine')).to_contain_text('通信待ち中も送信')
+    expect(page.locator('#message-list .mine').last).to_contain_text('通信待ち中も送信')
+    legacy_notice = page.locator('#message-list article').filter(has_text='受信した連絡')
+    expect(legacy_notice.get_by_role('button',name='削除')).to_have_count(0)
+    sent = page.locator('#message-list article').filter(has_text='通信待ち中も送信')
+    page.once('dialog',lambda dialog:dialog.dismiss())
+    sent.get_by_role('button',name='削除').click()
+    expect(sent).to_be_visible()
+    assert 'chat-delete' not in requests
+    page.once('dialog',lambda dialog:dialog.accept())
+    sent.get_by_role('button',name='削除').click()
+    expect(sent).to_have_count(0)
+    expect(page.locator('#message-list .mine')).to_contain_text('相談です')
+    guest_device = page.evaluate("localStorage.getItem('ssyr-card-device-v1')")
     expect(page.locator('#enable')).to_be_enabled()
     page.locator('#enable').click()
     expect(page.locator('#notice-state')).to_have_text('通知 ON')
@@ -157,7 +201,7 @@ def check_notices(browser,base):
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth+1')
     # Existing personal links remain usable without revealing their token.
     page.evaluate("localStorage.removeItem('ssyr-card-device-v1')")
-    state['linked']=False;state['guest_body']=''
+    state['linked']=False
     page.goto(base+'shinji/notices.html?v=share-2#invite='+INVITE)
     expect(page.locator('#claim-button')).to_be_visible()
     assert '#' not in page.url
@@ -197,7 +241,10 @@ def check_notices(browser,base):
         page.wait_for_timeout(50)
     assert delayed,'background owner list did not start'
     page.locator('.contact-row').filter(has_text='ゲストさん').click()
-    expect(page.locator('#history')).to_contain_text('ゲストからの相談')
+    expect(page.locator('#history')).to_contain_text('相談です')
+    expect(page.locator('#history')).not_to_contain_text('通信待ち中も送信')
+    expect(page.locator('#history .theirs').get_by_role('button',name='削除')).to_have_count(0)
+    expect(page.locator('#history article').filter(has_text='受信した連絡').get_by_role('button',name='削除')).to_be_visible()
     delayed.pop().fulfill(json={'contacts':[],'ownerPushEnabled':False},headers=HEADERS)
     expect(page.locator('#selected-name')).to_have_text('ゲストさん')
     expect(page.locator('#unread-count')).to_have_text('')
@@ -205,6 +252,47 @@ def check_notices(browser,base):
     page.locator('#message-body').fill('テスト返信')
     page.locator('#send-form button').click()
     expect(page.locator('#feedback')).to_contain_text('通知サービス受付済み')
+    # An independently open visitor chat sees the reply and its later removal.
+    peer_ctx = browser.new_context(service_workers='block')
+    peer = peer_ctx.new_page()
+    peer.route(API, route)
+    peer.add_init_script(f"localStorage.setItem('ssyr-card-device-v1','{guest_device}');")
+    peer.goto(base+'shinji/notices.html')
+    peer_reply = peer.locator('#message-list article').filter(has_text='テスト返信')
+    expect(peer_reply).to_be_visible()
+    expect(peer_reply.get_by_role('button',name='削除')).to_have_count(0)
+    reply = page.locator('#history article').filter(has_text='テスト返信')
+    page.once('dialog',lambda dialog:dialog.dismiss())
+    reply.get_by_role('button',name='削除').click()
+    assert 'owner-delete-message' not in requests
+    state['fail_delete']=True
+    page.once('dialog',lambda dialog:dialog.accept())
+    reply.get_by_role('button',name='削除').click()
+    expect(page.locator('#feedback')).to_contain_text('再試行')
+    expect(reply).to_be_visible()
+    page.once('dialog',lambda dialog:dialog.accept())
+    reply.get_by_role('button',name='削除').click()
+    expect(reply).to_have_count(0)
+    peer.locator('#refresh').click()
+    expect(peer_reply).to_have_count(0)
+    expect(peer.locator('#message-list')).to_contain_text('相談です')
+    peer_ctx.close()
+
+    # Never display the previous conversation or its draft under another name,
+    # including while the next history request is still pending.
+    page.locator('#message-body').fill('ゲストへの下書き')
+    state['delay_history']=True
+    with page.expect_request(lambda request: request.url==API and request.method=='POST' and request.post_data_json.get('action')=='owner-history' and request.post_data_json.get('contactId')==CID):
+        page.locator('.contact-row').filter(has_text='既知の相手').click()
+    expect(page.locator('#selected-name')).to_have_text('既知の相手')
+    expect(page.locator('#message-body')).to_have_value('')
+    expect(page.locator('#history')).not_to_contain_text('相談です')
+    delayed.pop().fulfill(json={'messages':threads[CID]},headers=HEADERS)
+    expect(page.locator('#history')).to_contain_text('既知の相手との履歴')
+    page.locator('#message-body').fill('別の相手への下書き')
+    page.locator('.contact-row').filter(has_text='ゲストさん').click()
+    expect(page.locator('#history')).to_contain_text('相談です')
+    expect(page.locator('#message-body')).to_have_value('ゲストへの下書き')
     expect(page.locator('#promote-contact')).to_be_visible()
     page.locator('#tab-contacts').click()
     expect(page.locator('.contact-row')).to_have_count(1)
@@ -241,6 +329,6 @@ def check_notices(browser,base):
     expect(page.locator('#owner-console')).to_be_hidden()
     assert not auth_requests,auth_requests
     assert not errors,errors
-    assert {'visitor-start','chat-send','claim','subscribe','test','preferences','read','stop','owner-list','owner-history','owner-send','owner-read','owner-create','owner-push-on','owner-push-test','owner-push-off','card-owner-setup','card-owner-login','card-owner-logout'}.issubset(set(requests)),requests
+    assert {'visitor-start','chat-send','chat-delete','owner-delete-message','claim','subscribe','test','preferences','read','stop','owner-list','owner-history','owner-send','owner-read','owner-create','owner-push-on','owner-push-test','owner-push-off','card-owner-setup','card-owner-login','card-owner-logout'}.issubset(set(requests)),requests
     ctx.close()
     print("PASS visitor chat without invite, independent owner push, manual phonebook, existing invite and owner login; synthetic only")
