@@ -6,18 +6,21 @@ const card = document.getElementById('card');
 
 const lightButton = document.getElementById('light-button');
 const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const preferenceKey = 'ssyr-shinji-card-motion';
 let logoEnabled = true;
+try { logoEnabled = localStorage.getItem(preferenceKey) !== 'off'; } catch (_) {}
 function syncLogo() {
   const active = logoEnabled && !motion.matches;
   card.classList.toggle('logo-off', !active);
   lightButton.setAttribute('aria-pressed', String(active));
   lightButton.querySelector('.light-state').textContent = active ? 'ON' : 'OFF';
   lightButton.disabled = motion.matches;
-  lightButton.title = motion.matches ? '端末設定によりロゴ演出を停止しています' : 'ロゴ演出を切替';
+  lightButton.title = motion.matches ? '端末設定により表裏の演出を停止しています' : '表裏の光とロゴ演出をまとめて切替';
 }
 lightButton.addEventListener('click', () => {
   if (back.hidden || motion.matches) return;
   logoEnabled = !logoEnabled;
+  try { localStorage.setItem(preferenceKey, logoEnabled ? 'on' : 'off'); } catch (_) {}
   syncLogo();
 });
 if (motion.addEventListener) motion.addEventListener('change', syncLogo);

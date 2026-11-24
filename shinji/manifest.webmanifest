@@ -1,0 +1,25 @@
+{
+  "id": "./",
+  "name": "S's-YR | SHINJIの名刺",
+  "short_name": "S's-YR",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#101417",
+  "theme_color": "#101417",
+  "icons": [
+    {
+      "src": "./app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./logo-spectrum.webp",
+      "sizes": "384x384",
+      "type": "image/webp",
+      "purpose": "any"
+    }
+  ]
+}

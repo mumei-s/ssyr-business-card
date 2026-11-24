@@ -232,7 +232,8 @@ img { display: block; }
 .logo-effects { position: absolute; inset: 0; opacity: 1; pointer-events: none; }
 .card.logo-off .foil-logo .logo-fixed { opacity: 1; }
 .card.logo-off .logo-effects { opacity: 0; }
-.card.logo-off .service-face::after { opacity: .22; }
+.card.logo-off .face::after { opacity: .12; }
+.card.logo-off .brand-foil::after { opacity: .22; }
 .foil-logo {
   position: relative;
   isolation: isolate;
@@ -365,7 +366,9 @@ img { display: block; }
   .card.logo-off .logo-silver,
   .card.logo-off .logo-sweep,
   .card.logo-off .glint,
-  .card.logo-off .service-face::after { animation-play-state: paused; }
+  .card.logo-off .face::after,
+  .card.logo-off .brand-foil::after,
+  .card.logo-off .front-engraving::before { animation-play-state: paused; }
   .face::after { animation: surface-light 11s ease-in-out infinite alternate; transition: opacity 2s ease-in-out; }
   .brand-foil::after { animation: surface-light 9s ease-in-out infinite alternate; transition: opacity 2s ease-in-out; }
   .jobs img { animation: photo-light 10s ease-in-out infinite; }
@@ -373,7 +376,7 @@ img { display: block; }
   .tabs button::after { transition: background-color .35s ease; }
 }
 @media(prefers-reduced-motion:reduce) {
-  .foil-logo *, .face::after, .brand-foil::after, .jobs img {
+  .foil-logo *, .face::after, .brand-foil::after, .front-engraving::before, .front-guilloche, .jobs img {
     animation: none !important; transition: none !important;
   }
 }
@@ -422,3 +425,90 @@ img { display: block; }
   .directory { border-top: 1px solid var(--rail); padding-top: 1.5rem; }
   .lede { margin: .65rem 0 1.15rem; }
 }
+
+/* Engraved platinum, fine guilloche and deep-blue metal. Decorative elements never occupy text layout. */
+.contact-face {
+  background:
+    radial-gradient(ellipse at 100% 2%,#8298b1a0 0%,transparent 54%),
+    radial-gradient(ellipse at 12% 16%,#ffffffaa 0%,transparent 46%),
+    repeating-linear-gradient(104deg,#26364a0c 0px,#26364a0c 1px,transparent 1px,transparent 4px),
+    linear-gradient(132deg,#f8f9fc 2%,#d1d9e3 32%,#f7f8fb 58%,#b3bfce 100%);
+}
+.contact-face::before { border-color:#788da58a; border-top-color:#ffffffea; border-left-color:#f7fbffd0; box-shadow:inset 0 0 0 2px #ffffff38; }
+.front-engraving::before {
+  width:29%;
+  background:linear-gradient(123deg,#8497ad14 8%,#b3c3d66a 32%,#eff4fb90 36%,#314a6d90 37%,#203650 43%,#7c91af 48%,#e2ebf3 49%,#4b658b 51%,#172d4f 78%,#0e1c32 100%);
+  background-size:150% 100%;
+  background-position:0% 50%;
+}
+.front-engraving::after {
+  background:repeating-linear-gradient(132deg,transparent 0 6px,#fcfdff49 6px 7px,#4c658b28 7px 8px,transparent 8px 14px),linear-gradient(135deg,transparent 36%,#eef8ff40 49%,transparent 58%);
+}
+.contact-brand,.contact-info { position:relative; z-index:1; }
+.wordmark { width:88%; }
+.brand-foil img { filter:drop-shadow(0 1px 0 #ffffffe0) drop-shadow(0 2px 2px #223e6045); }
+.front-guilloche {
+  position:absolute; z-index:-1; inset:8% 7% 8% 6%; pointer-events:none;
+  background:
+    repeating-radial-gradient(ellipse at 115% 15%,transparent 0 5px,#5e78952c 5px 5.65px,transparent 6px 11px),
+    repeating-radial-gradient(ellipse at 90% -18%,transparent 0 7px,#ffffffb0 7px 7.65px,transparent 8px 14px);
+  -webkit-mask-image:linear-gradient(105deg,transparent 25%,#000 72%,#000);
+  mask-image:linear-gradient(105deg,transparent 25%,#000 72%,#000);
+  opacity:.62;
+}
+.foil-corners {
+  position:absolute; z-index:2; inset:8px; pointer-events:none; color:#7a93ae;
+  background:
+    linear-gradient(90deg,currentColor 0,transparent) top left / 20% 1px,
+    linear-gradient(180deg,currentColor 0,transparent) top left / 1px 25%,
+    linear-gradient(270deg,currentColor 0,transparent) bottom right / 20% 1px,
+    linear-gradient(0deg,currentColor 0,transparent) bottom right / 1px 25%;
+  background-repeat:no-repeat;
+}
+.foil-corners::before,.foil-corners::after {
+  content:""; position:absolute; width:4px; height:4px; transform:rotate(45deg);
+  background:currentColor; box-shadow:0 0 4px #f4faff7a;
+}
+.foil-corners::before { left:-1px; top:-1px; }
+.foil-corners::after { right:-1px; bottom:-1px; }
+.contact-info::before { background:linear-gradient(90deg,#183654,#6889b2,#b9cfdf,#fff); }
+.email a { color:#0e2039; text-shadow:0 1px #ffffffbc; }
+.service-face:not([hidden]) {
+  grid-template-columns:minmax(0,44%) minmax(0,1fr); gap:4%;
+  background:
+    radial-gradient(ellipse at 25% 50%,#20313c 0%,#080e12 44%,transparent 74%),
+    repeating-linear-gradient(115deg,#b5c1d407 0px,#b5c1d407 1px,transparent 1px,transparent 4px),
+    linear-gradient(135deg,#1a2633 0%,#05090d 45%,#172330 100%);
+}
+.back-engraving {
+  position:absolute; z-index:-1; inset:0; pointer-events:none;
+  background:
+    linear-gradient(135deg,#52697b42 0 7%,transparent 7.25% 10%,#afc2d238 10% 10.3%,transparent 10.6% 91%,#7f98b536 91.3% 91.6%,transparent 92% 94%,#273e566b 94.3%),
+    repeating-radial-gradient(ellipse at 19% 50%,transparent 0 7px,#8ea6bc20 7px 7.6px,transparent 8px 14px);
+  -webkit-mask-image:linear-gradient(90deg,#000 10%,#000 42%,transparent 80%);
+  mask-image:linear-gradient(90deg,#000 10%,#000 42%,transparent 80%);
+}
+.service-face .foil-corners { color:#b4c9dc; }
+.foil-logo { border-radius:50%; box-shadow:0 0 0 1px #c4d5df42,0 0 16px #8aacc01b; }
+.back-copy { background:linear-gradient(90deg,#a6bed00c,transparent 50%); }
+.service-brief h2 { text-shadow:0 1px 0 #000; }
+.service-brief ul { gap:0; }
+.service-brief li { padding:.10em 0 .10em .86em; border-top:1px solid #adc5d322; }
+.service-brief li::before { top:.58em; }
+@media(prefers-reduced-motion:no-preference) {
+  .front-engraving::before { animation:surface-light 15s ease-in-out infinite alternate; }
+  .front-guilloche { transition:opacity 2s ease-in-out; }
+}
+.card.logo-off .front-guilloche { opacity:.40; }
+
+/* Home screen installation does not imply any mail-reading or notification permission. */
+.home-app { margin-top:1rem; padding:.85rem; border:1px solid #51616d; background:linear-gradient(135deg,#1b2831,#10171d); }
+.home-app-intro { display:flex; align-items:center; gap:.45rem; font-size:.82rem; font-weight:650; color:#dde9f1; }
+.install-button { margin:.65rem 0 0; width:100%; min-height:44px; padding:.55rem .8rem; border:1px solid #9ebccc; background:#dce8ed; color:#11262f; font-size:.86rem; font-weight:700; }
+.install-button[hidden],.install-guide[hidden],.install-status[hidden] { display:none; }
+.install-guide { margin-top:.65rem; color:#dce8ee; }
+.install-guide summary { cursor:pointer; min-height:44px; padding:.65rem .3rem; border:1px solid #657d89; text-align:center; font-size:.86rem; font-weight:650; }
+.install-guide p,.install-status,.notice-info p { font-size:.76rem; color:#c1cfd8; line-height:1.65; margin:.45rem 0 0; }
+.notice-info { border-top:1px solid #526471; margin-top:.8rem; padding-top:.75rem; }
+.notice-info h3 { font-size:.85rem; font-weight:650; margin:0; }
+.notice-info .notice-state { color:#d7c6a0; font-weight:650; }

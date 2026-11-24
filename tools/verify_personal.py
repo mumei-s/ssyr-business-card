@@ -74,6 +74,8 @@ def check_card_controls(page):
         assert front.evaluate('(el) => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1')
         expect(front.locator('img')).to_have_count(1)
         expect(front.locator('.front-engraving')).to_have_count(1)
+        expect(front.locator('.front-guilloche')).to_have_count(1)
+        expect(front.locator('.foil-corners')).to_have_count(1)
         check_role(front)
         expect(front.locator('[data-add-contact]')).to_have_count(0)
         expect(page.locator('[data-add-contact]')).to_have_count(1)
@@ -91,6 +93,7 @@ def check_card_controls(page):
         expect(light).to_have_attribute('aria-pressed', 'false')
         check_viewport(page)
         expect(back.locator('a, button, .person, .back-brand')).to_have_count(0)
+        expect(back.locator('.back-engraving')).to_have_count(1)
         assert 'SHINJI' not in back.inner_text() and '代表' not in back.inner_text()
         assert back.locator('.service-brief li').all_inner_texts() == ['工事・施工', '現場支援', 'ポスティング', '洗車', 'AI・デジタル制作']
         back_box = back.bounding_box()
@@ -167,6 +170,29 @@ def check_card_controls(page):
     page.locator('#front-button').click()
     expect(light).to_be_hidden()
     assert front.locator('.brand-foil').evaluate("el => getComputedStyle(el,'::after').animationName") == 'surface-light'
+    # Back-side control stops the front face's motion too, including after reload.
+    page.locator('#back-button').click()
+    light.click()
+    expect(light).to_have_attribute('aria-pressed', 'false')
+    page.locator('#front-button').click()
+    expect(light).to_be_hidden()
+    for selector, pseudo in (('#front', '::after'), ('.brand-foil', '::after'), ('.front-engraving', '::before')):
+        assert page.locator(selector).evaluate('(el,p) => getComputedStyle(el,p).animationPlayState', pseudo) == 'paused'
+    page.reload()
+    assert page.locator('#card').evaluate("el => el.classList.contains('logo-off')")
+    page.locator('#back-button').click()
+    expect(light).to_have_attribute('aria-pressed', 'false')
+    light.click()
+    page.locator('#front-button').click()
+    assert front.locator('.brand-foil').evaluate("el => getComputedStyle(el,'::after').animationPlayState") == 'running'
+    expect(page.locator('#install-guide')).to_be_visible()
+    expect(page.locator('.notice-state')).to_contain_text('まだ通知は届きません')
+    assert '管理者専用送信画面' in page.locator('.notice-info').inner_text()
+    manifest_url = page.locator('link[rel="manifest"]').evaluate('el => el.href')
+    manifest = page.request.get(manifest_url).json()
+    assert manifest['scope'] == './' and manifest['start_url'] == './' and manifest['display'] == 'standalone'
+    assert all(page.request.get(urljoin(manifest_url, icon['src'])).ok for icon in manifest['icons'])
+    assert page.request.get(urljoin(manifest_url, 'sw.js')).ok
     assert front.evaluate("el => getComputedStyle(el,'::after').animationName") == 'surface-light'
     assert page.locator('.jobs img').first.evaluate("el => getComputedStyle(el).animationName") == 'photo-light'
     print('PASS SHINJI: brand-first front, no front emblem, business-only back, gradual logo ON/OFF, responsive layout and reduced motion')
