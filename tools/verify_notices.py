@@ -77,6 +77,9 @@ def check_notices(browser,base):
         def summary():return {'id':device_contacts.get(b.get('device')),'displayName':{VID:'ゲストさん',CID:'既知の相手',FIRST_CONTACT:FIRST_NAME,COMMON_CONTACT:COMMON_NAME}.get(device_contacts.get(b.get('device')),'ゲスト'),'enabled':state['enabled'],'muumeiNews':state['news']}
         if a=='visitor-start':
             assert len(bytes.fromhex(b['device']))==32
+            if not str(b.get('name','')).replace('\u200b','').strip() and b['device'] not in device_contacts:
+                done({'error':'SHINJIにわかる名前を入力してください'},400)
+                return
             if b['name']==COMMON_NAME or b['device'] in public_registrations:
                 assert not b.get('email') and not b.get('phone') and not b.get('muumeiNews')
                 if b['device'] not in public_registrations:
@@ -229,8 +232,27 @@ def check_notices(browser,base):
     # Direct, invite-free conversation is the default.
     page.goto(base+'shinji/notices.html')
     expect(page.locator('#messages')).to_be_visible()
-    page.locator('#visitor-name').fill('ゲストさん')
+    name=page.locator('#visitor-name')
+    expect(page.locator('#visitor-name-label')).to_contain_text('SHINJIにわかる名前を入力してください')
+    expect(name).to_have_js_property('required',True)
+    name.fill('')
+    page.locator('#claim-button').click()
+    expect(name).to_be_focused()
+    expect(page.locator('#feedback')).to_have_text('SHINJIにわかる名前を入力してください')
+    name.fill('　\u200b ')
     page.locator('#chat-body').fill('相談です')
+    page.locator('#chat-send').click()
+    expect(name).to_be_focused()
+    expect(page.locator('#chat-body')).to_have_value('相談です')
+    page.locator('#settings-panel details summary').click()
+    page.locator('#news').click()
+    expect(name).to_be_focused()
+    page.locator('#settings-panel details summary').click()
+    page.locator('#enable').click()
+    expect(name).to_be_focused()
+    assert page.evaluate('Notification.permission')=='default'
+    assert not set(requests).intersection({'visitor-start','chat-send','preferences','subscribe'})
+    name.fill('ゲストさん')
     page.locator('#chat-send').click()
     expect(page.locator('#feedback')).to_contain_text('メッセージを送信しました')
     expect(page.locator('#feedback')).to_contain_text('通知サービス受付済み')
@@ -292,6 +314,7 @@ def check_notices(browser,base):
     assert requests.count('claim')==claim_count
     assert '#' not in page.url
     expect(page.locator('#invite-options')).to_be_hidden()
+    expect(page.locator('#visitor-name')).to_be_hidden()
     page.locator('#claim-button').click()
     expect(page.locator('#message-list')).to_contain_text('既知の相手との履歴')
     assert requests.count('claim')==claim_count+1
@@ -482,8 +505,16 @@ def check_notices(browser,base):
     entry.click()
     expect(guest.locator('#card-receive-title')).to_be_focused()
     expect(guest.locator('#card-receive-start')).to_be_visible()
+    guest_name=guest.locator('#card-receive-name')
+    expect(guest.locator('label[for="card-receive-name"]')).to_contain_text('SHINJIにわかる名前を入力してください')
+    expect(guest_name).to_have_js_property('required',True)
+    for blank in ('', '　\u200b '):
+        guest_name.fill(blank)
+        guest.locator('#card-receive-start').click()
+        expect(guest_name).to_be_focused()
+        expect(guest.locator('#card-receive-status')).to_have_text('SHINJIにわかる名前を入力してください')
     assert not public_registrations and requests.count('visitor-start')==before.count('visitor-start')
-    guest.locator('#card-receive-name').fill(COMMON_NAME)
+    guest_name.fill(COMMON_NAME)
     state['drop_common_response']=True
     with guest.expect_response(lambda r:r.url==API and r.status==503):
         guest.locator('#card-receive-start').click()

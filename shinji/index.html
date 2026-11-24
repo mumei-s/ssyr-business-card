@@ -21,8 +21,8 @@
   <script src="./install.js?v=1" defer></script>
   <script src="./muumei-entry.js?v=1" defer></script>
   <script src="./game-entry.js?v=1" defer></script>
-  <script src="./notice-common.js?v=receive-1" defer></script>
-  <script src="./chat-receive.js?v=accepted-1" defer></script>
+  <script src="./notice-common.js?v=nickname-1" defer></script>
+  <script src="./chat-receive.js?v=nickname-1" defer></script>
   <script src="./chat-unread.js?v=invite-1" defer></script>
 
   <link rel="icon" type="image/png" sizes="96x96" href="./brand-96.png?v=share-2">
@@ -105,10 +105,10 @@
       </div>
       <section class="card-receive" aria-labelledby="card-receive-title">
         <h2 id="card-receive-title" tabindex="-1">SHINJIとの個別チャット</h2>
-        <form id="card-receive-form" hidden>
+        <form id="card-receive-form" novalidate hidden>
           <p>受け取りを始めると、この名刺でSHINJIからの連絡を読めます。</p>
-          <label for="card-receive-name">SHINJIに伝える呼び名（任意）</label>
-          <input id="card-receive-name" maxlength="100" autocomplete="nickname" placeholder="空欄なら「ゲスト」">
+          <label for="card-receive-name">SHINJIにわかる名前を入力してください</label>
+          <input id="card-receive-name" maxlength="100" autocomplete="nickname" required>
           <button id="card-receive-start" type="submit">SHINJIからの連絡を受け取る</button>
         </form>
         <p id="card-receive-status" role="status" aria-live="polite"></p>

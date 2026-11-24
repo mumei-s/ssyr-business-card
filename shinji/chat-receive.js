@@ -49,7 +49,7 @@
     start.disabled = true;
     status.textContent = '受け取りを設定しています…';
     try {
-      const result = await N.startReceiving(name.value.trim());
+      const result = await N.startReceiving(N.readVisitorName(name));
       showConnected(result.contact.id);
     } catch (error) {
       status.textContent = error.message || '受け取りを開始できませんでした。もう一度お試しください。';

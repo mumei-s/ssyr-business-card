@@ -105,6 +105,20 @@
      };
    });
  }
+ function readVisitorName(input){
+   const name=input.value.trim();
+   const message=!/[^\s\p{Default_Ignorable_Code_Point}\p{Cc}]/u.test(name)
+     ? 'SHINJIにわかる名前を入力してください'
+     : name.length>100 ? '名前は100文字以内で入力してください。' : '';
+   input.setCustomValidity(message);
+   if(message){
+     input.focus();
+     input.reportValidity();
+     input.setCustomValidity('');
+     throw Error(message);
+   }
+   return name;
+ }
  async function startReceiving(name,muumeiNews=false,preferred=''){
    // A revoked key can still be stored on another tab. Only retire keys the
    // server explicitly reports unlinked; a network error keeps the saved chats.
@@ -178,5 +192,5 @@
  }
  const pushLabels={pending:'処理結果未確定',accepted:'通知サービス受付済み',failed:'通知送信失敗',expired:'端末登録期限切れ',disabled:'連絡を保存・通知OFF',unknown:'送信結果未確定'};
  function setBusy(root,busy){for(const b of root.querySelectorAll('button[type=submit]'))b.disabled=busy}
- window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,getThreads,rememberThread,forgetThread,startReceiving,deviceForInvite,validThreadId,inviteFrom,date,el,messageDeleteButton,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
+ window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,getThreads,rememberThread,forgetThread,readVisitorName,startReceiving,deviceForInvite,validThreadId,inviteFrom,date,el,messageDeleteButton,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
 })();
