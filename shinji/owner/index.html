@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101417"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://slamzhgsawfnmwlejgqp.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'"><title>管理者専用電話帳 | S's-YR</title><link rel="apple-touch-icon" href="../brand-96.png"><link rel="stylesheet" href="../notices.css?v=chat-delete-1"><script src="../notice-common.js?v=chat-delete-1" defer></script><script src="../owner.js?v=chat-delete-1" defer></script>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101417"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://slamzhgsawfnmwlejgqp.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'"><title>管理者専用電話帳 | S's-YR</title><link rel="apple-touch-icon" href="../brand-96.png"><link rel="stylesheet" href="../notices.css?v=private-chat-1"><script src="../notice-common.js?v=private-chat-1" defer></script><script src="../owner.js?v=private-chat-1" defer></script>
   <link rel="icon" type="image/png" sizes="96x96" href="../brand-96.png?v=share-2">
   <link rel="shortcut icon" href="../brand-96.png?v=share-2" type="image/png">
   <meta property="og:site_name" content="S's-YR">
@@ -59,13 +59,19 @@
     </section>
     <section class="panel"><div class="between"><h2 id="list-title">チャット <span id="contact-count"></span></h2><button id="reload" type="button">更新</button></div>
       <div class="tabs-simple" role="group" aria-label="管理画面の切替"><button id="tab-chats" type="button" aria-pressed="true">チャット <span id="unread-count"></span></button><button id="tab-contacts" type="button" aria-pressed="false">電話帳</button></div>
+      <div class="actions"><button id="new-chat" type="button" class="primary" aria-expanded="false" aria-controls="new-chat-form">個別チャットを作る</button></div>
+      <form id="new-chat-form" hidden>
+        <label>相手の呼び名（管理用・任意）<input id="new-chat-name" maxlength="100" autocomplete="off"></label>
+        <label>最初のメッセージ<textarea id="new-chat-body" rows="3" maxlength="2000" required></textarea></label>
+        <div class="actions"><button type="submit" class="primary">メッセージを保存してリンクを作る</button><button type="button" id="cancel-new-chat">閉じる</button></div>
+      </form>
       <div class="actions"><button id="new-contact" type="button" class="primary" hidden>＋ 連絡先を追加</button></div>
       <label>検索<input id="search" type="search" placeholder="名前・メール・電話番号"></label><div id="contacts"></div>
     </section>
     <section class="panel" id="edit-panel" hidden><h2 id="edit-title">連絡先を追加</h2>
       <form id="contact-form"><label>名前<input id="contact-name" required maxlength="100" autocomplete="off"></label><label>メール<input id="contact-email" type="email" maxlength="254" autocomplete="off"></label><label>電話番号<input id="contact-phone" type="tel" maxlength="50" autocomplete="off"></label><label>メモ<textarea id="contact-memo" maxlength="500" rows="2"></textarea></label><button class="primary" type="submit">保存する</button></form>
     </section>
-    <section class="panel" id="invite-panel" hidden><h2>個別のチャットリンク</h2><p>この連絡先とチャットを紐付けたいときだけ相手に共有します。7日間・1回限り有効です。</p><label>共有リンク<input id="invite-link" readonly></label><div class="actions"><button id="copy-invite" type="button">コピーする</button><button id="share-invite" type="button" class="primary">共有する</button><a class="button" id="open-invite" href="../notices.html" target="_blank" rel="noopener noreferrer" hidden>受信者用リンク</a></div></section>
+    <section class="panel" id="invite-panel" hidden><h2>個別のチャットリンク</h2><p>相手本人にこのリンクを共有してください。相手が「チャットを開く」を押すと、メッセージを読んで返信できます。リンクは7日間・1回限り有効です。</p><label>共有リンク<input id="invite-link" readonly></label><div class="actions"><button id="copy-invite" type="button">コピーする</button><button id="share-invite" type="button" class="primary">共有する</button><a class="button" id="open-invite" href="../notices.html" target="_blank" rel="noopener noreferrer" hidden>受信者用リンク</a></div></section>
     <section class="panel" id="selected-panel" hidden>
       <div class="between"><h2 id="selected-name"></h2><span class="state" id="selected-state"></span></div>
       <div class="actions"><a id="mail-contact" class="button" hidden>通常のメール</a><a id="call-contact" class="button" hidden>電話する</a><button id="promote-contact" type="button" hidden>電話帳に追加</button></div>

@@ -1,5 +1,7 @@
 """Synthetic browser interactions: no real recipient, mailbox or push is used."""
 import base64
+from urllib.parse import parse_qs, urlsplit
+from uuid import UUID
 from playwright.sync_api import expect
 
 API = 'https://slamzhgsawfnmwlejgqp.supabase.co/functions/v1/ssyr-card'
@@ -13,6 +15,10 @@ NEW='d3d3d3d3-d3d3-43d3-83d3-d3d3d3d3d3d3'
 MID='e4e4e4e4-e4e4-44e4-84e4-e4e4e4e4e4e4'
 SECOND_MID='a2a2a2a2-a2a2-42a2-82a2-a2a2a2a2a2a2'
 REPLY_ID='f5f5f5f5-f5f5-45f5-85f5-f5f5f5f5f5f5'
+FIRST_CONTACT='88888888-8888-4888-8888-888888888888'
+FIRST_MID='99999999-9999-4999-8999-999999999999'
+FIRST_NAME='こちらから連絡する相手'
+FIRST_BODY='こちらからの最初のメッセージです。'
 DATE='2026-11-24T00:00:00Z'
 MANUAL={'id':CID,'display_name':'既知の相手','email':'test@example.invalid','phone':'','memo':'','linked_at':DATE,'push_enabled_at':DATE,'revoked_at':None,'muumei_news':False,'entry_type':'manual','unread':0}
 VISITOR={'id':VID,'display_name':'ゲストさん','email':'','phone':'','memo':'','linked_at':DATE,'push_enabled_at':None,'revoked_at':None,'muumei_news':False,'entry_type':'visitor','chat_updated_at':DATE,'unread':1}
@@ -24,6 +30,7 @@ def check_notices(browser,base):
     page.on('pageerror',lambda e:errors.append(str(e)))
     delayed=[]
     device_contacts = {}
+    owner_starts = {}
     threads = {
         # Outbound notices sent before the direction field existed.
         VID: [{'id': CID, 'title': 'テスト連絡', 'body': '受信した連絡', 'created_at': DATE, 'read_at': None}],
@@ -62,19 +69,37 @@ def check_notices(browser,base):
             r.fulfill(json={'ok':True,'version':1,'vapidPublicKey':key},headers=HEADERS);return
         b=r.request.post_data_json;a=b['action'];requests.append(a)
         def done(body,status=200):r.fulfill(status=status,json=body,headers=HEADERS)
-        def summary():return {'displayName':'ゲストさん' if device_contacts.get(b.get('device'))==VID else '既知の相手','enabled':state['enabled'],'muumeiNews':state['news']}
+        def summary():return {'id':device_contacts.get(b.get('device')),'displayName':{VID:'ゲストさん',CID:'既知の相手',FIRST_CONTACT:FIRST_NAME}.get(device_contacts.get(b.get('device')),'ゲスト'),'enabled':state['enabled'],'muumeiNews':state['news']}
         if a=='visitor-start':
             assert len(b['device'])==64 and b['name']=='ゲストさん'
             device_contacts[b['device']] = VID
             state['linked']=True;done({'contact':summary()})
         elif a=='claim':
-            assert b['invite']==INVITE and len(b['device'])==64
-            device_contacts[b['device']] = CID
+            assert len(b['device'])==64
+            if b['device'] in device_contacts:
+                done({'error':'この端末キーは別の会話で使用中です。'},409)
+                return
+            if b['invite']==INVITE:
+                device_contacts[b['device']] = CID
+            else:
+                start=next((item for item in owner_starts.values() if item['invite']==b['invite']),None)
+                if not start or start['contact']['linked_at']:
+                    done({'error':'リンクの有効期限または使用状況をご確認ください。'},401)
+                    return
+                start['contact']['linked_at']=DATE
+                device_contacts[b['device']] = FIRST_CONTACT
             state['linked']=True;done({'contact':summary()})
+        elif a=='chat-unread':
+            counts = []
+            thread_ids = [device_contacts.get(device) for device in b['devices']]
+            for thread_id in thread_ids:
+                rows = threads.get(thread_id, [])
+                counts.append(sum(1 for m in rows if m.get('direction')!='inbound' and not m.get('read_at')))
+            done({'counts':counts,'threadIds':thread_ids})
         elif a=='status':
             if state['delay_status']:
                 state['delay_status']=False;delayed.append(r);return
-            if not state['linked']:done({'error':'未登録'},401);return
+            if not state['linked'] or b['device'] not in device_contacts:done({'error':'未登録'},401);return
             done({'contact':summary(),'messages':threads[device_contacts[b['device']]]})
         elif a=='chat-send':
             assert state['linked'] and device_contacts[b['device']]==VID and b['requestId']
@@ -112,7 +137,21 @@ def check_notices(browser,base):
             if a=='owner-list':
                 if state['delay_list']:
                     state['delay_list']=False;delayed.append(r);return
-                done({'contacts':[dict(VISITOR,unread=state['unread']),*state['saved']],'ownerPushEnabled':state['owner_enabled']})
+                done({'contacts':[dict(VISITOR,unread=state['unread']),*state['saved'],*(item['contact'] for item in owner_starts.values())],'ownerPushEnabled':state['owner_enabled']})
+            elif a=='owner-start-chat':
+                assert b['name']==FIRST_NAME and b['body']==FIRST_BODY
+                assert not b.get('email') and not b.get('phone')
+                assert UUID(b['requestId']).version == 4 and len(bytes.fromhex(b['invite'])) == 32
+                if b['requestId'] not in owner_starts:
+                    row=dict(VISITOR,id=FIRST_CONTACT,display_name=FIRST_NAME,linked_at=None,owner_started=True,unread=0)
+                    owner_starts[b['requestId']]={'contact':row,'invite':b['invite']}
+                    threads[FIRST_CONTACT]=[{'id':FIRST_MID,'title':'チャット','body':b['body'],'direction':'outbound','created_at':DATE,'read_at':None,'push_status':'disabled'}]
+                    # Model a committed first request whose response was lost.
+                    done({'error':'通信を再試行してください。'},503)
+                    return
+                start=owner_starts[b['requestId']]
+                assert start['invite']==b['invite']
+                done(start)
             elif a=='owner-history':
                 if b['contactId']==CID and state.pop('delay_history', False):
                     delayed.append(r)
@@ -199,15 +238,41 @@ def check_notices(browser,base):
     page.locator('#stop').click()
     expect(page.locator('#notice-state')).to_have_text('通知 OFF')
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth+1')
-    # Existing personal links remain usable without revealing their token.
-    page.evaluate("localStorage.removeItem('ssyr-card-device-v1')")
-    state['linked']=False
+    # Opening a bad invite must leave an already linked browser's chat intact.
+    page.goto(base+'shinji/notices.html#invite='+'e'*64)
+    expect(page.locator('#claim-button')).to_be_visible()
+    page.locator('#claim-button').click()
+    expect(page.locator('#feedback')).to_contain_text('リンク')
+    assert page.evaluate("localStorage.getItem('ssyr-card-device-v1')")==guest_device
+    page.locator('#dismiss-invite').click()
+    expect(page.locator('#message-list')).to_contain_text('相談です')
+
+    # An existing personal invite adds a separate thread, only on acceptance.
+    claim_count=requests.count('claim')
     page.goto(base+'shinji/notices.html?v=share-2#invite='+INVITE)
     expect(page.locator('#claim-button')).to_be_visible()
+    assert requests.count('claim')==claim_count
     assert '#' not in page.url
     expect(page.locator('#invite-options')).to_be_hidden()
     page.locator('#claim-button').click()
-    expect(page.locator('#feedback')).to_contain_text('チャットを開きました')
+    expect(page.locator('#message-list')).to_contain_text('既知の相手との履歴')
+    assert requests.count('claim')==claim_count+1
+    assert page.evaluate("localStorage.getItem('ssyr-card-device-v1')")!=guest_device
+    switcher=page.locator('#thread-select')
+    expect(switcher).to_be_visible()
+    expect(switcher.locator('option')).to_have_count(2)
+    switcher.select_option(index=0)
+    expect(page.locator('#message-list')).to_contain_text('相談です')
+    expect(page.locator('#message-list')).not_to_contain_text('既知の相手との履歴')
+    switcher.select_option(index=1)
+    expect(page.locator('#message-list')).to_contain_text('既知の相手との履歴')
+    # The card counts both conversations, including legacy outbound notices.
+    threads[CID][0]['read_at'] = None
+    legacy = next(m for m in threads[VID] if m['id']==CID)
+    legacy['read_at'] = None
+    page.goto(base+'shinji/')
+    expect(page.locator('#card-chat-unread')).to_be_visible()
+    expect(page.locator('#card-chat-unread-count')).to_contain_text('2件')
     # The owner never enters a recipient registration page.
     page.goto(base+'shinji/owner.html')
     expect(page.locator('#owner-console')).to_be_hidden()
@@ -305,6 +370,66 @@ def check_notices(browser,base):
     expect(page.locator('#invite-panel')).to_be_hidden()
     expect(page.locator('.contact-row')).to_have_count(2)
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth+1')
+    page.locator('#tab-chats').click()
+    page.locator('#new-chat').click()
+    page.locator('#new-chat-name').fill(FIRST_NAME)
+    page.locator('#new-chat-body').fill(FIRST_BODY)
+    submit_start=page.locator('#new-chat-form button[type=submit]')
+    submit_start.click()
+    expect(page.locator('#feedback')).to_contain_text('再試行')
+    expect(page.locator('#new-chat-body')).to_have_value(FIRST_BODY)
+    submit_start.click()
+    expect(page.locator('#selected-name')).to_have_text(FIRST_NAME)
+    expect(page.locator('#history .mine')).to_contain_text(FIRST_BODY)
+    expect(page.locator('#invite-panel')).to_be_visible()
+    assert len(owner_starts)==1 and requests.count('owner-start-chat')==2
+    share=page.locator('#invite-link').input_value()
+    link=urlsplit(share)
+    assert link.path.endswith('/shinji/notices.html')
+    assert parse_qs(link.fragment)['invite']==[next(iter(owner_starts.values()))['invite']]
+    assert FIRST_BODY not in share
+    page.locator('#tab-contacts').click()
+    expect(page.locator('.contact-row').filter(has_text=FIRST_NAME)).to_have_count(0)
+
+    # A new recipient can read the owner's first message without writing one.
+    new_recipient=browser.new_context(service_workers='block')
+    new_recipient.add_init_script("""(() => {
+      window.badgeCalls=[];
+      Object.defineProperty(navigator,'setAppBadge',{value:async n=>{window.badgeCalls.push(n)}});
+      Object.defineProperty(navigator,'clearAppBadge',{value:async()=>{window.badgeCalls.push(0)}});
+      Object.defineProperty(window,'Notification',{value:{permission:'denied',
+        requestPermission(){throw Error('The unread view requested permission')}}});
+    })()""")
+    receiver=new_recipient.new_page()
+    receiver.route(API,route)
+    before=list(requests)
+    receiver.goto(share)
+    expect(receiver.locator('#claim-button')).to_be_visible()
+    expect(receiver.locator('#message-list')).not_to_contain_text(FIRST_BODY)
+    receiver.locator('#claim-button').click()
+    expect(receiver.locator('#message-list .theirs')).to_contain_text(FIRST_BODY)
+    assert requests.count('claim')==before.count('claim')+1
+    for action in ('visitor-start','chat-send','owner-send'):
+        assert requests.count(action)==before.count(action)
+    receiver.reload()
+    expect(receiver.locator('#message-list .theirs')).to_contain_text(FIRST_BODY)
+    expect(receiver.locator('#chat-unread')).to_have_text('未読 1件')
+    expect(receiver.locator('#notice-state')).to_have_text('通知 OFF')
+    receiver.goto(base+'shinji/')
+    card_unread=receiver.locator('#card-chat-unread')
+    expect(card_unread).to_be_visible()
+    expect(receiver.locator('#card-chat-unread-count')).to_contain_text('1件')
+    receiver.wait_for_function('window.badgeCalls.at(-1) === 1')
+    card_unread.click()
+    expect(receiver.locator('#message-list .theirs')).to_contain_text(FIRST_BODY)
+    receiver.get_by_role('button',name='既読にする').click()
+    expect(receiver.locator('#chat-unread')).to_be_hidden()
+    with receiver.expect_response(lambda response: response.url==API and response.request.method=='POST' and response.request.post_data_json.get('action')=='chat-unread'):
+        receiver.goto(base+'shinji/')
+    expect(receiver.locator('#card-chat-unread')).to_be_hidden()
+    receiver.wait_for_function('window.badgeCalls.at(-1) === 0')
+    assert requests.count('subscribe')==before.count('subscribe')
+    new_recipient.close()
     # Remembered login survives closing/reopening a tab. The server validates it.
     assert page.evaluate("localStorage.getItem('ssyr-owner-remember-v1')")==SESSION
     page.evaluate("sessionStorage.removeItem('ssyr-owner-session-v1')")
