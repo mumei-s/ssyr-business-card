@@ -62,6 +62,10 @@ def check_card_controls(page):
     for width in (320, 360, 390, 480, 768, 1024, 1280):
         page.set_viewport_size({'width': width, 'height': original['height']})
         check_viewport(page)
+        intro = page.locator('.muumei-introduction')
+        expect(intro).to_be_visible()
+        assert intro.evaluate('(el) => el.scrollWidth <= el.clientWidth + 1'), width
+        expect(intro.get_by_role('heading', name='会員制プライベートSNS')).to_be_visible()
         expect(front.locator('a[href^="mailto:"]')).to_be_visible()
         lettering = front.locator('.wordmark img')
         expect(lettering).to_be_visible()
@@ -189,6 +193,24 @@ def check_card_controls(page):
     expect(page.locator('.notice-info, .notice-state')).to_have_count(0)
     assert '準備中' not in page.locator('#home-app').inner_text()
     assert '監視' not in page.locator('#home-app').inner_text()
+    intro = page.locator('.muumei-introduction')
+    expect(intro).to_be_visible()
+    assert '準備中' not in intro.inner_text()
+    expect(intro.get_by_role('link', name='サンプルを体験する')).to_have_attribute('href', 'https://mumei-s.github.io/muumei-public/review/')
+    expect(intro.locator('#muumei-official')).to_have_attribute('href', 'https://mumei-s.github.io/muumei-public/')
+    intro.locator('img').evaluate('img => img.decode()')
+    for asset in ('muumei-marble.webp', 'muumei-lounge.webp', 'muumei-entry.js'):
+        assert page.request.get(urljoin(page.url, asset)).ok
+    # The preview stays available; the official entry changes only on an affirmative official release.
+    config_url = 'https://mumei-s.github.io/muumei-public/muumei-config.json'
+    page.route(config_url, lambda route: route.fulfill(json={'ready': True, 'appUrl': 'https://mumei-s.github.io/muumei-public'}, headers={'Access-Control-Allow-Origin': '*'}))
+    page.reload()
+    expect(intro.locator('#muumei-official')).to_have_attribute('href', 'https://mumei-s.github.io/muumei-public/entry/private/')
+    expect(intro.locator('#muumei-official')).to_contain_text('招待・会員登録へ')
+    expect(intro.get_by_role('link', name='サンプルを体験する')).to_be_visible()
+    page.unroute(config_url)
+    page.reload()
+    expect(intro.locator('#muumei-official')).to_have_attribute('href', 'https://mumei-s.github.io/muumei-public/')
     manifest_url = page.locator('link[rel="manifest"]').evaluate('el => el.href')
     manifest = page.request.get(manifest_url).json()
     assert manifest['scope'] == './' and manifest['start_url'] == './' and manifest['display'] == 'standalone'

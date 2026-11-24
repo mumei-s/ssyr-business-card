@@ -509,3 +509,73 @@ img { display: block; }
 .install-guide { margin-top:.65rem; color:#dce8ee; }
 .install-guide summary { cursor:pointer; min-height:44px; padding:.65rem .3rem; border:1px solid #657d89; text-align:center; font-size:.86rem; font-weight:650; }
 .install-guide p,.install-status { font-size:.76rem; color:#c1cfd8; line-height:1.65; margin:.45rem 0 0; }
+
+/* MUUMEI: invitation-card typography, actual brand artwork and a photographic lounge.
+   This section is independent of the two business-card faces. */
+.muumei-introduction {
+  position:relative; isolation:isolate; overflow:hidden; margin-top:1.55rem;
+  color:#292b25; border:1px solid #b4a188; border-radius:3px;
+  background:#f4f1e9 url('./muumei-marble.webp') center/cover no-repeat;
+  box-shadow:0 13px 32px -18px #000c,inset 0 0 0 3px #fff8;
+}
+.muumei-introduction::before {
+  content:""; position:absolute; inset:5px; z-index:3; border:1px solid #9d87675c;
+  pointer-events:none;
+}
+.muumei-hero {
+  position:relative; isolation:isolate; min-height:clamp(190px,42vw,246px);
+  display:grid; align-items:center;
+}
+.muumei-lounge {
+  position:absolute; inset:0 0 0 51%; z-index:-1;
+  background:#b8a890 url('./muumei-lounge.webp') center 57%/cover no-repeat;
+}
+.muumei-lounge::after {
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(90deg,#f2eee8 0%,#f2eee8d9 6%,#f2eee82e 34%,transparent 53%),
+    linear-gradient(180deg,#221d1110,transparent 55%,#1a170e24);
+}
+.muumei-copy {
+  position:relative; z-index:1; width:68%; padding:1.3rem .65rem 1.15rem 1.25rem;
+}
+.muumei-kicker {
+  color:#78654a; font:600 .57rem/1.4 Georgia,serif; letter-spacing:.17em;
+  margin-bottom:.55rem;
+}
+.muumei-wordmark { width:min(100%,205px); height:auto; margin-left:-.12rem; }
+.directory .muumei-copy h2 {
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:clamp(.84rem,3.4vw,1.08rem); font-weight:700; letter-spacing:.035em;
+  line-height:1.55; margin-top:.32rem; color:#292b25;
+  overflow-wrap:anywhere;
+}
+.muumei-reading { font-size:.67rem; color:#78674f; letter-spacing:.18em; margin-top:.15rem; }
+.muumei-rule {
+  display:block; width:54%; height:1px; margin:.72rem 0;
+  background:linear-gradient(90deg,#8f7856,#c2ad8d 50%,transparent);
+}
+.muumei-tagline {
+  font-family:"Hiragino Mincho ProN","Yu Mincho",serif; font-size:clamp(.83rem,3.3vw,1.04rem);
+  font-weight:700; color:#37352d; line-height:1.45;
+}
+.muumei-description { color:#4c493e; font-size:.7rem; line-height:1.7; margin-top:.28rem; max-width:16rem; }
+.muumei-actions {
+  position:relative; z-index:4; padding:.75rem 1rem 1rem;
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:.45rem;
+  border-top:1px solid #ac987c78;
+  background:linear-gradient(110deg,#f7f4ed,#e8dfd2);
+}
+.muumei-actions a {
+  min-width:0; display:flex; align-items:center; justify-content:space-between;
+  gap:.2rem; min-height:46px; padding:.55rem .65rem; text-decoration:none;
+  font-size:clamp(.7rem,2.7vw,.8rem); line-height:1.45; font-weight:650;
+  border:1px solid #9d896d; border-radius:2px;
+}
+.muumei-main { background:linear-gradient(125deg,#343932,#171d19); color:#fff7e8; box-shadow:inset 0 0 0 1px #d0bf8e36; }
+.muumei-sample { background:#fffaf080; color:#40382d; }
+.muumei-actions a:hover,.muumei-actions a:focus-visible { border-color:#665034; box-shadow:inset 0 0 0 1px #c7a979; }
+@media(max-width:380px) {
+  .muumei-copy { width:72%; padding-left:1rem; }
+  .muumei-actions { padding:.65rem .65rem .8rem; gap:.4rem; }
+  .muumei-actions a { padding:.5rem .4rem; font-size:.68rem; }
+}
