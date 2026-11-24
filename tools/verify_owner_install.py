@@ -29,6 +29,52 @@ def check_acceptance_notification(page,base):
     assert len(result['notifications'])==1 and '招待' in result['notifications'][0]['body']
     assert result['opened']==[result['scope']+'#contact='+result['contactId']]
 
+def offer_install(page,outcome):
+    page.evaluate("""outcome => {
+      window.testPromptCount=0;
+      const e=new Event('beforeinstallprompt',{cancelable:true});
+      e.prompt=async()=>{window.testPromptCount++};
+      e.userChoice=Promise.resolve({outcome});
+      window.dispatchEvent(e);
+    }""",outcome)
+
+
+def check_reinstall(page,prefix):
+    button=page.locator('#'+prefix+'install-button')
+    guide=page.locator('#'+prefix+'install-guide')
+    expect(button).to_be_visible()
+    button.click()
+    expect(guide).to_have_js_property('open',True)
+    for outcome in ('dismissed','accepted'):
+        offer_install(page,outcome)
+        assert page.evaluate('window.testPromptCount')==0
+        button.click()
+        expect(button).to_be_enabled()
+        assert page.evaluate('window.testPromptCount')==1
+    # Launchers need not issue an uninstall event when a shortcut is removed.
+    page.evaluate("""() => {
+      window.dispatchEvent(new Event('appinstalled'));
+      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event('pageshow'));
+    }""")
+    expect(button).to_be_visible()
+    button.click()
+    expect(guide).to_have_js_property('open',True)
+    offer_install(page,'accepted')
+    button.click()
+    assert page.evaluate('window.testPromptCount')==1
+    page.evaluate("""() => {
+      Object.defineProperty(navigator,'standalone',{configurable:true,value:true});
+      window.dispatchEvent(new Event('pageshow'));
+    }""")
+    expect(button).to_be_visible()
+    expect(button).to_contain_text('アイコン')
+    button.click()
+    expect(guide).to_have_js_property('open',True)
+    page.reload()
+    expect(button).to_be_visible()
+
+
 def check_owner_install(browser,base):
     page=browser.new_page(viewport={'width':320,'height':740},service_workers='block')
     page.route('https://**/*',lambda r:r.abort())
@@ -54,31 +100,12 @@ def check_owner_install(browser,base):
     for i in manifest['icons']:
         from urllib.parse import urljoin
         assert page.request.get(urljoin(base+'shinji/owner/',i['src'])).ok
-    # No native prompt in an embedded browser: show usable manual instructions.
-    page.locator('#owner-install-button').click()
-    expect(page.locator('#owner-install-guide')).to_be_visible()
-    assert page.locator('#owner-install-guide').evaluate('el=>el.open')
-    # Browser supplies a real install prompt; simulate accept/dismiss on explicit click.
-    page.evaluate("""() => {
-      window.ownerPromptCount=0;
-      const e=new Event('beforeinstallprompt',{cancelable:true});
-      e.prompt=async()=>{window.ownerPromptCount++};
-      e.userChoice=Promise.resolve({outcome:'dismissed'});window.dispatchEvent(e);
-    }""")
-    page.locator('#owner-install-button').click()
-    expect(page.locator('#owner-install-button')).to_be_enabled()
-    assert page.evaluate('ownerPromptCount')==1
-    expect(page.locator('#owner-install-status')).to_be_hidden()
-    page.evaluate("""() => {
-      const e=new Event('beforeinstallprompt',{cancelable:true});e.prompt=async()=>{};
-      e.userChoice=Promise.resolve({outcome:'accepted'});window.dispatchEvent(e);
-    }""")
-    page.locator('#owner-install-button').click()
-    expect(page.locator('#owner-install-status')).to_contain_text('追加済み')
-    expect(page.locator('#owner-install-button')).to_be_hidden()
+    check_reinstall(page,'owner-')
+    page.goto(base+'shinji/')
+    check_reinstall(page,'')
     page.goto(base+'shinji/owner.html')
     expect(page.locator('#owner-app-link')).to_be_visible()
     assert page.locator('#owner-app-link').get_attribute('href').endswith('/shinji/owner/?v=flow-fix-1')
     assert not errors,errors
     page.close()
-    print('PASS owner install entry, native prompt simulation, browser fallback and separate owner scope')
+    print('PASS card and owner reinstall controls, standalone shortcut recovery, native prompt and separate owner scope')

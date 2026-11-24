@@ -78,7 +78,7 @@ def check_notices(browser,base):
         CID: [{'id': NEW, 'title': 'チャット', 'body': '既知の相手との履歴', 'direction': 'outbound', 'created_at': DATE, 'read_at': DATE}],
     }
     state={'delay_status':False,'delay_list':False,'linked':False,'enabled':False,'news':False,'owner_setup':False,'owner_session':False,'owner_enabled':False,'unread':1,'saved':[dict(MANUAL)]}
-    page.add_init_script("""(() => {
+    ctx.add_init_script("""(() => {
       const scopes=new Map();
       let rotation='';
       window.rotateRecipientSubscription=()=>{rotation='-rotated'};
@@ -203,7 +203,9 @@ def check_notices(browser,base):
             assert r.request.headers.get('authorization')=='Bearer '+SESSION
             state['owner_session']=False;done({'ok':True})
         elif a.startswith('owner-'):
-            assert state['owner_session'] and r.request.headers.get('authorization')=='Bearer '+SESSION
+            if not state['owner_session']:
+                done({'error':'再ログインしてください。'},401);return
+            assert r.request.headers.get('authorization')=='Bearer '+SESSION
             if a=='owner-list':
                 if state['delay_list']:
                     state['delay_list']=False;delayed.append(r);return
@@ -271,9 +273,9 @@ def check_notices(browser,base):
             elif a=='owner-invite':done({'contact':MANUAL,'invite':INVITE})
             else:done({'error':'unexpected owner action'},400)
         else:done({'error':'unexpected action'},400)
-    page.route(API,route)
+    ctx.route(API,route)
     def reject_auth(r):auth_requests.append(r.request.url);r.fulfill(status=400,json={'error':'unexpected auth call'},headers=HEADERS)
-    page.route(AUTH+'**',reject_auth)
+    ctx.route(AUTH+'**',reject_auth)
     # Direct, invite-free conversation is the default.
     page.goto(base+'shinji/notices.html')
     check_recipient_notification(page,base)
@@ -544,6 +546,11 @@ def check_notices(browser,base):
     page.locator('#tab-contacts').click()
     expect(page.locator('.contact-row').filter(has_text=FIRST_NAME)).to_have_count(0)
 
+    # Receive on a different browser while the manager has no window or push.
+    page.evaluate("window.dispatchEvent(new Event('appinstalled'))")
+    page.close()
+    assert not ctx.pages and not state['owner_enabled']
+    state['owner_session']=False
     # One common printed card is enough. The recipient first opens it at home,
     # with no previously saved conversation, permission or PWA installation.
     ordinary=browser.new_context(viewport={'width':360,'height':760}, service_workers='block')
@@ -618,11 +625,22 @@ def check_notices(browser,base):
     assert requests.count('claim')==before.count('claim')
     assert threads[COMMON_CONTACT]==[]
 
-    page.locator('#tab-chats').click()
-    page.evaluate("window.dispatchEvent(new Event('focus'))")
+    # The receipt survives reinstall and reauthentication until explicitly opened.
+    page=ctx.new_page()
+    page.on('pageerror',lambda e:errors.append(str(e)))
+    page.goto(base+'shinji/owner/')
+    expect(page.locator('#login-panel')).to_be_visible()
+    page.locator('#owner-install-button').click()
+    page.locator('#login-password').fill('SyntheticCardPassword123')
+    page.locator('#remember-owner').check()
+    page.locator('#login-form button').click()
+    expect(page.locator('#owner-console')).to_be_visible()
     acceptances=page.locator('#owner-acceptances')
     alert=acceptances.locator(f'[data-contact-id="{COMMON_CONTACT}"]')
     expect(alert).to_contain_text(COMMON_NAME)
+    page.reload()
+    expect(alert).to_contain_text(COMMON_NAME)
+    assert 'owner-ack-acceptance' not in requests
     expect(page.locator('#unread-count')).to_have_text('')
     alert.click()
     expect(page.locator('#selected-name')).to_have_text(COMMON_NAME)
