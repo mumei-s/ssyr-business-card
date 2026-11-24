@@ -68,9 +68,17 @@ def check_card_controls(page):
         page.set_viewport_size({'width': width, 'height': original['height']})
         check_viewport(page)
         expect(front.locator('a[href^="mailto:"]')).to_be_visible()
-        lettering = front.locator('img[src*="shinji-lettering"]')
+        lettering = front.locator('.wordmark img')
         expect(lettering).to_be_visible()
         lettering.evaluate('img => img.decode()')
+        assert lettering.get_attribute('alt') == "S's-YR"
+        brand, name = lettering.bounding_box(), front.locator('.front-person b').bounding_box()
+        assert brand['width'] >= front.bounding_box()['width'] * .59
+        assert brand['width'] > name['width'] * 1.8
+        assert brand['height'] > name['height']
+        assert front.evaluate('(el) => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1')
+        expect(front.locator('.front-emblem img')).to_be_visible()
+        front.locator('.front-emblem img').evaluate('img => img.decode()')
         check_role(front)
         expect(front.locator('[data-add-contact]')).to_have_count(0)
         expect(page.locator('[data-add-contact]')).to_have_count(1)
@@ -90,13 +98,14 @@ def check_card_controls(page):
         assert abs(back_box['height'] - front_box['height']) < 1
         assert back.evaluate('(el) => el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1')
         images = back.locator('.foil-logo img')
-        expect(images).to_have_count(2)
+        expect(images).to_have_count(3)
         images.evaluate_all('imgs => Promise.all(imgs.map(i => i.decode()))')
         assert images.evaluate_all('imgs => imgs.every(i => i.complete && i.naturalWidth >= 256)')
         assert back.locator('.logo-color').evaluate("el => getComputedStyle(el).animationName") == 'none'
         assert back.locator('.logo-color').evaluate("el => getComputedStyle(el).opacity") == '1'
         light.click()
-        assert back.locator('.logo-silver').evaluate("el => getComputedStyle(el).opacity") == '1'
+        assert back.locator('.logo-fixed').evaluate("el => getComputedStyle(el).opacity") == '1'
+        assert back.locator('.logo-cycle').evaluate("el => getComputedStyle(el).opacity") == '0'
         light.click()
         page.locator('#front-button').click()
         expect(front).to_be_visible()
@@ -119,8 +128,35 @@ def check_card_controls(page):
     }""")
     assert states and states[0] == [1, 0] and states[2] == [0, 1] and states[3] == [1, 0], states
     assert all(0 < value < 1 for value in states[1]), states
+    # CSS transition must interpolate in BOTH directions without disabling the loop.
+    for locked in (True, False):
+        light.click()
+        expect(light).to_have_attribute('aria-pressed', str(locked).lower())
+        result = page.evaluate("""() => {
+            const fixed = document.querySelector('.logo-fixed');
+            const cycle = document.querySelector('.logo-cycle');
+            const a = fixed.getAnimations().find(a => a.transitionProperty === 'opacity');
+            const b = cycle.getAnimations().find(a => a.transitionProperty === 'opacity');
+            if (!a || !b) return null;
+            const duration = a.effect.getTiming().duration;
+            a.pause(); b.pause();
+            const values = [0,duration/2,duration].map(t => {
+                a.currentTime = t; b.currentTime = t;
+                return [Number(getComputedStyle(fixed).opacity),Number(getComputedStyle(cycle).opacity)];
+            });
+            a.finish(); b.finish();
+            return {duration, values, loop: getComputedStyle(document.querySelector('.logo-color')).animationName};
+        }""")
+        assert result and result['duration'] >= 1500 and result['loop'] == 'foil-color', result
+        start, middle, end = result['values']
+        assert all(0.1 < v < 0.9 for v in middle), result
+        assert start == ([0,1] if locked else [1,0]) and end == ([1,0] if locked else [0,1]), result
+    assert back.evaluate("el => getComputedStyle(el,'::after').animationName") == 'surface-light'
     page.locator('#front-button').click()
-    print('PASS SHINJI landscape card, single contact action, supplied foil logo cycle, reduced motion')
+    assert front.locator('.brand-foil').evaluate("el => getComputedStyle(el,'::after').animationName") == 'surface-light'
+    assert front.locator('.front-emblem img').evaluate("el => getComputedStyle(el).animationName") == 'emblem-breathe'
+    assert page.locator('.jobs img').first.evaluate("el => getComputedStyle(el).animationName") == 'photo-light'
+    print('PASS SHINJI brand hierarchy, both landscape faces, continuous foil cycle, gradual light switch, ambient motion and reduced motion')
 
 
 def check_gallery_controls(page):
