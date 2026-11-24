@@ -10,7 +10,7 @@ self.addEventListener('push',e=>{
  e.waitUntil((async()=>{
   const test=p.kind==='owner-test';
   await self.registration.showNotification("S's-YR 管理者",{body:test?'管理者用テスト通知です。':'新しいチャットが届きました。',icon:new URL('brand-96.png',root()).href,tag:test?'owner-test':String(p.id||'owner-message'),data:{url:ownerPage()}});
-  if(!test&&self.navigator.setAppBadge)try{await self.navigator.setAppBadge()}catch{}
+  if(self.navigator.setAppBadge)try{await self.navigator.setAppBadge()}catch{}
   for(const client of await self.clients.matchAll({type:'window',includeUncontrolled:true}))if(isOwner(client.url))client.postMessage({type:'ssyr-owner-update'});
  })());
 });

@@ -50,7 +50,7 @@ def check_owner_install(browser,base):
     expect(page.locator('#owner-install-button')).to_be_hidden()
     page.goto(base+'shinji/owner.html')
     expect(page.locator('#owner-app-link')).to_be_visible()
-    assert page.locator('#owner-app-link').get_attribute('href').endswith('/shinji/owner/?v=owner-home-1')
+    assert page.locator('#owner-app-link').get_attribute('href').endswith('/shinji/owner/?v=remember-2')
     assert not errors,errors
     page.close()
     print('PASS owner install entry, native prompt simulation, browser fallback and separate owner scope')

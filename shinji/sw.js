@@ -15,7 +15,7 @@ self.addEventListener('push',event=>{
    tag:test?'ssyr-test':id,
    data:{url:noticeUrl()}
   });
-  if(!test&&self.navigator.setAppBadge)try{await self.navigator.setAppBadge()}catch{}
+  if(self.navigator.setAppBadge)try{await self.navigator.setAppBadge()}catch{}
   for(const client of await self.clients.matchAll({type:'window',includeUncontrolled:true}))if(new URL(client.url).pathname===new URL('notices.html',self.registration.scope).pathname)client.postMessage({type:'ssyr-chat-update'});
  })());
 });

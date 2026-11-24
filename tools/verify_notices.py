@@ -79,10 +79,10 @@ def check_notices(browser,base):
         elif a=='card-owner-setup':
             if state['owner_setup'] or b.get('code')!='A'*20:done({'error':'初回設定コードの期限・使用状況を確認してください。'},401);return
             assert b['password']=='SyntheticCardPassword123'
-            state['owner_setup']=True;state['owner_session']=True;done({'accessToken':SESSION,'expiresIn':7200})
+            state['owner_setup']=True;state['owner_session']=True;done({'accessToken':SESSION,'expiresIn':2592000 if b.get('remember') else 7200,'remember':b.get('remember') is True})
         elif a=='card-owner-login':
             if not state['owner_setup'] or b.get('password')!='SyntheticCardPassword123':done({'error':'電話帳専用のパスワードをご確認ください。'},401);return
-            state['owner_session']=True;done({'accessToken':SESSION,'expiresIn':7200})
+            state['owner_session']=True;done({'accessToken':SESSION,'expiresIn':2592000 if b.get('remember') else 7200,'remember':b.get('remember') is True})
         elif a=='card-owner-logout':
             assert r.request.headers.get('authorization')=='Bearer '+SESSION
             state['owner_session']=False;done({'ok':True})
@@ -188,15 +188,20 @@ def check_notices(browser,base):
     expect(page.locator('#invite-panel')).to_be_hidden()
     expect(page.locator('.contact-row')).to_have_count(2)
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth+1')
-    # Reloading the same owner tab keeps its short-lived session.
+    # Remembered login survives closing/reopening a tab. The server validates it.
+    assert page.evaluate("localStorage.getItem('ssyr-owner-remember-v1')")==SESSION
+    page.evaluate("sessionStorage.removeItem('ssyr-owner-session-v1')")
     page.reload()
     expect(page.locator('#owner-console')).to_be_visible()
     page.locator('#logout').click()
+    assert page.evaluate("localStorage.getItem('ssyr-owner-remember-v1')") is None
     expect(page.locator('#login-panel')).to_be_visible()
     assert not state['owner_session']
     page.locator('#login-password').fill('SyntheticCardPassword123')
+    page.locator('#remember-owner').uncheck()
     page.locator('#login-form button').click()
     expect(page.locator('#owner-console')).to_be_visible()
+    assert page.evaluate("localStorage.getItem('ssyr-owner-remember-v1')") is None
     page.locator('#logout').click()
     expect(page.locator('#login-panel')).to_be_visible()
     page.goto(base+'shinji/owner.html#setup='+'A'*20)

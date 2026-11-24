@@ -6,15 +6,28 @@
  const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
  const canPush=window.isSecureContext&&'Notification'in window&&'serviceWorker'in navigator&&'PushManager'in window&&(!isIOS||matchMedia('(display-mode: standalone)').matches||navigator.standalone===true);
  const isSaved=c=>!!c&&c.entry_type!=='visitor'&&!!(c.email||c.phone);
- const sessionKey='ssyr-owner-session-v1';
- function loadSession(){try{return sessionStorage.getItem(sessionKey)||''}catch{return ''}}
- function saveSession(v){try{if(v)sessionStorage.setItem(sessionKey,v);else sessionStorage.removeItem(sessionKey)}catch{}}
+ const sessionKey='ssyr-owner-session-v1',rememberKey='ssyr-owner-remember-v1';
+ const validSession=v=>typeof v==='string'&&/^ssyr1_[a-f0-9]{64}$/.test(v);
+ let remembered=false;
+ function loadSession(){
+   try{const v=localStorage.getItem(rememberKey);if(validSession(v)){remembered=true;return v}}catch{}
+   try{return sessionStorage.getItem(sessionKey)||''}catch{return ''}
+ }
+ function saveSession(v,keep=false){
+   let persisted=false;
+   try{if(v&&keep){localStorage.setItem(rememberKey,v);persisted=true}else localStorage.removeItem(rememberKey)}catch{}
+   try{if(v)sessionStorage.setItem(sessionKey,v);else sessionStorage.removeItem(sessionKey)}catch{}
+   remembered=persisted;
+   const hint=$('owner-session-status');
+   if(hint)hint.textContent=persisted?'この端末でログイン保持中（最長30日）':'';
+ }
+ function showReconnect(on){$('owner-reconnect').hidden=!on}
  function setOwnerBadge(n){try{if(n&&navigator.setAppBadge)void navigator.setAppBadge(n).catch(()=>{});else if(!n&&navigator.clearAppBadge)void navigator.clearAppBadge().catch(()=>{})}catch{}}
  const ownerCall=(action,fields={})=>N.call(action,fields,access);
  const status=c=>c.revoked_at?'解除済み':!c.linked_at?'未接続':c.push_enabled_at?'通知 ON':'通知 OFF';
  const selected=()=>contacts.find(c=>c.id===selectedId);
  function clearAuthInputs(){for(const id of ['login-password','setup-password','setup-confirm','setup-code'])$(id).value='';setupCode=''}
- function hideConsole(){access='';saveSession('');contacts=[];selectedId='';pending=null;ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href=new URL('notices.html',ROOT).href;$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
+ function hideConsole(){access='';saveSession('');showReconnect(false);contacts=[];selectedId='';pending=null;ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href=new URL('notices.html',ROOT).href;$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
  async function run(fn){
    if(busy)return;busy=true;feedback('通信中…');for(const b of document.querySelectorAll('button'))b.disabled=true;
    try{await fn()}catch(e){if(access&&(e.status===401||e.status===403)){hideConsole();feedback('再ログインしてください。',true)}else feedback(e.message||'もう一度お試しください。',true)}
@@ -154,12 +167,12 @@
    const length=new TextEncoder().encode(password).length;
    if(length<12||length>72)throw Error('パスワードは12文字以上、72バイト以内で入力してください。');
  }
- async function finishLogin(token){
-   if(typeof token!=='string'||!/^ssyr1_[a-f0-9]{64}$/.test(token))throw Error('ログインできませんでした。');
+ async function finishLogin(token,keep=false){
+   if(!validSession(token))throw Error('ログインできませんでした。');
    access=token;
-   try{await reload()}catch(e){access='';throw e}
+   try{await reload()}catch(e){access='';if(e.status===401||e.status===403){saveSession('');showReconnect(false)}else{saveSession(token,keep);showReconnect(true)}throw e}
    $('login-panel').hidden=true;$('setup-panel').hidden=true;$('owner-console').hidden=false;
-   saveSession(access);clearAuthInputs();feedback('ログインしました。');void launchState();void prepareOwnerPush();
+   saveSession(access,keep);showReconnect(false);clearAuthInputs();feedback('ログインしました。');void launchState();void prepareOwnerPush();
  }
  $('show-setup').addEventListener('click',()=>{feedback();showSetup()});
  $('back-to-login').addEventListener('click',()=>{clearAuthInputs();$('setup-panel').hidden=true;$('login-panel').hidden=false;feedback()});
@@ -168,9 +181,9 @@
  $('login-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
    const password=$('login-password').value;
    checkPassword(password);
-   const r=await N.call('card-owner-login',{password});
+   const r=await N.call('card-owner-login',{password,remember:$('remember-owner').checked});
    $('login-password').value='';
-   await finishLogin(r.accessToken);
+   await finishLogin(r.accessToken,r.remember===true);
  })});
  $('setup-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
    const code=setupCode||$('setup-code').value.trim().toUpperCase();
@@ -178,10 +191,10 @@
    checkPassword(password);
    if(password!==$('setup-confirm').value)throw Error('確認用パスワードが一致していません。');
    if(!/^[A-F0-9]{20}$/.test(code))throw Error('初回設定コードをご確認ください。');
-   const r=await N.call('card-owner-setup',{code,password});
+   const r=await N.call('card-owner-setup',{code,password,remember:$('remember-setup').checked});
    clearAuthInputs();
    $('setup-panel').hidden=true;$('login-panel').hidden=false;
-   try{await finishLogin(r.accessToken)}catch{feedback('パスワードを設定しました。新しい専用パスワードでログインしてください。',true)}
+   try{await finishLogin(r.accessToken,r.remember===true)}catch{feedback('パスワードを設定しました。新しい専用パスワードでログインしてください。',true)}
  })});
  function handleSetupFragment(){
    const fragment=new URLSearchParams(location.hash.slice(1));
@@ -227,8 +240,13 @@
  window.addEventListener('focus',quietRefresh);
  if('serviceWorker'in navigator&&navigator.serviceWorker.addEventListener)navigator.serviceWorker.addEventListener('message',e=>{if(e.data?.type==='ssyr-owner-update')void quietRefresh()});
  setInterval(quietRefresh,30000);
- const saved=loadSession();
- if(saved&&/^ssyr1_[a-f0-9]{64}$/.test(saved)&&$('setup-panel').hidden){void run(async()=>{try{await finishLogin(saved)}catch(e){saveSession('');throw e}})}
+ function resumeSession(){
+   const saved=loadSession();
+   if(validSession(saved)&&$('setup-panel').hidden&&!access&&!busy){void run(async()=>{await finishLogin(saved,remembered)})}
+ }
+ $('owner-reconnect').addEventListener('click',resumeSession);
+ window.addEventListener('online',resumeSession);
+ resumeSession();
  $('muumei-send').addEventListener('click',()=>{
    const targets=contacts.filter(c=>c.linked_at&&!c.revoked_at&&c.muumei_news&&c.push_enabled_at);
    if(!ready||!targets.length||!confirm(targets.length+'件の希望者へMUUMEIの正式公開案内を送りますか？'))return;
@@ -243,5 +261,5 @@
    });
  });
  const appLink=$('owner-app-link');
- if(appLink)appLink.href=new URL('owner/?v=owner-home-1',ROOT).href;
+ if(appLink)appLink.href=new URL('owner/?v=remember-2',ROOT).href;
 })();

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101417"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://slamzhgsawfnmwlejgqp.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'"><title>管理者専用電話帳 | S's-YR</title><link rel="apple-touch-icon" href="../brand-96.png"><link rel="stylesheet" href="../notices.css?v=owner-home-1"><script src="../notice-common.js?v=chat-1" defer></script><script src="../owner.js?v=owner-home-1" defer></script>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101417"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://slamzhgsawfnmwlejgqp.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'"><title>管理者専用電話帳 | S's-YR</title><link rel="apple-touch-icon" href="../brand-96.png"><link rel="stylesheet" href="../notices.css?v=remember-2"><script src="../notice-common.js?v=chat-1" defer></script><script src="../owner.js?v=remember-2" defer></script>
   <link rel="icon" type="image/png" sizes="96x96" href="../brand-96.png?v=share-2">
   <link rel="shortcut icon" href="../brand-96.png?v=share-2" type="image/png">
   <meta property="og:site_name" content="S's-YR">
@@ -29,8 +29,10 @@
     <form id="login-form">
       <label>電話帳専用パスワード<input id="login-password" type="password" autocomplete="current-password" required minlength="12" maxlength="72"></label>
       <label class="check"><input id="show-login-password" type="checkbox">パスワードを表示</label>
+      <label class="check"><input id="remember-owner" type="checkbox" checked>この端末でログインを保持（30日間）</label>
       <button class="primary" type="submit">ログイン</button>
     </form>
+    <button id="owner-reconnect" type="button" hidden>保存済みログインで再接続</button>
     <button id="show-setup" type="button" class="subtle">初めて利用する方・初回設定</button>
   </section>
   <section class="panel" id="setup-panel" hidden>
@@ -41,6 +43,7 @@
       <label>新しいパスワード（12文字以上）<input id="setup-password" type="password" autocomplete="new-password" required minlength="12" maxlength="72"></label>
       <label>確認のため再入力<input id="setup-confirm" type="password" autocomplete="new-password" required minlength="12" maxlength="72"></label>
       <label class="check"><input id="show-setup-password" type="checkbox">パスワードを表示</label>
+      <label class="check"><input id="remember-setup" type="checkbox" checked>この端末でログインを保持（30日間）</label>
       <button class="primary" type="submit">設定して電話帳を開く</button>
       <button id="back-to-login" type="button">ログイン画面に戻る</button>
     </form>
@@ -48,6 +51,7 @@
   <div id="owner-console" hidden>
     <section class="panel compact-panel" aria-label="管理者通知">
       <div class="between"><h2>管理者通知 <span id="owner-push-state" class="state">確認中</span></h2><button id="logout" type="button">ログアウト</button></div>
+      <p id="owner-session-status" class="muted" aria-live="polite"></p>
       <p id="owner-push-guide" class="muted">相手からのチャットをこの端末に通知します。</p>
       <div class="actions"><button id="owner-push-on" type="button" class="primary" disabled>管理者通知をON</button><button id="owner-push-test" type="button" disabled>テスト</button><button id="owner-push-off" type="button" disabled>OFF</button></div>
       

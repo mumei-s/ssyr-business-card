@@ -23,7 +23,7 @@
    $('chat-send').disabled=busy;$('claim-button').disabled=busy;
    $('claim-button').hidden=!inviteCode&&!$('invite').value.trim();
  }
- function badge(count){try{if(count&&navigator.setAppBadge)void navigator.setAppBadge(count).catch(()=>{});if(!count&&navigator.clearAppBadge)void navigator.clearAppBadge().catch(()=>{})}catch{}}
+ function badge(count){const label=$('chat-unread');if(label){label.hidden=!count;label.textContent=count?'未読 '+count+'件':''}try{if(count&&navigator.setAppBadge)void navigator.setAppBadge(count).catch(()=>{});if(!count&&navigator.clearAppBadge)void navigator.clearAppBadge().catch(()=>{})}catch{}}
  function renderMessages(messages){
    const signature=JSON.stringify(messages);
    if(signature===lastSignature)return;
