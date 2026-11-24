@@ -54,8 +54,23 @@ def check_notices(browser, base):
         elif a=='preferences':state['news']=b['muumeiNews'];r.fulfill(json={'contact':c()},headers=HEADERS)
         elif a=='read':state['read']=True;r.fulfill(json={'ok':True},headers=HEADERS)
         elif a=='disconnect':state['linked']=False;state['enabled']=False;r.fulfill(json={'ok':True},headers=HEADERS)
+        elif a=='card-owner-setup':
+            if state.get('owner_setup') or b.get('code')!='A'*20:
+                r.fulfill(status=401,json={'error':'初回設定コードの期限・使用状況を確認してください。'},headers=HEADERS);return
+            assert b['password']=='SyntheticCardPassword123'
+            state['owner_setup']=True;state['owner_session']=True
+            r.fulfill(json={'accessToken':'ssyr1_'+'b'*64,'expiresIn':7200},headers=HEADERS)
+        elif a=='card-owner-login':
+            if not state.get('owner_setup') or b.get('password')!='SyntheticCardPassword123':
+                r.fulfill(status=401,json={'error':'電話帳専用のパスワードをご確認ください。'},headers=HEADERS);return
+            state['owner_session']=True
+            r.fulfill(json={'accessToken':'ssyr1_'+'b'*64,'expiresIn':7200},headers=HEADERS)
+        elif a=='card-owner-logout':
+            assert r.request.headers.get('authorization')=='Bearer ssyr1_'+'b'*64
+            state['owner_session']=False
+            r.fulfill(json={'ok':True},headers=HEADERS)
         elif a.startswith('owner-'):
-            assert r.request.headers.get('authorization') in {'Bearer synthetic-owner','Bearer synthetic.owner.callback'}
+            assert state.get('owner_session') and r.request.headers.get('authorization')=='Bearer ssyr1_'+'b'*64
             if a=='owner-list':r.fulfill(json={'contacts':[OWNER]},headers=HEADERS)
             elif a=='owner-history':r.fulfill(json={'messages':[]},headers=HEADERS)
             elif a=='owner-send':r.fulfill(json={'message':{'push_status':'accepted'}},headers=HEADERS)
@@ -69,29 +84,12 @@ def check_notices(browser, base):
         else:route(r)
     page.route(API,api_route)
     page.route(CONFIG,lambda r:r.fulfill(json={'url':'https://slamzhgsawfnmwlejgqp.supabase.co','key':'sb_publishable_test'},headers=HEADERS))
-    from urllib.parse import urlsplit,parse_qs
-    verification_bodies = []
-    password_bodies = []
-    mail_requests = []
-    def auth_route(r):
-        if r.request.method=='OPTIONS':r.fulfill(status=204,headers=HEADERS);return
-        path=urlsplit(r.request.url)
-        if path.path.endswith('/otp'):
-            assert r.request.post_data_json['create_user'] is False
-            assert parse_qs(path.query).get('redirect_to')==['https://mumei-s.github.io/ssyr-business-card/shinji/owner.html']
-            mail_requests.append(r.request.post_data_json)
-            r.fulfill(status=429,json={'error_code':'over_email_send_rate_limit','msg':'email rate limit exceeded'},headers=HEADERS)
-        elif path.path.endswith('/token'):
-            assert parse_qs(path.query).get('grant_type')==['password']
-            body=r.request.post_data_json
-            password_bodies.append(body)
-            if body.get('password')=='test-password':r.fulfill(json={'access_token':'synthetic-owner'},headers=HEADERS)
-            else:r.fulfill(status=400,json={'error_code':'invalid_credentials','msg':'Invalid login credentials'},headers=HEADERS)
-        elif path.path.endswith('/verify'):
-            verification_bodies.append(r.request.post_data_json)
-            r.fulfill(json={'access_token':'synthetic-owner'},headers=HEADERS)
-        else:r.fulfill(json={},headers=HEADERS)
-    page.route(AUTH+'**',auth_route)
+    # The dedicated owner flow must not call MUUMEI's email or Auth endpoints.
+    auth_requests=[]
+    def unexpected_auth(r):
+        auth_requests.append(r.request.url)
+        r.fulfill(status=400,json={'error':'unexpected shared auth call'},headers=HEADERS)
+    page.route(AUTH+'**',unexpected_auth)
     page.goto(base+'shinji/notices.html#invite='+INVITE)
     expect(page.locator('#claim-panel')).to_be_visible()
     assert 'invite=' not in page.url
@@ -111,22 +109,29 @@ def check_notices(browser, base):
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth+1')
     page.goto(base+'shinji/owner.html')
     expect(page.locator('#owner-console')).to_be_hidden()
-    page.locator('#login-email').fill('test@example.invalid')
     page.locator('#login-password').fill('incorrect-test-password')
     page.locator('#login-form button').click()
-    expect(page.locator('#feedback')).to_contain_text('パスワードをご確認ください')
+    expect(page.locator('#feedback')).to_contain_text('電話帳専用のパスワードをご確認ください')
     expect(page.locator('#login-form button')).to_be_enabled()
-    expect(page.locator('#owner-console')).to_be_hidden()
-    page.locator('#email-options summary').click()
-    page.locator('#mail-login').click()
-    expect(page.locator('#feedback')).to_contain_text('認証メールの送信上限')
-    expect(page.locator('#mail-login')).to_be_enabled()
-    assert len(mail_requests)==1
-    page.locator('#login-password').fill('test-password')
+    page.goto(base+'shinji/owner.html#setup='+'A'*20)
+    expect(page.locator('#setup-panel')).to_be_visible()
+    expect(page.locator('#setup-code-label')).to_be_hidden()
+    assert '#' not in page.url
+    page.locator('#setup-password').fill('SyntheticCardPassword123')
+    page.locator('#setup-confirm').fill('DifferentPassword123')
+    page.locator('#setup-form button[type="submit"]').click()
+    expect(page.locator('#feedback')).to_contain_text('一致していません')
+    page.locator('#setup-confirm').fill('SyntheticCardPassword123')
+    page.locator('#setup-form button[type="submit"]').click()
+    expect(page.locator('#owner-console')).to_be_visible()
+    assert page.locator('#setup-password').input_value()==''
+    assert page.locator('#setup-code').input_value()==''
+    page.locator('#logout').click()
+    expect(page.locator('#login-panel')).to_be_visible()
+    assert not state['owner_session']
+    page.locator('#login-password').fill('SyntheticCardPassword123')
     page.locator('#login-form button').click()
     expect(page.locator('#owner-console')).to_be_visible()
-    assert password_bodies[-1]=={'email':'test@example.invalid','password':'test-password'}
-    assert len(mail_requests)==1
     assert page.locator('#login-password').input_value()==''
     page.locator('.contact-row').click()
     expect(page.locator('#send-panel')).to_be_visible()
@@ -135,25 +140,17 @@ def check_notices(browser, base):
     page.locator('#send-form button').click()
     expect(page.locator('#feedback')).to_contain_text('通知サービス受付済み')
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth+1')
-    # A copied Sign in URL works without visiting the old redirect target, even
-    # if the user opens the card in a different browser from their mail app.
-    page.goto(base+'shinji/owner.html?login=link')
+    # A completed setup link cannot be used again.
+    page.locator('#logout').click()
+    expect(page.locator('#login-panel')).to_be_visible()
+    page.goto(base+'shinji/owner.html#setup='+'A'*20)
+    page.locator('#setup-password').fill('SyntheticCardPassword123')
+    page.locator('#setup-confirm').fill('SyntheticCardPassword123')
+    page.locator('#setup-form button[type="submit"]').click()
+    expect(page.locator('#feedback')).to_contain_text('初回設定コードの期限・使用状況')
     expect(page.locator('#owner-console')).to_be_hidden()
-    page.locator('#email-options summary').click()
-    page.locator('#otp-code').fill('https://foreign.invalid/auth/v1/verify?token='+'a'*64+'&type=magiclink')
-    page.locator('#otp-form button[type="submit"]').click()
-    expect(page.locator('#feedback')).to_contain_text('ログインメールのリンク')
-    assert len(verification_bodies)==0
-    page.locator('#otp-code').fill('https://slamzhgsawfnmwlejgqp.supabase.co/auth/v1/verify?token='+'b'*64+'&type=magiclink&redirect_to=https%3A%2F%2Fold.invalid%2F')
-    page.locator('#otp-form button[type="submit"]').click()
-    expect(page.locator('#owner-console')).to_be_visible()
-    assert verification_bodies[-1]=={'token_hash':'b'*64,'type':'email'}
-    assert page.url==base+'shinji/owner.html?login=link'
-    assert page.locator('#otp-code').input_value()==''
-    page.goto(base+'shinji/owner.html?login=callback#access_token=synthetic.owner.callback&refresh_token=synthetic&token_type=bearer&type=magiclink')
-    expect(page.locator('#owner-console')).to_be_visible()
-    assert '#' not in page.url
+    assert not auth_requests,auth_requests
     assert not errors, errors
-    assert {'claim','subscribe','test','preferences','read','stop','owner-list','owner-history','owner-send'}.issubset(set(requests)),requests
+    assert {'claim','subscribe','test','preferences','read','stop','owner-list','owner-history','owner-send','card-owner-setup','card-owner-login','card-owner-logout'}.issubset(set(requests)),requests
     ctx.close()
     print("PASS synthetic S's-YR owner login, consent, subscription, test, read, stop, and send; no physical delivery claimed")

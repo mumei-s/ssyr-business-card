@@ -1,11 +1,12 @@
 (() => {
  'use strict';
  const N=window.SSYRNotice,{$,el,feedback}=N;
- let access='',authKey='',email='',contacts=[],selectedId='',historyPage=0,busy=false,pending=null,ready=false;
+ let access='',setupCode='',contacts=[],selectedId='',historyPage=0,busy=false,pending=null,ready=false;
  const ownerCall=(action,fields={})=>N.call(action,fields,access);
  const status=c=>c.revoked_at?'解除済み':!c.linked_at?'招待待ち':c.push_enabled_at?'通知 ON':'通知 OFF';
  const selected=()=>contacts.find(c=>c.id===selectedId);
- function hideConsole(){access='';contacts=[];selectedId='';pending=null;ready=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('otp-form').hidden=false;$('otp-code').value='';$('login-email').value='';$('login-password').value='';$('email-options').open=false;$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href='./notices.html';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true}
+ function clearAuthInputs(){for(const id of ['login-password','setup-password','setup-confirm','setup-code'])$(id).value='';setupCode=''}
+ function hideConsole(){access='';contacts=[];selectedId='';pending=null;ready=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('open-invite').href='./notices.html';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true}
  async function run(fn){
    if(busy)return;busy=true;feedback('通信中…');for(const b of document.querySelectorAll('button'))b.disabled=true;
    try{await fn()}catch(e){if(access&&(e.status===401||e.status===403)){hideConsole();feedback('再ログインしてください。',true)}else feedback(e.message||'もう一度お試しください。',true)}
@@ -55,57 +56,60 @@
    try{const r=await fetch('/muumei-public/muumei-config.json',{cache:'no-store',credentials:'omit',redirect:'error',signal:AbortSignal.timeout(6000)});const c=await r.json();ready=r.ok&&c.ready===true&&String(c.appUrl).replace(/\/+$/,'')==='https://mumei-s.github.io/muumei-public'}catch{ready=false}
    $('muumei-state').textContent=ready?'正式公開を確認しました。':'正式公開前';updateControls();
  }
- const returnUrl='https://mumei-s.github.io/ssyr-business-card/shinji/owner.html';
+ function showSetup(code=''){
+   setupCode=/^[A-F0-9]{20}$/.test(code)?code:'';
+   $('setup-code-label').hidden=!!setupCode;
+   $('setup-code').required=!setupCode;
+   $('setup-code').value=setupCode;
+   $('setup-panel').hidden=false;$('login-panel').hidden=true;
+ }
+ function checkPassword(password){
+   const length=new TextEncoder().encode(password).length;
+   if(length<12||length>72)throw Error('パスワードは12文字以上、72バイト以内で入力してください。');
+ }
  async function finishLogin(token){
-   if(typeof token!=='string'||!token||token.length>8192)throw Error('ログインできませんでした。');
+   if(typeof token!=='string'||!/^ssyr1_[a-f0-9]{64}$/.test(token))throw Error('ログインできませんでした。');
    access=token;
    try{await reload()}catch(e){access='';throw e}
-   $('login-panel').hidden=true;$('owner-console').hidden=false;$('otp-code').value='';$('login-email').value='';$('login-password').value='';feedback('ログインしました。');void launchState();
+   $('login-panel').hidden=true;$('setup-panel').hidden=true;$('owner-console').hidden=false;
+   clearAuthInputs();feedback('ログインしました。');void launchState();
  }
+ $('show-setup').addEventListener('click',()=>{feedback();showSetup()});
+ $('back-to-login').addEventListener('click',()=>{clearAuthInputs();$('setup-panel').hidden=true;$('login-panel').hidden=false;feedback()});
+ $('show-login-password').addEventListener('change',e=>{$('login-password').type=e.target.checked?'text':'password'});
+ $('show-setup-password').addEventListener('change',e=>{for(const id of ['setup-password','setup-confirm'])$(id).type=e.target.checked?'text':'password'});
  $('login-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
-   email=$('login-email').value.trim();
    const password=$('login-password').value;
-   if(!password)throw Error('パスワードを入力してください。');
-   authKey=await N.publicAuthKey();
-   const r=await N.auth('token?grant_type=password',{email,password},authKey);
+   checkPassword(password);
+   const r=await N.call('card-owner-login',{password});
    $('login-password').value='';
-   await finishLogin(r.access_token);
+   await finishLogin(r.accessToken);
  })});
- $('mail-login').addEventListener('click',()=>{
-   if(!$('login-email').reportValidity())return;
-   void run(async()=>{
-     email=$('login-email').value.trim();authKey=await N.publicAuthKey();
-     await N.auth('otp?redirect_to='+encodeURIComponent(returnUrl),{email,create_user:false},authKey);
-     $('otp-form').hidden=false;
-     feedback('ログインメールを送信しました。届いたメールからログインしてください。');
-   });
- });
- $('paste-login').addEventListener('click',async()=>{
-   try{
-     const text=await navigator.clipboard.readText();
-     if(text&&text.length<=4096){$('otp-code').value=text.trim();$('otp-code').focus();feedback('貼り付けました。「電話帳にログイン」を押してください。')}
-     else $('otp-code').focus();
-   }catch{$('otp-code').focus();feedback('入力欄を長押しして貼り付けてください。')}
- });
- $('otp-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
-   const input=$('otp-code').value;
-   const body=N.loginVerification(input,$('login-email').value.trim()||email);
-   authKey=await N.publicAuthKey();
-   $('otp-code').value='';
-   const r=await N.auth('verify',body,authKey);
-   await finishLogin(r.access_token);
+ $('setup-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
+   const code=setupCode||$('setup-code').value.trim().toUpperCase();
+   const password=$('setup-password').value;
+   checkPassword(password);
+   if(password!==$('setup-confirm').value)throw Error('確認用パスワードが一致していません。');
+   if(!/^[A-F0-9]{20}$/.test(code))throw Error('初回設定コードをご確認ください。');
+   const r=await N.call('card-owner-setup',{code,password});
+   clearAuthInputs();
+   $('setup-panel').hidden=true;$('login-panel').hidden=false;
+   try{await finishLogin(r.accessToken)}catch{feedback('パスワードを設定しました。新しい専用パスワードでログインしてください。',true)}
  })});
- // If the project's redirect allowlist permits the new URL, a normal tap can
- // return here with an access token. Immediately remove credentials from the URL.
- const callback=new URLSearchParams(location.hash.slice(1));
- if(callback.has('access_token')||callback.has('refresh_token')||callback.has('error')||callback.has('error_code')){
-   const token=callback.get('access_token'),type=callback.get('type');
+ const fragment=new URLSearchParams(location.hash.slice(1));
+ if(fragment.has('setup')){
+   const code=(fragment.get('setup')||'').toUpperCase();
    window.history.replaceState(null,'',location.pathname+location.search);
-   if(token&&token.length<=8192&&/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)&&(type==='magiclink'||type==='email')){
-     void run(async()=>{authKey=await N.publicAuthKey();await finishLogin(token)});
-   }else feedback('ログインリンクの期限をご確認ください。必要に応じて新しいメールを送ってください。',true);
+   showSetup(code);
+ }else if(fragment.has('access_token')||fragment.has('refresh_token')||fragment.has('error')||fragment.has('error_code')){
+   window.history.replaceState(null,'',location.pathname+location.search);
+   feedback('電話帳専用パスワードでログインしてください。');
  }
- $('logout').addEventListener('click',()=>void run(async()=>{const old=access;hideConsole();try{await fetch(N.base+'/auth/v1/logout?scope=local',{method:'POST',headers:{apikey:authKey,Authorization:'Bearer '+old},credentials:'omit',redirect:'error'})}catch{}feedback('ログアウトしました。')}));
+ $('logout').addEventListener('click',()=>void run(async()=>{
+   const old=access;
+   try{await N.call('card-owner-logout',{},old);hideConsole();feedback('ログアウトしました。')}
+   catch(e){hideConsole();feedback('この画面からログアウトしました。通信状態をご確認ください。',true)}
+ }));
  $('search').addEventListener('input',renderContacts);
  $('reload').addEventListener('click',()=>void run(async()=>{await reload();if(selectedId)await history();await launchState()}));
  $('new-contact').addEventListener('click',()=>{selectedId='';pending=null;historyPage=0;$('invite-panel').hidden=true;showContact();renderContacts();$('edit-panel').scrollIntoView({block:'start'});$('contact-name').focus()});

@@ -19,6 +19,9 @@ assert h.get('Access-Control-Allow-Origin')=='https://mumei-s.github.io'
 assert request({'action':'owner-list'})[0]==401
 assert request({'action':'status','device':'invalid'})[0]==401
 assert request({'action':'owner-send','contactId':'invalid'})[0]==401
+assert request({'action':'card-owner-login','password':''})[0]==400
+assert request({'action':'card-owner-setup','code':'invalid','password':''})[0]==400
+assert request({'action':'card-owner-logout'})[0]==401
 assert request(origin='https://foreign.invalid')[0]==403
 print('PASS live VAPID public configuration, CORS and unauthenticated rejection; no push sent')
 
