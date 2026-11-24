@@ -200,6 +200,8 @@ def check_card_controls(page):
     assert '準備中' not in page.locator('#home-app').inner_text()
     assert '監視' not in page.locator('#home-app').inner_text()
     expect(page.locator('#receive-notices')).to_have_attribute('href', './notices.html')
+    expect(page.locator('#receive-notices')).to_contain_text('メールアドレス不要')
+    assert page.locator('#receive-notices').evaluate('(el) => !!(el.compareDocumentPosition(document.getElementById("home-app")) & Node.DOCUMENT_POSITION_FOLLOWING)')
     expect(page.locator('a[href$="owner.html"]')).to_have_count(0)
     intro = page.locator('.muumei-introduction')
     expect(intro).to_be_visible()

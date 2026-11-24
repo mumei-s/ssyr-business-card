@@ -79,8 +79,13 @@
    const body=$('chat-body').value.trim();if(!body)throw Error('メッセージを入力してください。');
    await ensureContact();
    if(!pending||pending.body!==body)pending={body,requestId:crypto.randomUUID()};
-   await N.call('chat-send',{device,body,requestId:pending.requestId});pending=null;$('chat-body').value='';
-   await refresh();feedback('メッセージを送信しました。');
+   const r=await N.call('chat-send',{device,body,requestId:pending.requestId});
+   if(!r?.message)throw Error('送信結果を確認できません。再送してください。');
+   pending=null;$('chat-body').value='';
+   const push=r.message.push_status;
+   const result=push==='disabled'?'相手の通知はOFFまたは未登録です。':N.pushLabels[push]||'通知結果未確定';
+   feedback('メッセージを送信しました。 '+result,push==='failed'||push==='expired'||push==='unknown');
+   try{await refresh()}catch{feedback('メッセージを保存しました。 '+result+'。履歴は更新ボタンで確認してください。',true)}
  })});
  $('enable').addEventListener('click',()=>{
    if(busy||!supported||!worker||!key)return;

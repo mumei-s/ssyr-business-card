@@ -119,6 +119,7 @@ def check_notices(browser,base):
     page.locator('#chat-body').fill('相談です')
     page.locator('#chat-send').click()
     expect(page.locator('#feedback')).to_contain_text('メッセージを送信しました')
+    expect(page.locator('#feedback')).to_contain_text('通知サービス受付済み')
     expect(page.locator('#message-list .mine')).to_contain_text('相談です')
     assert 'claim' not in requests
     expect(page.locator('#enable')).to_be_enabled()

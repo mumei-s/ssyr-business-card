@@ -232,7 +232,11 @@
    const title='チャット',body=$('message-body').value.trim();if(!body)throw Error('メッセージを入力してください。');
    const signature=JSON.stringify([selectedId,title,body]);if(!pending||pending.signature!==signature)pending={signature,requestId:crypto.randomUUID()};
    const r=await ownerCall('owner-send',{contactId:selectedId,title,body,requestId:pending.requestId});
-   pending=null;$('send-form').reset();historyPage=0;await history();feedback('メッセージを送信しました。'+(N.pushLabels[r.message.push_status]||'送信結果未確定'));
+   if(!r?.message)throw Error('送信結果を確認できません。再送してください。');
+   pending=null;$('send-form').reset();historyPage=0;
+   const push=r.message.push_status,result=push==='disabled'?'相手の通知はOFFまたは未登録です。':N.pushLabels[push]||'通知結果未確定';
+   feedback('メッセージを送信しました。 '+result,push==='failed'||push==='expired'||push==='unknown');
+   try{await history()}catch{feedback('メッセージを保存しました。 '+result+'。履歴は更新ボタンで確認してください。',true)}
  })});
  $('history-prev').addEventListener('click',()=>void run(async()=>{historyPage=Math.max(0,historyPage-1);await history()}));
  $('history-next').addEventListener('click',()=>void run(async()=>{historyPage++;await history()}));
