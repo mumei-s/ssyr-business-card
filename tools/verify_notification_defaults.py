@@ -54,7 +54,7 @@ PLATFORM = """
 def check_notification_defaults(browser, base):
     home = base+'shinji/'
     for public, private, behavior, entry in [
-        (True, True, 'grant', 'teaser'), (True, False, 'grant', 'name'),
+        (True, True, 'grant', 'teaser'), (True, True, 'grant', 'name'), (True, False, 'grant', 'name'),
         (False, True, 'grant', 'name'), (False, False, 'grant', 'name'),
         (True, True, 'denied', 'name'), (True, True, 'dismiss', 'teaser'),
         (True, True, 'timeout', 'name'), (True, True, 'push-error', 'name'),
@@ -195,6 +195,8 @@ def check_notification_defaults(browser, base):
             prompts=events('requests')
             assert len(prompts)==int(public or private) and all(p['active'] for p in prompts),(behavior,prompts)
             if good:assert len(events('subscribe'))==int(public or private)
+            if public and private and good:
+                assert set(public_bindings.values())==set(chat_bindings.values())
             assert not events('unsubscribe')
             if entry=='teaser' and good:
                 page.locator('#stop').click()

@@ -231,17 +231,19 @@
    return navigator.locks?.request?navigator.locks.request(chatPushKey(device),task):task();
  }
  async function saveChatPush(device,id,initial=false){
+   if(!validToken(device)||!validThreadId(id))throw Error('この会話の受け取り設定を確認してください。');
+   if(initial&&localStorage.getItem(chatPushKey(device)))return null;
    const {subscription,binding}=await pushSubscription();
    return withPushChoice(device,async()=>{
      if(initial&&localStorage.getItem(chatPushKey(device)))return null;
      const {contact}=await call('subscribe',{device,subscription:subscription.toJSON()});
      if(contact?.id!==id||!contact.enabled||contact.pushBinding!==binding)throw Error('この会話の通知登録を確認できませんでした。');
-     if(!initial)localStorage.removeItem(chatPushKey(device));
+     if(!initial){try{localStorage.removeItem(chatPushKey(device))}catch{}}
      return contact;
    });
  }
  async function stopChatPush(device){
-   localStorage.setItem(chatPushKey(device),'1');
+   try{localStorage.setItem(chatPushKey(device),'1')}catch{}
    return withPushChoice(device,()=>call('stop',{device}));
  }
  function privateChoice(input,guide){

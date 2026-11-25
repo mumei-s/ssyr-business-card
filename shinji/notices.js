@@ -348,7 +348,7 @@
  }
  window.addEventListener('focus',quietRefresh);
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void quietRefresh()});
- if('serviceWorker'in navigator&&navigator.serviceWorker.addEventListener)navigator.serviceWorker.addEventListener('message',e=>{if(e.data?.type==='ssyr-chat-update')void quietRefresh()});
+ navigator.serviceWorker?.addEventListener?.('message',e=>{if(e.data?.type==='ssyr-chat-update')void quietRefresh()});
  setInterval(quietRefresh,30000);
  $('recover-page').addEventListener('click',()=>{if((busy||$('chat-body').value.trim())&&!confirm('画面を再読み込みします。未送信の入力は消えることがあります。送信中だった場合は履歴をご確認ください。'))return;location.reload()});
  // Render immediately, even while the first read or notification preparation is pending.

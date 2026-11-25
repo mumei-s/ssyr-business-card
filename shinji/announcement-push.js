@@ -14,10 +14,10 @@
   const scope = new URL('./', location.href).href;
   const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const supported = window.isSecureContext && 'Notification' in window && 'PushManager' in window &&
-    !!navigator.serviceWorker && (!ios || navigator.standalone || matchMedia('(display-mode: standalone)').matches);
+  const supported = N.pushSupported;
   let serverState = null, matched = false, version = 0;
-  let localChoice = '', localEpoch = '', permissionTask, bindingTask, stopping;
+  let localChoice = '', localEpoch = '', issue = '', dismissed = false;
+  let permissionTask, bindingTask, stopping;
 
   function stored(key) {
     try { return localStorage.getItem(key) || ''; } catch { return ''; }
@@ -46,24 +46,26 @@
   function enabled() {
     return !!serverState?.enabled && matched && supported && Notification.permission === 'granted';
   }
-  function render(note = '') {
+  function render() {
     if (!settings) return;
     const blocked = supported && Notification.permission === 'denied';
     let text = '通知OFF';
     if (!supported) text = ios ? 'ホーム画面に追加した名刺で設定できます。' : '端末通知に対応していないブラウザーです。';
-    else if (stopping) text = '停止を確認しています…';
+    else if (stopping || (choice() === 'off' && serverState?.enabled)) text = '停止の反映待ち';
     else if (device() && serverState === null && !choice()) text = '受け取り設定を確認しています…';
     else if (enabled()) text = '端末通知ON';
     else if (wanted()) {
       if (blocked) text = '端末でブロック中。通知はブラウザーの設定で許可できます。';
-      else if (Notification.permission !== 'granted') text = '許可待ち。続けると端末で通知の許可を確認します。';
+      else if (Notification.permission !== 'granted') text = dismissed
+        ? '許可待ち。通知設定から再度許可できます。' : '許可待ち。続けると端末で通知の許可を確認します。';
       else text = bindingTask ? '端末に登録しています…' : '端末への登録待ち';
     }
     for (const input of choices) {
       input.checked = wanted();
-      document.getElementById(input.id + '-status').textContent = note || text;
+      input.disabled = !supported;
+      document.getElementById(input.id + '-status').textContent = issue || text;
     }
-    status.textContent = note || text;
+    status.textContent = issue || text;
     enable.hidden = enabled() && wanted();
     enable.disabled = !!permissionTask || !!bindingTask || !!stopping || !supported || blocked;
     stop.hidden = !device() || (serverState?.enabled === false && !stopping);
@@ -84,46 +86,46 @@
   function permitted(at) {
     return supported && Notification.permission === 'granted' && choice() !== 'off' && epoch() === at;
   }
-  async function bindingOf(sub) {
-    if (!sub) return '';
-    const {endpoint, keys} = sub.toJSON();
-    if (!endpoint || !keys?.p256dh || !keys?.auth) return '';
-    const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([endpoint, keys.p256dh, keys.auth])));
-    return Array.from(new Uint8Array(bytes), n => n.toString(16).padStart(2, '0')).join('');
-  }
   async function sync() {
-    if (!settings || bindingTask || stopping) return;
+    if ((!settings && choice() !== 'off') || bindingTask || stopping) return;
     const check = ++version, token = device();
     if (!token) { serverState = null; matched = false; render(); return; }
     try {
       const remote = await N.call('card-announcement-status', {device:token});
       if (check !== version) return;
+      if (choice() === 'off' && remote.enabled) {
+        serverState = remote; issue = '';
+        void stopAt(epoch()); return;
+      }
       let match = false;
       if (remote.enabled && supported && Notification.permission === 'granted') {
         const reg = await N.wait(navigator.serviceWorker.getRegistration(scope));
         const sub = reg?.scope === scope ? await N.wait(reg.pushManager.getSubscription()) : null;
-        const current = await bindingOf(sub);
+        const current = await N.pushBinding(sub);
         match = !!current && current === remote.pushBinding;
         if (current && !match && choice() !== 'off' && N.validToken(remote.pushBinding)) {
-          const {subscription, binding} = await N.pushSubscription();
+          const {key} = await N.preparePush();
           if (check !== version || choice() === 'off') return;
-          const restored = await N.call('card-announcement-subscribe', {
-            device:token, expectedPushBinding:remote.pushBinding, subscription:subscription.toJSON()
-          });
-          match = restored.enabled === true && restored.pushBinding === binding;
+          if (N.compatiblePush(sub, key)) {
+            const restored = await N.call('card-announcement-subscribe', {
+              device:token, expectedPushBinding:remote.pushBinding, subscription:sub.toJSON()
+            });
+            match = restored.enabled === true && restored.pushBinding === current;
+          }
         }
       }
       if (check !== version) return;
-      serverState = remote; matched = match; render();
+      serverState = remote; matched = match; issue = ''; render();
     } catch {
       if (check !== version) return;
-      matched = false; render('端末の通知設定を確認できませんでした。');
+      matched = false; issue = choice() === 'off' ? '停止の反映待ち。通信が戻ると確認します。' : '端末の通知設定を確認できませんでした。'; render();
     }
   }
   function bind(at) {
     if (bindingTask?.epoch === at) return bindingTask.promise;
     const task = {epoch:at};
     bindingTask = task; ++version;
+    issue = '';
     let note = '';
     task.promise = (async () => {
       if (!permitted(at)) return;
@@ -134,11 +136,12 @@
         const saved = await N.call('card-announcement-subscribe', {device:token, subscription:subscription.toJSON()});
         if (!saved.enabled || saved.pushBinding !== binding) throw Error('端末への通知登録を確認できませんでした。');
         if (permitted(at)) { serverState = saved; matched = true; }
+        else if (choice() === 'off') await N.call('card-announcement-stop', {device:token});
         save(statusKey, String(Date.now()));
       });
       if (pending() === at) recordPending(null);
     })().catch(error => { note = error.message || '通知設定を保存できませんでした。'; })
-      .finally(() => { if (bindingTask === task) { bindingTask = null; render(note); } });
+      .finally(() => { if (bindingTask === task) { bindingTask = null; if (epoch() === at) issue = note; render(); } });
     render();
     return task.promise;
   }
@@ -155,6 +158,7 @@
     // Invoke the OS prompt within the click/submit, before any asynchronous work.
     const answer = N.requestPushPermission(retry);
     permissionTask = answer.then(async permission => {
+      dismissed = permission === 'default';
       if (permission !== 'granted' || epoch() !== at || !wanted()) return;
       localChoice = 'on'; save(choiceKey, 'on');
       recordPending(at);
@@ -168,24 +172,26 @@
     if (permitted(at)) void bind(at);
     else recordPending(null);
   }
+  function stopAt(at) {
+    if (stopping) return stopping;
+    const work = locked(async () => {
+      if (epoch() !== at || choice() !== 'off') return;
+      await N.call('card-announcement-stop', {device:device()});
+      if (epoch() === at) { serverState = {enabled:false}; matched = false; }
+      save(statusKey, String(Date.now()));
+    });
+    stopping = work.catch(() => {
+      if (epoch() === at) issue = '停止の反映待ち。通信が戻ると再試行します。';
+    }).finally(() => { stopping = null; render(); });
+    render();
+    return stopping;
+  }
   function setChoice(on) {
     localEpoch = N.requestId();
     localChoice = on ? 'on' : 'off';
     save(choiceKey, localChoice); save(changeKey, localEpoch);
-    recordPending(null); ++version;
-    if (!on && device()) {
-      const at = epoch();
-      const work = locked(async () => {
-        if (epoch() !== at || choice() !== 'off') return;
-        await N.call('card-announcement-stop', {device:device()});
-        if (epoch() === at) { serverState = {enabled:false}; matched = false; }
-        save(statusKey, String(Date.now()));
-      });
-      stopping = work;
-      work.then(() => { if (stopping === work) { stopping = null; render(); } }, () => {
-        if (stopping === work) { stopping = null; render('停止を確認できません。通知設定からもう一度停止してください。'); }
-      });
-    }
+    recordPending(null); ++version; issue = '';
+    if (!on && device()) void stopAt(epoch());
     render();
   }
   if (settings) {
