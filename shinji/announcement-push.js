@@ -17,7 +17,7 @@
   const supported = N.pushSupported;
   let serverState = null, matched = false, version = 0;
   let localChoice = '', localEpoch = '', issue = '', dismissed = false;
-  let permissionTask, bindingTask, stopping;
+  let permissionTask, permissionEpoch, bindingTask, stopping;
 
   function stored(key) {
     try { return localStorage.getItem(key) || ''; } catch { return ''; }
@@ -150,20 +150,21 @@
     return N.wait(task, 2000).catch(() => {});
   }
   function fromGesture(retry = false) {
-    if (stopping) return navigationWait(stopping);
-    if (!wanted() || !supported || Notification.permission === 'denied' || enabled()) return Promise.resolve();
-    if (permissionTask) return permissionTask;
+    if (!wanted()) return stopping ? navigationWait(stopping) : Promise.resolve();
+    if (!supported || Notification.permission === 'denied' || (enabled() && !stopping)) return Promise.resolve();
     const at = epoch();
+    if (permissionTask && permissionEpoch === at) return permissionTask;
     if (bindingTask?.epoch === at) return navigationWait(bindingTask.promise);
     // Invoke the OS prompt within the click/submit, before any asynchronous work.
     const answer = N.requestPushPermission(retry);
+    permissionEpoch = at;
     permissionTask = answer.then(async permission => {
       dismissed = permission === 'default';
       if (permission !== 'granted' || epoch() !== at || !wanted()) return;
       localChoice = 'on'; save(choiceKey, 'on');
       recordPending(at);
       await navigationWait(bind(at));
-    }).catch(() => {}).finally(() => { permissionTask = null; render(); });
+    }).catch(() => {}).finally(() => { if (permissionEpoch === at) permissionTask = null; render(); });
     return permissionTask;
   }
   function resumeGranted() {
@@ -173,7 +174,9 @@
     else recordPending(null);
   }
   function stopAt(at) {
-    if (stopping) return stopping;
+    if (stopping) return stopping.then(() => {
+      if (epoch() === at && choice() === 'off' && serverState?.enabled !== false) return stopAt(at);
+    });
     const work = locked(async () => {
       if (epoch() !== at || choice() !== 'off') return;
       await N.call('card-announcement-stop', {device:device()});

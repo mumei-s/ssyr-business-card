@@ -641,7 +641,7 @@ img { display: block; }
 .card-receive h2 { font-size: 1.12rem; line-height: 1.45; }
 .card-receive p { margin: .4rem 0 .7rem; color: var(--secondary); font-size: .85rem; line-height: 1.65; }
 .card-receive label { display: block; margin-bottom: .25rem; font-size: .82rem; }
-.card-receive input {
+.card-receive input:not([type="checkbox"]) {
   width: 100%; min-height: 42px; padding: .5rem .65rem;
   border: 1px solid #658087; border-radius: 4px; background: #10191e; color: var(--fg); font: inherit;
 }
