@@ -67,7 +67,7 @@
  const selected=()=>contacts.find(c=>c.id===selectedId);
  let requestedContact='';
  function clearAuthInputs(){for(const id of ['login-password','setup-password','setup-confirm','setup-code'])$(id).value='';setupCode=''}
- function hideConsole(){requestedContact='';$('owner-acceptance-list').replaceChildren();$('owner-acceptances').hidden=true;access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();inviteCopies.clear();saveInviteCopies();closeInvite();pending=null;clearStartRequest();setNewChatForm(false);$('new-chat-form').reset();ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
+ function hideConsole(){resetAnnouncement();requestedContact='';$('owner-acceptance-list').replaceChildren();$('owner-acceptances').hidden=true;access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();inviteCopies.clear();saveInviteCopies();closeInvite();pending=null;clearStartRequest();setNewChatForm(false);$('new-chat-form').reset();ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
  async function run(fn){
    if(busy)return;
    revision++;busy=true;feedback('通信中…');
@@ -79,6 +79,7 @@
    finally{clearTimeout(slow);busy=false;for(const b of buttons)b.disabled=false;updateControls();openRequestedContact()}
  }
  function updateControls(){
+   updateAnnouncementControls();
    const c=selected(),registered=ownerEnabled&&!!ownerSub&&canPush&&Notification.permission==='granted';
    $('muumei-send').disabled=busy||!ready||!contacts.some(c=>c.linked_at&&!c.revoked_at&&c.muumei_news&&c.push_enabled_at);
    $('reissue').disabled=busy||!c||!!c.linked_at&&!c.revoked_at;
@@ -91,6 +92,105 @@
    $('owner-push-test').disabled=busy||!registered;
    $('owner-push-guide').textContent=pushPreparing?'通知を準備しています…':registered?'招待の受け取りと新着メッセージを、この端末にも通知します。':canPush?'招待の受け取りはこの管理画面に表示されます。端末でも受け取るには「管理者通知をON」を押してください。':'招待の受け取りはこの管理画面に表示されます。端末通知を使う場合は管理者アプリをホーム画面に追加して開いてください。';
  }
+ // This panel publishes explicitly to the shared card. Its state is independent of the selected chat.
+ const announcementPanel=$('owner-announcement-panel'),announcementForm=$('owner-announcement-form');
+ const announcementTitle=$('owner-announcement-title'),announcementBody=$('owner-announcement-body');
+ const announcementStatus=$('owner-announcement-status');
+ let publication=null,announcementAttempt=null,announcementReading=false,announcementReadId=0;
+ function resetAnnouncement(){
+   announcementReadId++;announcementReading=false;publication=null;announcementAttempt=null;
+   announcementPanel.open=false;announcementForm.reset();
+   $('owner-announcement-current').replaceChildren();$('owner-announcement-delivery').textContent='';
+   announcementStatus.textContent='';
+ }
+ function announcementChanged(){
+   return announcementTitle.value.trim()!==(publication?.announcement?.title||'')||
+     announcementBody.value.trim()!==(publication?.announcement?.body||'');
+ }
+ function updateAnnouncementControls(){
+   const locked=busy||!access||announcementReading;
+   $('owner-announcement-reload').disabled=locked;
+   announcementTitle.disabled=announcementBody.disabled=locked||!publication;
+   $('owner-announcement-publish').disabled=locked||!publication||!announcementChanged()||
+     !announcementTitle.value.trim()||!announcementBody.value.trim();
+   $('owner-announcement-withdraw').hidden=!publication?.announcement;
+   $('owner-announcement-withdraw').disabled=locked;
+ }
+ function setPublication(result,keepDraft){
+   if(!N.validThreadId(result.revision)||result.announcement!==null&&
+      (result.announcement?.id!==result.revision||typeof result.announcement.title!=='string'||typeof result.announcement.body!=='string')){
+     throw Error('掲載状況を確認できませんでした。');
+   }
+   publication=result;
+   const item=result.announcement,view=$('owner-announcement-current');
+   if(item)view.replaceChildren(el('strong',item.title),el('p',item.body,'message-body'));
+   else view.replaceChildren(el('p','掲載中のメッセージはありません。'));
+   if(!keepDraft){announcementTitle.value=item?.title||'';announcementBody.value=item?.body||''}
+   const delivery=result.delivery,counts=[];
+   for(const [key,label] of [['accepted','通知サービス受付'],['pending','送信待ち'],['failed','送信失敗'],['expired','登録期限切れ']]){
+     if(Number.isInteger(delivery?.[key])&&delivery[key]>0)counts.push(label+' '+delivery[key]+'件');
+   }
+   $('owner-announcement-delivery').textContent=!item?'':delivery?
+     (counts.join(' · ')||'このメッセージの通知送信は0件です。'):'通知の送信状況を確認できません。';
+ }
+ async function loadAnnouncement(keepDraft=false){
+   if(!access||announcementReading)return false;
+   const session=access,id=++announcementReadId,base=publication?.revision;
+   const preserve=keepDraft||!!publication&&announcementChanged();
+   announcementReading=true;updateAnnouncementControls();
+   announcementStatus.textContent='掲載状況を読み込んでいます…';
+   try{
+     const result=await ownerCall('owner-announcement');
+     if(session!==access||id!==announcementReadId)return false;
+     setPublication(result,preserve);
+     announcementStatus.textContent=preserve&&base!==result.revision?
+       '掲載内容が更新されています。入力中の文章は残っています。現在の掲載内容を確認してください。':'';
+     return true;
+   }catch(error){
+     if(session!==access||id!==announcementReadId)return false;
+     if(error.status===401||error.status===403){hideConsole();feedback('再ログインしてください。',true)}
+     else announcementStatus.textContent=error.message||'掲載状況を読み込めませんでした。';
+     return false;
+   }finally{
+     if(id===announcementReadId){announcementReading=false;updateAnnouncementControls()}
+   }
+ }
+ async function changeAnnouncement(withdraw){
+   if(!publication||announcementReading)return;
+   const fields={expectedRevision:publication.revision};
+   const action=withdraw?'owner-withdraw-announcement':'owner-publish-announcement';
+   if(!withdraw){fields.title=announcementTitle.value.trim();fields.body=announcementBody.value.trim()}
+   const signature=JSON.stringify([action,fields]);
+   if(announcementAttempt?.signature!==signature)announcementAttempt={signature,requestId:N.requestId()};
+   updateAnnouncementControls();
+   announcementStatus.textContent=withdraw?'掲載を取り下げています…':'掲載と通知を受け付けています…';
+   try{
+     const result=await ownerCall(action,{...fields,requestId:announcementAttempt.requestId});
+     setPublication(result,withdraw&&announcementChanged());announcementAttempt=null;
+     announcementStatus.textContent=withdraw?'掲載を取り下げました。':'名刺のトップに掲載しました。';
+     feedback();
+   }catch(error){
+     if(error.status===409){
+       announcementAttempt=null;
+       if(await loadAnnouncement(true))announcementStatus.textContent='別の画面で掲載内容が変わりました。現在の掲載内容を確認して、もう一度操作してください。入力中の文章は残っています。';
+       feedback();return;
+     }
+     announcementStatus.textContent=error.message||'掲載状況を確認して、もう一度お試しください。';
+     throw error;
+   }
+ }
+ announcementPanel.addEventListener('toggle',()=>{if(announcementPanel.open&&!busy)void loadAnnouncement()});
+ announcementForm.addEventListener('input',updateAnnouncementControls);
+ $('owner-announcement-reload').addEventListener('click',()=>void loadAnnouncement());
+ announcementForm.addEventListener('submit',event=>{
+   event.preventDefault();
+   if(!$('owner-announcement-publish').disabled)void run(()=>changeAnnouncement(false));
+ });
+ $('owner-announcement-withdraw').addEventListener('click',()=>{
+   if(publication?.announcement&&confirm('「'+publication.announcement.title+'」の掲載を取り下げますか？')){
+     void run(()=>changeAnnouncement(true));
+   }
+ });
  function renderAcceptances(){
    const events=contacts.filter(hasAcceptance).sort((a,b)=>Date.parse(b.acceptance_at)-Date.parse(a.acceptance_at));
    const box=$('owner-acceptances'),list=$('owner-acceptance-list');
@@ -516,7 +616,7 @@
      feedback('通知サービス受付 '+accepted+'件 ／ 送信済み '+duplicates+'件 ／ その他 '+other+'件');if(selectedId)await history();
    });
  });
- $('recover-page').addEventListener('click',()=>{if((busy||$('message-body').value.trim()||$('contact-form').querySelector('input')?.value)&&!confirm('画面を再読み込みします。未送信の入力は消えることがあります。送信中だった場合は履歴をご確認ください。'))return;location.reload()});
+ $('recover-page').addEventListener('click',()=>{if((busy||publication&&announcementChanged()||$('message-body').value.trim()||$('contact-form').querySelector('input')?.value)&&!confirm('画面を再読み込みします。未送信の入力は消えることがあります。送信中だった場合は履歴をご確認ください。'))return;location.reload()});
  const appLink=$('owner-app-link');
  if(appLink)appLink.href=new URL('owner/?v=flow-fix-1',ROOT).href;
 })();

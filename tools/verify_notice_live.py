@@ -1,5 +1,6 @@
 """Live endpoint config and fail-closed authorization checks. No recipient data or messages."""
 import json, urllib.request, urllib.error, base64
+from uuid import UUID
 URL='https://slamzhgsawfnmwlejgqp.supabase.co/functions/v1/ssyr-card'
 def request(payload=None, origin='https://mumei-s.github.io'):
     headers={'Origin':origin,'Accept':'application/json'}
@@ -16,6 +17,15 @@ key=body['vapidPublicKey'];decoded=base64.urlsafe_b64decode(key+'='*((4-len(key)
 assert len(decoded)==65 and decoded[0]==4
 assert set(body)=={'ok','version','vapidPublicKey'}
 assert h.get('Access-Control-Allow-Origin')=='https://mumei-s.github.io'
+code, shared, _ = request({'action':'card-announcement'})
+assert code == 200 and set(shared) == {'announcement'}
+notice = shared['announcement']
+if notice is not None:
+    assert set(notice) == {'id', 'title', 'body'}
+    UUID(notice['id'])
+    assert isinstance(notice['title'], str) and notice['title'].strip()
+    assert isinstance(notice['body'], str) and notice['body'].strip()
+print('PASS anonymous shared QR read')
 assert request({'action':'owner-list'})[0]==401
 assert request({'action':'status','device':'invalid'})[0]==401
 assert request({'action':'owner-send','contactId':'invalid'})[0]==401

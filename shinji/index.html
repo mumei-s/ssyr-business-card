@@ -14,7 +14,7 @@
   <meta property="og:image:alt" content="プラチナシルバーと群青の刷り模様に描いたSHINJIのレタリング">
   <link rel="manifest" href="./manifest.webmanifest?v=badge-2">
   <link rel="apple-touch-icon" href="./logo-spectrum.webp">
-  <link rel="stylesheet" href="./personal.css?v=received-1">
+  <link rel="stylesheet" href="./personal.css?v=announcement-1">
   <link rel="stylesheet" href="../assets/contact-import.css?v=direct-4">
   <script src="../assets/contact-import.js?v=direct-4" defer data-contact-name="SHINJI" data-contact-edition="shinji"></script>
   <script src="./card.js?v=foil-card-4" defer></script>
@@ -22,8 +22,10 @@
   <script src="./muumei-entry.js?v=1" defer></script>
   <script src="./game-entry.js?v=1" defer></script>
   <script src="./notice-common.js?v=nickname-1" defer></script>
+  <script src="./announcement-push.js?v=1" defer></script>
   <script src="./chat-receive.js?v=received-1" defer></script>
-  <script src="./chat-unread.js?v=received-1" defer></script>
+  <script src="./chat-unread.js?v=card-badge-1" defer></script>
+  <script src="./announcement.js?v=card-badge-1" defer></script>
 
   <link rel="icon" type="image/png" sizes="96x96" href="./brand-96.png?v=share-2">
   <link rel="shortcut icon" href="./brand-96.png?v=share-2" type="image/png">
@@ -39,6 +41,24 @@
   </svg>
   <main class="studio">
     <div class="card-chat-top">
+      <section id="announcement" class="card-announcement" aria-label="SHINJIからの名刺メッセージ" hidden>
+        <button type="button" id="announcement-open" aria-expanded="false" aria-controls="announcement-body" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#mail"/></svg>
+          <span class="announcement-copy"><span id="announcement-state">新着メッセージあり</span><strong id="announcement-title"></strong></span>
+          <span class="announcement-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <p id="announcement-body" hidden></p>
+        <p id="announcement-empty" hidden></p>
+        <details id="announcement-preferences" hidden>
+          <summary>名刺の新着通知</summary>
+          <p>SHINJIがこの名刺に掲載するメッセージを端末に通知します。初回は掲載中の見出しも1回届きます。</p>
+          <p id="announcement-push-status" role="status" aria-live="polite"></p>
+          <div class="announcement-actions">
+            <button type="button" id="announcement-enable">名刺の新着通知を受け取る</button>
+            <button type="button" id="announcement-stop" hidden>名刺の新着通知を停止</button>
+          </div>
+        </details>
+      </section>
       <a class="card-chat-banner card-chat-start" id="card-chat-start" href="#card-receive-title" hidden>
         <svg class="icon" aria-hidden="true"><use href="#mail"/></svg>
         <span class="card-chat-copy"><strong>新着あり</strong><span>個別チャットへの招待が届いています</span></span>
@@ -47,7 +67,7 @@
       <div aria-live="polite" aria-atomic="true">
         <a class="card-chat-banner" id="card-chat-unread" href="./notices.html#messages" hidden>
           <svg class="icon" aria-hidden="true"><use href="#mail"/></svg>
-          <strong>新着メッセージあり</strong>
+          <strong>個別チャットの新着メッセージあり</strong>
           <span id="card-chat-unread-count"></span><span aria-hidden="true">→</span>
         </a>
       </div>

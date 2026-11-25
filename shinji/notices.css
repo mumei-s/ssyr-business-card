@@ -93,3 +93,12 @@ footer{display:flex;flex-wrap:wrap;gap:.65rem 1rem;justify-content:center;paddin
 .revoked-chat-row .contact-row { border:0; margin:0; }
 .revoked-chat-row .hide-revoked { display:block; margin-left:auto; font-size:.83rem; }
 #selected-state { white-space:normal; }
+
+.owner-announcement > summary { cursor:pointer; padding:.35rem 0; color:var(--ink); font-weight:700; }
+.owner-announcement > p { margin:.5rem 0; }
+.owner-announcement .between { align-items:center; margin-top:1rem; }
+.owner-announcement .between h3 { margin:0; }
+#owner-announcement-current { margin:.6rem 0; padding:.7rem .85rem; border-left:2px solid var(--accent); background:#15212a; overflow-wrap:anywhere; }
+#owner-announcement-current .message-body { margin:.25rem 0 0; }
+#owner-announcement-form .actions { margin:0; }
+#owner-announcement-status:empty { display:none; }

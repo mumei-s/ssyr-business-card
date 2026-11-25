@@ -12,6 +12,27 @@
   let loading = false;
   let scheduled;
 
+  let privateCount = null;
+  let publicUnread = null;
+  function updateAppBadge() {
+    if (document.hidden) return;
+    try {
+      let operation;
+      if (privateCount !== null && publicUnread !== null) {
+        const count = privateCount + Number(publicUnread);
+        operation = count ? navigator.setAppBadge?.(count) : navigator.clearAppBadge?.();
+      } else if (privateCount || publicUnread) {
+        // Keep a dot until both independent reads have confirmed the count.
+        operation = navigator.setAppBadge?.();
+      }
+      operation?.catch(() => {});
+    } catch {}
+  }
+  window.addEventListener('ssyr-announcement-unread', event => {
+    publicUnread = event.detail;
+    updateAppBadge();
+  });
+
   function render(total, firstId) {
     if (banner) {
       const target = './notices.html' + (firstId ? '#thread=' + firstId : '#messages');
@@ -25,10 +46,8 @@
         if (entranceNote.textContent !== note) entranceNote.textContent = note;
       }
     }
-    try {
-      const operation = total ? navigator.setAppBadge?.(total) : navigator.clearAppBadge?.();
-      operation?.catch(() => {});
-    } catch {}
+    privateCount = total;
+    updateAppBadge();
   }
 
   async function dismissReadNotifications(unread, total, checkedAt) {
@@ -96,7 +115,10 @@
   window.addEventListener('pageshow', requestRefresh);
   document.addEventListener('visibilitychange', requestRefresh);
   navigator.serviceWorker?.addEventListener?.('message', e => {
-    if (e.data?.type === 'ssyr-chat-update') requestRefresh();
+    if (e.data?.type === 'ssyr-chat-update') {
+      privateCount = null;
+      requestRefresh();
+    }
   });
   window.addEventListener('ssyr-chat-unread-changed', () => {
     try { localStorage.setItem(signalKey, String(Date.now())); } catch {}

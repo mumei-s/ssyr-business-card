@@ -33,12 +33,12 @@ def check_recipient_notification(page,base):
     # operating system permissions are not needed to check its routing logic.
     source=page.request.get(base+'shinji/sw.js').text()
     result=page.evaluate("""async source => {
-      const listeners={}, notices=[], opened=[], refreshed=[];
+      const listeners={}, notices=[], opened=[], refreshed=[], badges=[];
       const scope=new URL('./',location.href).href;
       const self={
         addEventListener:(name,listener)=>{listeners[name]=listener},
         registration:{scope,showNotification:async(title,options)=>notices.push({title,...options})},
-        navigator:{}, clients:{
+        navigator:{setAppBadge:async n=>badges.push(n??'dot')}, clients:{
           matchAll:async()=>['notices.html','owner/'].map(path=>({
             url:new URL(path,scope).href,postMessage:msg=>refreshed.push([path,msg.type])
           })), openWindow:async url=>opened.push(String(url))
@@ -56,11 +56,29 @@ def check_recipient_notification(page,base):
         listeners.notificationclick({notification:{...notices[0],close(){}},waitUntil});
         await pending;
       }
-      return {notices,opened,refreshed,target:new URL('notices.html#thread='+threadId,scope).href};
+      const privateNotice={notices:[...notices],opened:[...opened],refreshed:[...refreshed],badges:[...badges]};
+      notices.length=0;opened.length=0;refreshed.length=0;badges.length=0;
+      for(const id of ['invalid',threadId]){
+        listeners.push({data:{json:()=>({kind:'card-announcement',id,title:'共通名刺のお知らせ'})},waitUntil});
+        await pending;
+      }
+      if(notices.length===1){
+        listeners.notificationclick({notification:{...notices[0],close(){}},waitUntil});
+        await pending;
+      }
+      return {...privateNotice,target:new URL('notices.html#thread='+threadId,scope).href,
+        shared:{notices,opened,refreshed,badges,target:new URL('#announcement',scope).href}};
     }""",source)
     assert len(result['notices'])==1 and result['notices'][0]['title']=='SHINJI'
     assert result['opened']==[result['target']]
     assert result['refreshed']==[['notices.html','ssyr-chat-update']]
+    assert result['badges']==['dot']
+    shared=result['shared']
+    assert len(shared['notices'])==1 and shared['notices'][0]['title']=='SHINJI'
+    assert shared['notices'][0]['body']=='共通名刺のお知らせ'
+    assert shared['badges']==['dot']
+    assert shared['opened']==[shared['target']]
+    assert shared['refreshed']==[['notices.html','ssyr-announcement-update']]
 
 def check_notices(browser,base):
     ctx=browser.new_context(viewport={'width':320,'height':760},service_workers='block')
@@ -114,7 +132,10 @@ def check_notices(browser,base):
         b=r.request.post_data_json;a=b['action'];requests.append(a)
         def done(body,status=200):r.fulfill(status=status,json=body,headers=HEADERS)
         def summary():return {'id':device_contacts.get(b.get('device')),'displayName':{VID:'ゲストさん',CID:'既知の相手',FIRST_CONTACT:FIRST_NAME,COMMON_CONTACT:COMMON_NAME}.get(device_contacts.get(b.get('device')),'ゲスト'),'enabled':state['enabled'],'pushBinding':state.get('binding') if state['enabled'] else None,'muumeiNews':state['news']}
-        if a=='visitor-start':
+        if a=='card-announcement':
+            assert set(b)=={'action'}
+            done({'announcement':None})
+        elif a=='visitor-start':
             assert len(bytes.fromhex(b['device']))==32
             if not str(b.get('name','')).replace('\u200b','').strip() and b['device'] not in device_contacts:
                 done({'error':'SHINJIにわかる名前を入力してください'},400)
