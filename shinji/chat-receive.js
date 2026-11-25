@@ -13,6 +13,7 @@
   let pendingNotice = '';
   let intentVersion = 0;
   let busy = false;
+  let lastState = '';
 
   function setIntent(id = '') {
     ++intentVersion;
@@ -58,7 +59,6 @@
     }
   });
   entry.addEventListener('click', () => setIntent());
-  let lastState = '';
 
   function showConnected(threadId, confirmed = true) {
     entry.hidden = true;

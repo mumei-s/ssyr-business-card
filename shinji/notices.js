@@ -104,7 +104,7 @@
  }
  function forgetCurrentThread(){
    N.forgetThread(device);drafts.delete(device);device='';contact=null;pending=null;
-   if(noticeRoute){clearNotice();location.replace('./#announcement')}
+   if(noticeRoute)returnToCard();
    writing=false;
    $('chat-body').value='';lastSignature='';renderMessages([]);render();
  }
@@ -168,31 +168,46 @@
  function noticeUnavailable(){
    noticeState('このメッセージの掲載は終了しました。',false,true);
  }
+ function returnToCard(){
+   // A link for an unavailable thread must not silently switch to a different saved chat.
+   clearNotice();
+   location.replace(N.getThreads().length?'./':'./#announcement');
+ }
+ function revealNotice(){
+   if(document.hidden||!displayedNotice||!noticeRoute||location.hash!==noticeRoute.hash)return;
+   if(!noticeRoute.positioned){
+     const article=$('chat-announcement-message'),box=article.getBoundingClientRect();
+     noticeRoute.positioned=true;
+     if(box.top<0||box.bottom>innerHeight)article.scrollIntoView({block:'start'});
+   }
+   markVisibleNotice();
+ }
  async function openChatNotice(route){
+   route.superseded=false;
    noticeState('メッセージを読み込んでいます…');
    const current=()=>noticeRoute===route&&location.hash===route.hash;
    try{
      const linked=await openNotification(route.thread,true);
      if(!current())return;
-     if(!linked){location.replace('./#announcement');return}
+     if(!linked){returnToCard();return}
      const secret=device,result=await N.call('chat-announcement',{device:secret});
      if(!current()||device!==secret||contact?.id!==route.thread)return;
      const item=result?.announcement;
      if(item!==null&&(!N.validThreadId(item?.id)||typeof item.title!=='string'||typeof item.body!=='string'))throw Error();
-     if(!item||item.id!==route.id){noticeUnavailable();return}
+     if(!item||item.id!==route.id||route.superseded){noticeUnavailable();return}
      displayedNotice=item.id;
      const heading=$('chat-announcement-title');
      heading.hidden=item.body.split(/\r\n?|\n/,1)[0].trim()===item.title.trim();
      heading.textContent=heading.hidden?'':item.title;
      $('chat-announcement-body').textContent=item.body;
      $('chat-announcement-status').textContent='';$('chat-announcement-message').hidden=false;
-     renderComposer();markVisibleNotice();
+     renderComposer();revealNotice();
    }catch(error){
      if(!current())return;
      if(error.status===401){
        const key=N.getThreads().find(t=>t.id===route.thread)?.device;
        if(key)N.forgetThread(key);
-       clearNotice();location.replace('./#announcement');return;
+       returnToCard();return;
      }
      noticeState('メッセージを読み込めませんでした。通信を確認して、もう一度お試しください。',true);
    }
@@ -201,9 +216,12 @@
  if('IntersectionObserver' in window){
    new IntersectionObserver(markVisibleNotice).observe($('chat-announcement-message'));
  }else window.addEventListener('scroll',markVisibleNotice,{passive:true});
- document.addEventListener('visibilitychange',markVisibleNotice);
+ document.addEventListener('visibilitychange',revealNotice);
  window.addEventListener('ssyr-announcement-current',event=>{
-   if(displayedNotice&&event.detail?.id!==displayedNotice)noticeUnavailable();
+   if(noticeRoute&&event.detail?.id!==noticeRoute.id){
+     noticeRoute.superseded=true;
+     if(displayedNotice)noticeUnavailable();
+   }
  });
  function matchesServerKey(sub){
    const existing=sub?.options?.applicationServerKey;
@@ -341,7 +359,7 @@
  function handleNotification(){
    const params=new URLSearchParams(location.hash.slice(1)),id=params.get('thread');
    if(params.has('announcement')){
-     if(!N.validThreadId(id)||!N.validThreadId(params.get('announcement'))){location.replace('./#announcement');return true}
+     if(!N.validThreadId(id)||!N.validThreadId(params.get('announcement'))){returnToCard();return true}
      const route={thread:id,id:params.get('announcement'),hash:location.hash};
      noticeRoute=route;
      void run(async()=>{await openChatNotice(route);feedback()});return true;
