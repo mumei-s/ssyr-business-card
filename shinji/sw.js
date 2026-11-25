@@ -19,6 +19,21 @@ function isCard(url) {
 self.addEventListener('push', event => {
   let payload;
   try { payload = event.data?.json(); } catch {}
+  if (payload?.kind === 'card-announcement') {
+    if (!uuid(payload.id) || typeof payload.title !== 'string' || !payload.title.trim()) return;
+    event.waitUntil((async () => {
+      await self.registration.showNotification('SHINJI', {
+        body: payload.title.trim().slice(0, 60),
+        icon: new URL('brand-96.png', scope).href,
+        tag: 'ssyr-card-announcement',
+        data: {kind: 'card-announcement', id: payload.id}
+      });
+      for (const client of await self.clients.matchAll({type: 'window', includeUncontrolled: true})) {
+        if (isCard(new URL(client.url))) client.postMessage({type: 'ssyr-announcement-update'});
+      }
+    })());
+    return;
+  }
   if (payload?.kind !== 'message' && payload?.kind !== 'test') return;
   const test = payload.kind === 'test';
   const threadId = uuid(payload.threadId) ? payload.threadId : null;
@@ -42,12 +57,17 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const target = chatUrl(event.notification.data?.threadId);
+  const announcement = event.notification.data?.kind === 'card-announcement';
+  const target = announcement ? new URL('#announcement', scope).href : chatUrl(event.notification.data?.threadId);
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({type: 'window', includeUncontrolled: true});
     const matching = windows.find(client => client.url === target);
     if (matching) {
-      try { await matching.focus(); return; } catch {}
+      try {
+        await matching.focus();
+        if (announcement) matching.postMessage({type: 'ssyr-announcement-open'});
+        return;
+      } catch {}
     }
     for (const client of windows) {
       if (!isCard(new URL(client.url))) continue;
