@@ -68,11 +68,11 @@
    localStorage.removeItem(threadPrefix+device);
    if(getDevice()===device)clearDevice();
  }
- async function deviceForInvite(invite){
+ async function deviceForInvite(invite,reserve=true){
    const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(invite));
    const key='ssyr-claim-v1:'+Array.from(new Uint8Array(bytes),n=>n.toString(16).padStart(2,'0')).join('');
    let device=localStorage.getItem(key);
-   if(!validToken(device)){device=random();localStorage.setItem(key,device)}
+   if(!validToken(device)){if(!reserve)return '';device=random();localStorage.setItem(key,device)}
    return device;
  }
  const startKey='ssyr-card-start-pending-v1';
@@ -142,13 +142,14 @@
    const active=getDevice();
    const linked=await findLinkedReceiver(preferred);
    const device=await startDevice(linked?.device);
+   const newlyLinked=!linked&&!getThreads().some(t=>t.device===device);
    const result=await call('visitor-start',{device,name,muumeiNews});
    if(!result?.contact)throw Error('受け取りの開始を確認できません。もう一度お試しください。');
    rememberThread(device,result.contact.id);
    if(!validToken(getDevice())||getDevice()===active)setDevice(device);
    if(localStorage.getItem(startKey)===device)localStorage.removeItem(startKey);
    window.dispatchEvent(new Event('ssyr-chat-unread-changed'));
-   return {device,contact:result.contact};
+   return {device,contact:result.contact,newlyLinked};
  }
  function inviteFrom(value){const s=String(value||'').trim();if(validToken(s))return s;try{const u=new URL(s);if(u.origin==='https://mumei-s.github.io'&&u.pathname==='/ssyr-business-card/shinji/notices.html'){const t=new URLSearchParams(u.hash.slice(1)).get('invite');if(validToken(t))return t}}catch{}return ''}
  function date(v){if(!v)return '';const d=new Date(v);return Number.isFinite(d.valueOf())?d.toLocaleString('ja-JP'):''}
@@ -173,6 +174,94 @@
  }
  function feedback(message='',error=false){$('feedback').textContent=message;$('feedback').classList.toggle('error',!!error)}
  function decode(s){const b=s.replace(/-/g,'+').replace(/_/g,'/');return Uint8Array.from(atob(b+'='.repeat((4-b.length%4)%4)),x=>x.charCodeAt(0))}
+ const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+ const pushSupported=window.isSecureContext&&'Notification' in window&&!!navigator.serviceWorker&&'PushManager' in window&&
+   (!ios||navigator.standalone===true||matchMedia('(display-mode: standalone)').matches);
+ let permissionTask,askedPermission=false,workerTask,subscriptionTask;
+ function requestPushPermission(retry=false){
+   if(!pushSupported)return Promise.resolve('unsupported');
+   if(Notification.permission!=='default')return Promise.resolve(Notification.permission);
+   if(permissionTask)return permissionTask;
+   if(askedPermission&&!retry)return Promise.resolve('default');
+   askedPermission=true;
+   try{
+     // Invoke synchronously inside the initiating tap, before registration I/O.
+     permissionTask=wait(Notification.requestPermission(),15000).catch(()=>'default').finally(()=>{permissionTask=null});
+     return permissionTask;
+   }catch{return Promise.resolve('default')}
+ }
+ function preparePush(){
+   if(!workerTask)workerTask=(async()=>{
+     const [settings,reg]=await Promise.all([config(),wait(navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}),10000)]);
+     const key=settings.ok===true&&typeof settings.vapidPublicKey==='string'&&decode(settings.vapidPublicKey);
+     if(!key||key.length!==65||key[0]!==4||reg.scope!==new URL('./',location.href).href)throw Error('名刺の通知設定を確認してください。');
+     for(let i=0;i<16&&!reg.active;i++)await new Promise(resolve=>setTimeout(resolve,250));
+     if(!reg.active)throw Error('通知の準備をもう一度お試しください。');
+     return {reg,key};
+   })().catch(error=>{workerTask=null;throw error});
+   return workerTask;
+ }
+ function compatiblePush(subscription,key){
+   const existing=subscription?.options?.applicationServerKey;
+   if(!existing)return true;
+   const bytes=new Uint8Array(existing);
+   return !!key&&bytes.length===key.length&&bytes.every((value,i)=>value===key[i]);
+ }
+ async function pushBinding(subscription){
+   if(!subscription)return '';
+   const {endpoint,keys}=subscription.toJSON();
+   if(!endpoint||!keys?.p256dh||!keys?.auth)return '';
+   const contents=new TextEncoder().encode(JSON.stringify([endpoint,keys.p256dh,keys.auth]));
+   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',contents)),n=>n.toString(16).padStart(2,'0')).join('');
+ }
+ function pushSubscription(){
+   if(!subscriptionTask)subscriptionTask=(async()=>{
+     const {reg,key}=await preparePush();
+     let subscription=await wait(reg.pushManager.getSubscription(),4000);
+     if(!compatiblePush(subscription,key))throw Error('この端末の通知登録が一致しません。名刺の通知設定をご確認ください。');
+     if(!subscription)subscription=await wait(reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:key}),8000);
+     const binding=await pushBinding(subscription);
+     if(!binding)throw Error('この端末の通知登録を確認してください。');
+     return {subscription,binding,reg,key};
+   })().finally(()=>{subscriptionTask=null});
+   return subscriptionTask;
+ }
+ const chatPushKey=device=>'ssyr-chat-push-off-v1:'+device;
+ function withPushChoice(device,task){
+   return navigator.locks?.request?navigator.locks.request(chatPushKey(device),task):task();
+ }
+ async function saveChatPush(device,id,initial=false){
+   if(!validToken(device)||!validThreadId(id))throw Error('この会話の受け取り設定を確認してください。');
+   if(initial&&localStorage.getItem(chatPushKey(device)))return null;
+   const {subscription,binding}=await pushSubscription();
+   return withPushChoice(device,async()=>{
+     if(initial&&localStorage.getItem(chatPushKey(device)))return null;
+     const {contact}=await call('subscribe',{device,subscription:subscription.toJSON()});
+     if(contact?.id!==id||!contact.enabled||contact.pushBinding!==binding)throw Error('この会話の通知登録を確認できませんでした。');
+     if(!initial){try{localStorage.removeItem(chatPushKey(device))}catch{}}
+     return contact;
+   });
+ }
+ async function stopChatPush(device){
+   try{localStorage.setItem(chatPushKey(device),'1')}catch{}
+   return withPushChoice(device,()=>call('stop',{device}));
+ }
+ function privateChoice(input,guide){
+   const blocked=!pushSupported||Notification.permission==='denied';
+   input.disabled=blocked;
+   if(blocked)input.checked=false;
+   guide.textContent=!pushSupported?(ios?'端末通知はホーム画面に追加した名刺から設定できます。':'このブラウザーでは端末通知を利用できません。'):
+     blocked?'端末通知はブラウザーの設定でブロックされています。':'';
+   guide.hidden=!guide.textContent;
+ }
+ async function finishChatPush(result,permission){
+   if(!result.newlyLinked||!permission)return '';
+   if(await permission!=='granted')return '端末通知はOFFです。新着は名刺とチャットで確認できます。';
+   try{
+     const contact=await saveChatPush(result.device,result.contact.id,true);
+     return contact?'個別チャットの端末通知をONにしました。':'';
+   }catch{return '個別チャットの通知登録を確認できません。チャットの通知設定から再設定できます。'}
+ }
  async function publicAuthKey(){const c=await jsonRequest(base+'/functions/v1/public-config',{},10000);if(c.url!==base||typeof c.key!=='string'||!/^sb_publishable_[A-Za-z0-9_-]+$/.test(c.key))throw Error('管理者ログインの接続を確認してください。');return c.key}
  const auth=(action,body,key)=>jsonRequest(base+'/auth/v1/'+action,{method:'POST',headers:{'Content-Type':'application/json',apikey:key},body:JSON.stringify(body)},15000);
  // Accept only this project's verification links. Never navigate to a copied URL.
@@ -196,5 +285,5 @@
  }
  const pushLabels={pending:'処理結果未確定',accepted:'通知サービス受付済み',failed:'通知送信失敗',expired:'端末登録期限切れ',disabled:'連絡を保存・通知OFF',unknown:'送信結果未確定'};
  function setBusy(root,busy){for(const b of root.querySelectorAll('button[type=submit]'))b.disabled=busy}
- window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,getThreads,rememberThread,forgetThread,findLinkedReceiver,readVisitorName,startReceiving,deviceForInvite,validThreadId,inviteFrom,date,el,messageDeleteButton,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
+ window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,getThreads,rememberThread,forgetThread,findLinkedReceiver,readVisitorName,startReceiving,deviceForInvite,validThreadId,inviteFrom,date,el,messageDeleteButton,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy,pushSupported,requestPushPermission,preparePush,compatiblePush,pushBinding,pushSubscription,saveChatPush,stopChatPush,privateChoice,finishChatPush};
 })();

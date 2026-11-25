@@ -87,6 +87,7 @@ def check_notices(browser,base):
     page.on('pageerror',lambda e:errors.append(str(e)))
     delayed=[]
     device_contacts = {}
+    push_bindings = {}
     owner_starts = {}
     public_registrations = {}
     archive_rows = []
@@ -95,7 +96,7 @@ def check_notices(browser,base):
         VID: [{'id': CID, 'title': 'テスト連絡', 'body': '受信した連絡', 'created_at': DATE, 'read_at': None}],
         CID: [{'id': NEW, 'title': 'チャット', 'body': '既知の相手との履歴', 'direction': 'outbound', 'created_at': DATE, 'read_at': DATE}],
     }
-    state={'delay_status':False,'delay_list':False,'linked':False,'enabled':False,'news':False,'owner_setup':False,'owner_session':False,'owner_enabled':False,'unread':1,'saved':[dict(MANUAL)]}
+    state={'delay_status':False,'delay_list':False,'linked':False,'news':False,'owner_setup':False,'owner_session':False,'owner_enabled':False,'unread':1,'saved':[dict(MANUAL)]}
     ctx.add_init_script("""(() => {
       const scopes=new Map();
       let rotation='';
@@ -131,7 +132,7 @@ def check_notices(browser,base):
             r.fulfill(json={'ok':True,'version':1,'vapidPublicKey':key},headers=HEADERS);return
         b=r.request.post_data_json;a=b['action'];requests.append(a)
         def done(body,status=200):r.fulfill(status=status,json=body,headers=HEADERS)
-        def summary():return {'id':device_contacts.get(b.get('device')),'displayName':{VID:'ゲストさん',CID:'既知の相手',FIRST_CONTACT:FIRST_NAME,COMMON_CONTACT:COMMON_NAME}.get(device_contacts.get(b.get('device')),'ゲスト'),'enabled':state['enabled'],'pushBinding':state.get('binding') if state['enabled'] else None,'muumeiNews':state['news']}
+        def summary():return {'id':device_contacts.get(b.get('device')),'displayName':{VID:'ゲストさん',CID:'既知の相手',FIRST_CONTACT:FIRST_NAME,COMMON_CONTACT:COMMON_NAME}.get(device_contacts.get(b.get('device')),'ゲスト'),'enabled':b.get('device') in push_bindings,'pushBinding':push_bindings.get(b.get('device')),'muumeiNews':state['news']}
         if a=='card-announcement':
             assert set(b)=={'action'}
             done({'announcement':None})
@@ -200,19 +201,19 @@ def check_notices(browser,base):
             subscription=b['subscription']
             data=[subscription['endpoint'],subscription['keys']['p256dh'],subscription['keys']['auth']]
             if data[0].endswith('-rotated'):
-                assert b.get('expectedPushBinding')==state.get('binding') and state['enabled']
+                assert b.get('expectedPushBinding')==push_bindings.get(b['device'])
             else:
                 assert data[0]=='https://fcm.googleapis.com/recipient-synthetic'
-            state['binding']=hashlib.sha256(json.dumps(data,separators=(',',':')).encode()).hexdigest()
-            state['enabled']=True;done({'contact':summary()})
+            push_bindings[b['device']]=hashlib.sha256(json.dumps(data,separators=(',',':')).encode()).hexdigest()
+            done({'contact':summary()})
         elif a=='test':done({'status':'accepted'})
-        elif a=='stop':state['enabled']=False;done({'ok':True})
+        elif a=='stop':push_bindings.pop(b['device'],None);done({'ok':True})
         elif a=='preferences':state['news']=b['muumeiNews'];done({'contact':summary()})
         elif a=='read':
             row=next(m for m in threads[device_contacts[b['device']]] if m['id']==b['id'])
             row['read_at']=DATE
             done({'ok':True})
-        elif a=='disconnect':state['linked']=False;state['enabled']=False;done({'ok':True})
+        elif a=='disconnect':state['linked']=False;push_bindings.pop(b['device'],None);done({'ok':True})
         elif a=='card-owner-setup':
             if state['owner_setup'] or b.get('code')!='A'*20:done({'error':'初回設定コードの期限・使用状況を確認してください。'},401);return
             assert b['password']=='SyntheticCardPassword123'
@@ -321,6 +322,7 @@ def check_notices(browser,base):
     expect(name).to_be_focused()
     assert page.evaluate('Notification.permission')=='default'
     assert not set(requests).intersection({'visitor-start','chat-send','preferences','subscribe'})
+    page.locator('#claim-private-default').uncheck()
     name.fill('ゲストさん')
     page.locator('#chat-send').click()
     expect(page.locator('#feedback')).to_contain_text('メッセージを送信しました')
