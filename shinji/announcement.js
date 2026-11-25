@@ -6,6 +6,7 @@
   const heading = document.getElementById('announcement-title');
   const state = document.getElementById('announcement-state');
   const preview = document.getElementById('announcement-preview');
+  const choice = document.getElementById('announcement-default-choice');
   const empty = document.getElementById('announcement-empty');
   const readKey = 'ssyr-card-announcement-chat-read-v1';
   const scope = new URL('./', location.href).href;
@@ -36,10 +37,11 @@
       }
     }
   }
-  function enterChat() {
+  function enterChat(event) {
     if (!notice || !section) return;
     if (location.hash === '#announcement') history.replaceState(history.state, '', location.pathname + location.search);
-    window.dispatchEvent(new CustomEvent('ssyr-open-announcement', {detail:{id:notice.id}}));
+    const notificationTask = event?.isTrusted ? window.SSYRAnnouncementPush?.fromGesture() : undefined;
+    window.dispatchEvent(new CustomEvent('ssyr-open-announcement', {detail:{id:notice.id, notificationTask}}));
   }
   // Bound legacy full-text responses to the same public excerpt during rollout.
   function teaser(value, title) {
@@ -80,6 +82,7 @@
       void dismissNotifications(lastRead, notice?.id, checkedAt).catch(() => {});
       if (!section) return;
       open.hidden = !notice;
+      choice.hidden = !notice;
       heading.textContent = notice?.title || '';
       preview.textContent = notice?.preview || '';
       showMessage(!notice && location.hash === '#announcement' ? '現在掲載中のメッセージはありません。' : '');
@@ -90,6 +93,7 @@
       if (openOnLoad || notice) {
         // Do not present a withdrawn item as current if its status cannot be checked.
         open.hidden = true;
+        choice.hidden = true;
         showMessage('メッセージを確認できません。通信が戻ったらもう一度名刺を開いてください。');
       }
     }

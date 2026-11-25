@@ -8,6 +8,8 @@
   const status = document.getElementById('card-receive-status');
   const open = document.getElementById('card-receive-open');
   const hint = document.getElementById('card-receive-hint');
+  const privateChoice = document.getElementById('card-private-default');
+  const privateGuide = document.getElementById('card-private-default-status');
   const normalHint = hint.textContent;
   const normalStart = start.textContent;
   let pendingNotice = '';
@@ -43,7 +45,8 @@
       if (version !== intentVersion || busy) return;
       if (linked) {
         N.rememberThread(linked.device, linked.id);
-        continueToChat(linked.id);
+        await event.detail.notificationTask;
+        if (version === intentVersion && !busy) continueToChat(linked.id);
       } else focusName();
     } catch {
       if (version !== intentVersion) return;
@@ -77,6 +80,7 @@
     open.hidden = true;
     if (lastState !== 'form') status.textContent = '';
     lastState = 'form';
+    N.privateChoice(privateChoice, privateGuide);
   }
 
   function showSavedState() {
@@ -104,8 +108,13 @@
     start.disabled = true;
     status.textContent = '受け取りを設定しています…';
     try {
-      const result = await N.startReceiving(N.readVisitorName(name));
+      const nickname = N.readVisitorName(name);
+      const permission = privateChoice.checked && !privateChoice.disabled && !N.getThreads().length ? N.requestPushPermission() : null;
+      const cardNotifications = window.SSYRAnnouncementPush?.fromGesture();
+      const result = await N.startReceiving(nickname);
       showConnected(result.contact.id);
+      const [privateResult] = await Promise.all([N.finishChatPush(result, permission), Promise.resolve(cardNotifications).catch(() => {})]);
+      if (privateResult) status.textContent = '招待を受け取りました。' + privateResult;
       continueToChat(result.contact.id);
     } catch (error) {
       status.textContent = error.message || '受け取りを開始できませんでした。もう一度お試しください。';

@@ -177,6 +177,7 @@ def check_card_announcement(browser, base):
     page.evaluate("(id) => localStorage.setItem('ssyr-card-announcement-read-v1',id)", first['id'])
     page.reload()
     expect(state).to_have_text('新着メッセージあり')
+    page.locator('#announcement-default').uncheck()
     entry.click()
     expect(name).to_be_focused()
     name.fill('　 ')
@@ -208,6 +209,7 @@ def check_card_announcement(browser, base):
     expect_badge(1)
     assert not active_devices
     name.fill('テストのひかり')
+    page.locator('#card-private-default').uncheck()
     start.click()
     retry = page.locator('#chat-announcement-retry')
     expect(retry).to_be_visible()

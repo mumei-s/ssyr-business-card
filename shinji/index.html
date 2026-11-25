@@ -14,18 +14,18 @@
   <meta property="og:image:alt" content="プラチナシルバーと群青の刷り模様に描いたSHINJIのレタリング">
   <link rel="manifest" href="./manifest.webmanifest?v=badge-2">
   <link rel="apple-touch-icon" href="./logo-spectrum.webp">
-  <link rel="stylesheet" href="./personal.css?v=teaser-1">
+  <link rel="stylesheet" href="./personal.css?v=notify-default-1">
   <link rel="stylesheet" href="../assets/contact-import.css?v=direct-4">
   <script src="../assets/contact-import.js?v=direct-4" defer data-contact-name="SHINJI" data-contact-edition="shinji"></script>
   <script src="./card.js?v=foil-card-4" defer></script>
   <script src="./install.js?v=reinstall-1" defer></script>
   <script src="./muumei-entry.js?v=1" defer></script>
   <script src="./game-entry.js?v=1" defer></script>
-  <script src="./notice-common.js?v=teaser-1" defer></script>
-  <script src="./announcement-push.js?v=1" defer></script>
-  <script src="./chat-receive.js?v=teaser-1" defer></script>
+  <script src="./notice-common.js?v=notify-default-1" defer></script>
+  <script src="./announcement-push.js?v=notify-default-1" defer></script>
+  <script src="./chat-receive.js?v=notify-default-1" defer></script>
   <script src="./chat-unread.js?v=card-badge-1" defer></script>
-  <script src="./announcement.js?v=teaser-1" defer></script>
+  <script src="./announcement.js?v=notify-default-1" defer></script>
 
   <link rel="icon" type="image/png" sizes="96x96" href="./brand-96.png?v=share-2">
   <link rel="shortcut icon" href="./brand-96.png?v=share-2" type="image/png">
@@ -51,6 +51,10 @@
             <span class="announcement-more">続きを読む <span aria-hidden="true">→</span></span>
           </span>
         </button>
+        <div id="announcement-default-choice" class="push-choice" hidden>
+          <label><input type="checkbox" id="announcement-default" checked> 名刺の新着通知を受け取る</label>
+          <small id="announcement-default-status" role="status"></small>
+        </div>
         <p id="announcement-empty" hidden></p>
         <details id="announcement-preferences" hidden>
           <summary>名刺の新着通知</summary>
@@ -132,6 +136,12 @@
           <p id="card-receive-hint">受け取りを始めると、この名刺でSHINJIからの連絡を読めます。</p>
           <label for="card-receive-name">SHINJIにわかる名前を入力してください</label>
           <input id="card-receive-name" maxlength="100" autocomplete="nickname" required>
+          <div class="push-choice">
+            <label><input type="checkbox" id="card-announcement-default" checked> 名刺の新着通知を受け取る</label>
+            <small id="card-announcement-default-status" role="status"></small>
+            <label><input type="checkbox" id="card-private-default" checked> 個別チャットの新着通知を受け取る</label>
+            <small id="card-private-default-status" role="status"></small>
+          </div>
           <button id="card-receive-start" type="submit">SHINJIからの連絡を受け取る</button>
         </form>
         <p id="card-receive-status" role="status" aria-live="polite"></p>

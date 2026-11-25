@@ -321,6 +321,7 @@ def check_notices(browser,base):
     expect(name).to_be_focused()
     assert page.evaluate('Notification.permission')=='default'
     assert not set(requests).intersection({'visitor-start','chat-send','preferences','subscribe'})
+    page.locator('#claim-private-default').uncheck()
     name.fill('ゲストさん')
     page.locator('#chat-send').click()
     expect(page.locator('#feedback')).to_contain_text('メッセージを送信しました')

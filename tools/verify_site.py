@@ -235,6 +235,8 @@ def main():
         check_notices(browser, base)
         from verify_card_announcement import check_card_announcement
         check_card_announcement(browser, base)
+        from verify_notification_defaults import check_notification_defaults
+        check_notification_defaults(browser, base)
         from verify_owner_install import check_owner_install
         check_owner_install(browser, base)
         browser.close()
