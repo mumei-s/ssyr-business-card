@@ -11,6 +11,9 @@ MOCK_PUSH = """
 (() => {
   const scope = new URL('./', location.href).href;
   window.qaPush = {permission: 0, subscribed: 0, unsubscribed: 0};
+  const recordBadge = n => { document.documentElement.dataset.qaBadge = String(n ?? 'dot'); };
+  Object.defineProperty(navigator,'setAppBadge',{value:async n=>recordBadge(n)});
+  Object.defineProperty(navigator,'clearAppBadge',{value:async()=>recordBadge(0)});
   const subscription = {endpoint:'https://fcm.googleapis.com/synthetic-only',
     toJSON(){return {endpoint:this.endpoint,keys:{p256dh:'fixture',auth:'test'}}},
     async unsubscribe(){qaPush.unsubscribed++;return true}};
@@ -38,9 +41,13 @@ def check_card_announcement(browser, base):
     actions = []
     written_revisions = {}
     drop_next = False
+    private_unread = 1
+    private_id = str(uuid4())
+    private_message_id = str(uuid4())
+    private_body = '個別の会話でだけ読める本文'
 
     def route(r):
-        nonlocal item, revision, drop_next
+        nonlocal item, revision, drop_next, private_unread
         if r.request.method == 'OPTIONS':
             r.fulfill(status=204, headers=HEADERS)
             return
@@ -58,7 +65,17 @@ def check_card_announcement(browser, base):
             assert set(fields) == {'action'}
             done({'announcement': item})
         elif action == 'chat-unread':
-            done({'counts':[1], 'threadIds':['11111111-2222-4333-8444-555555555555']})
+            done({'counts':[private_unread], 'threadIds':[private_id]})
+        elif action == 'status':
+            assert fields['device'] == 'c'*64
+            done({'contact':{'id':private_id,'enabled':False},'messages':[{
+                'id':private_message_id,'direction':'outbound','body':private_body,
+                'created_at':'2026-01-01T00:00:00Z',
+                'read_at':None if private_unread else '2026-01-02T00:00:00Z'}]})
+        elif action == 'read':
+            assert fields['device'] == 'c'*64 and fields['id'] == private_message_id
+            private_unread = 0
+            done({'ok':True})
         elif action.startswith('card-announcement-'):
             device = fields['device']
             assert len(bytes.fromhex(device)) == 32
@@ -74,7 +91,7 @@ def check_card_announcement(browser, base):
                 bindings.pop(device, None)
             else:
                 assert action == 'card-announcement-status'
-            done({'enabled':bool(binding),'pushBinding':binding,'delivery':{'accepted':int(bool(item and binding)), 'failed':0,'expired':0,'pending':0}})
+            done({'enabled':bool(binding),'pushBinding':binding})
         elif action == 'owner-list':
             done({'contacts':[], 'ownerPushEnabled': False})
         elif action == 'owner-announcement':
@@ -114,14 +131,18 @@ def check_card_announcement(browser, base):
     entry = page.locator('#announcement-open')
     body = page.locator('#announcement-body')
     state = page.locator('#announcement-state')
+    def expect_badge(n):
+        expect(page.locator('html')).to_have_attribute('data-qa-badge', str(n))
     expect(entry).to_be_in_viewport()
     expect(state).to_have_text('新着メッセージあり')
     expect(entry).to_contain_text(first['title'])
     expect(body).to_be_hidden()
     expect(page.locator('#card-chat-start')).to_be_visible()
+    expect_badge(1)
     entry.click()
     expect(body).to_have_text(first['body'])
     expect(state).to_contain_text('SHINJI')
+    expect_badge(0)
     page.reload()
     expect(state).to_contain_text('SHINJI')
     assert set(actions) == {'card-announcement'}
@@ -173,26 +194,56 @@ def check_card_announcement(browser, base):
     page.reload()
     expect(state).to_have_text('新着メッセージあり')
     expect(entry).to_contain_text(new_title)
+    expect_badge(1)
     assert entry.locator('a').count() == 0
     page.evaluate("localStorage.setItem('ssyr-card-device-v1','c'.repeat(64))")
+    page.reload()
+    expect_badge(2)
+    # A private read from another open card must preserve the public unread.
+    expect(page.get_by_text(private_body)).to_have_count(0)
+    chat = guest.new_page()
+    chat.goto(home+'notices.html')
+    expect(chat.locator('html')).to_have_attribute('data-qa-badge', '2')
+    expect(chat.get_by_text(private_body)).to_be_visible()
+    chat.get_by_role('button',name='既読にする').click()
+    expect(chat.locator('html')).to_have_attribute('data-qa-badge', '1')
+    chat.close()
+    page.bring_to_front()
+    page.evaluate("window.dispatchEvent(new Event('focus'))")
+    expect_badge(1)
+    expect(state).to_have_text('新着メッセージあり')
+    private_unread = 1
+    page.evaluate("window.dispatchEvent(new Event('ssyr-chat-unread-changed'))")
+    expect_badge(2)
     page.goto(home+'#announcement')
     expect(body).to_have_text(item['body'])
     expect(body).to_be_visible()
     expect(page.locator('#card-chat-unread')).to_be_visible()
     expect(page.locator('#card-chat-start')).to_be_hidden()
+    expect_badge(1)
 
+    final_title = '第3試合のお知らせ'
+    title.fill(final_title)
+    text.fill('今週の対戦です。')
+    publish.click()
+    expect(owner.locator('#owner-announcement-current')).to_contain_text(final_title)
+    page.evaluate("window.dispatchEvent(new Event('online'))")
+    expect(state).to_have_text('新着メッセージあり')
+    expect_badge(2)
     withdraw = owner.locator('#owner-announcement-withdraw')
     owner.once('dialog',lambda d:d.dismiss())
     withdraw.click()
     assert item is not None
     owner.once('dialog',lambda d:d.accept())
     withdraw.click()
-    expect(owner.locator('#owner-announcement-current')).not_to_contain_text(new_title)
+    expect(owner.locator('#owner-announcement-current')).not_to_contain_text(final_title)
     page.reload()
     expect(entry).to_be_hidden()
     expect(page.locator('#announcement-empty')).to_be_visible()
     expect(prefs).to_be_visible()
-    assert not any(a in actions for a in ('claim','visitor-start','chat-send','owner-send','read','stop','disconnect'))
+    expect_badge(1)
+    assert actions.count('read') == 1
+    assert not any(a in actions for a in ('claim','visitor-start','chat-send','owner-send','stop','disconnect'))
     guest.close()
     admin.close()
     print('PASS shared QR notice, isolated chat, anonymous opt-in, owner conflict/retry and withdrawal')

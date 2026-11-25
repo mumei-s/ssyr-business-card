@@ -16,6 +16,16 @@ function isCard(url) {
     (url.pathname === scope.pathname || url.pathname === new URL('index.html', scope).pathname);
 }
 
+async function updateRecipientWindows(type) {
+  try { await self.navigator.setAppBadge?.(); } catch {}
+  for (const client of await self.clients.matchAll({type: 'window', includeUncontrolled: true})) {
+    const url = new URL(client.url);
+    if (isCard(url) || (url.origin === chat.origin && url.pathname === chat.pathname)) {
+      client.postMessage({type});
+    }
+  }
+}
+
 self.addEventListener('push', event => {
   let payload;
   try { payload = event.data?.json(); } catch {}
@@ -25,12 +35,11 @@ self.addEventListener('push', event => {
       await self.registration.showNotification('SHINJI', {
         body: payload.title.trim().slice(0, 60),
         icon: new URL('brand-96.png', scope).href,
-        tag: 'ssyr-card-announcement',
+        tag: 'card-announcement-' + payload.id,
+        renotify: false,
         data: {kind: 'card-announcement', id: payload.id}
       });
-      for (const client of await self.clients.matchAll({type: 'window', includeUncontrolled: true})) {
-        if (isCard(new URL(client.url))) client.postMessage({type: 'ssyr-announcement-update'});
-      }
+      await updateRecipientWindows('ssyr-announcement-update');
     })());
     return;
   }
@@ -45,13 +54,7 @@ self.addEventListener('push', event => {
       data: {kind: payload.kind, threadId}
     });
     if (test) return;
-    try { await self.navigator.setAppBadge?.(); } catch {}
-    for (const client of await self.clients.matchAll({type: 'window', includeUncontrolled: true})) {
-      const url = new URL(client.url);
-      if (isCard(url) || (url.origin === chat.origin && url.pathname === chat.pathname)) {
-        client.postMessage({type: 'ssyr-chat-update'});
-      }
-    }
+    await updateRecipientWindows('ssyr-chat-update');
   })());
 });
 
