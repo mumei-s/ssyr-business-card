@@ -97,9 +97,26 @@
  const announcementTitle=$('owner-announcement-title'),announcementBody=$('owner-announcement-body');
  const announcementStatus=$('owner-announcement-status');
  let publication=null,announcementAttempt=null,announcementReading=false,announcementReadId=0;
+ const graphemes=typeof Intl.Segmenter==='function'?new Intl.Segmenter('ja',{granularity:'grapheme'}):null;
+ function updateAnnouncementPreview(){
+   const title=announcementTitle.value.trim(),body=announcementBody.value.trim();
+   $('owner-announcement-preview').hidden=!title&&!body;
+   $('owner-announcement-preview-title').textContent=title;
+   const lines=body.split(/\r\n?|\n/).map(line=>line.trim()).filter(Boolean);
+   if(lines[0]===title)lines.shift();
+   const first=lines[0]||'';
+   if(!graphemes&&first){
+     $('owner-announcement-preview-body').textContent='このブラウザでは本文のプレビューを表示できません。';
+     return;
+   }
+   const units=first?[...graphemes.segment(first)].map(part=>part.segment):[];
+   const count=lines.length>1?5:Math.min(5,Math.max(0,units.length-1));
+   $('owner-announcement-preview-body').textContent=body?units.slice(0,count).join('')+'……':'';
+ }
  function resetAnnouncement(){
    announcementReadId++;announcementReading=false;publication=null;announcementAttempt=null;
    announcementPanel.open=false;announcementForm.reset();
+   updateAnnouncementPreview();
    $('owner-announcement-current').replaceChildren();$('owner-announcement-delivery').textContent='';
    announcementStatus.textContent='';
  }
@@ -125,7 +142,12 @@
    const item=result.announcement,view=$('owner-announcement-current');
    if(item)view.replaceChildren(el('strong',item.title),el('p',item.body,'message-body'));
    else view.replaceChildren(el('p','掲載中のメッセージはありません。'));
-   if(!keepDraft){announcementTitle.value=item?.title||'';announcementBody.value=item?.body||''}
+   if(!keepDraft){
+     const draft=result.suggestedDraft;
+     const initial=draft&&typeof draft.title==='string'&&typeof draft.body==='string'?draft:item;
+     announcementTitle.value=initial?.title||'';announcementBody.value=initial?.body||'';
+     updateAnnouncementPreview();
+   }
    const delivery=result.delivery,counts=[];
    for(const [key,label] of [['accepted','通知サービス受付'],['pending','送信待ち'],['failed','送信失敗'],['expired','登録期限切れ']]){
      if(Number.isInteger(delivery?.[key])&&delivery[key]>0)counts.push(label+' '+delivery[key]+'件');
@@ -180,7 +202,7 @@
    }
  }
  announcementPanel.addEventListener('toggle',()=>{if(announcementPanel.open&&!busy)void loadAnnouncement()});
- announcementForm.addEventListener('input',updateAnnouncementControls);
+ announcementForm.addEventListener('input',()=>{updateAnnouncementPreview();updateAnnouncementControls()});
  $('owner-announcement-reload').addEventListener('click',()=>void loadAnnouncement());
  announcementForm.addEventListener('submit',event=>{
    event.preventDefault();

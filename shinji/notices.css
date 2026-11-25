@@ -102,3 +102,9 @@ footer{display:flex;flex-wrap:wrap;gap:.65rem 1rem;justify-content:center;paddin
 #owner-announcement-current .message-body { margin:.25rem 0 0; }
 #owner-announcement-form .actions { margin:0; }
 #owner-announcement-status:empty { display:none; }
+.announcement-preview { padding:.7rem .85rem; background:#15212a; border-left:2px solid var(--accent); overflow-wrap:anywhere; }
+.announcement-preview h3 { font-size:.8rem; color:var(--muted); }
+#chat-announcement { margin:.75rem 0; }
+#chat-announcement .bubble { width:fit-content; }
+#chat-announcement-status:empty { display:none; }
+#chat-announcement-retry, #chat-announcement-back { margin-top:.4rem; }

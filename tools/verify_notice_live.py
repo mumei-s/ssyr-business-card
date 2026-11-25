@@ -24,8 +24,9 @@ if notice is not None:
     assert set(notice) == {'id', 'title', 'body'}
     UUID(notice['id'])
     assert isinstance(notice['title'], str) and notice['title'].strip()
-    assert isinstance(notice['body'], str) and notice['body'].strip()
-print('PASS anonymous shared QR read')
+    assert isinstance(notice['body'], str) and notice['body'].endswith('……')
+assert request({'action':'chat-announcement'})[0] == 401
+print('PASS anonymous shared QR teaser and registered-only full text')
 assert request({'action':'owner-list'})[0]==401
 assert request({'action':'status','device':'invalid'})[0]==401
 assert request({'action':'owner-send','contactId':'invalid'})[0]==401
