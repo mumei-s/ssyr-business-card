@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101417"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://slamzhgsawfnmwlejgqp.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'"><title>管理者専用電話帳 | S's-YR</title><link rel="apple-touch-icon" href="../brand-96.png"><link rel="stylesheet" href="../notices.css?v=shared-notice-1"><script src="../notice-common.js?v=private-chat-1" defer></script><script src="../invite-qr.js?v=1" defer></script><script src="../owner.js?v=shared-notice-1" defer></script>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101417"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://slamzhgsawfnmwlejgqp.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'"><title>管理者専用電話帳 | S's-YR</title><link rel="apple-touch-icon" href="../brand-96.png"><link rel="stylesheet" href="../notices.css?v=chat-teaser-2"><script src="../notice-common.js?v=private-chat-1" defer></script><script src="../invite-qr.js?v=1" defer></script><script src="../owner.js?v=chat-teaser-2" defer></script>
   <link rel="icon" type="image/png" sizes="96x96" href="../brand-96.png?v=share-2">
   <link rel="shortcut icon" href="../brand-96.png?v=share-2" type="image/png">
   <meta property="og:site_name" content="S's-YR">
@@ -63,13 +63,14 @@
     </section>
     <details class="panel owner-announcement" id="owner-announcement-panel">
       <summary>名刺トップのメッセージ</summary>
-      <p>見出しと本文は、名刺の共通URLを開いた全員に表示されます。掲載すると、名刺の新着通知を希望した端末に見出しを送ります。</p>
+      <p>共通QRを開いた方には、見出しと本文の冒頭だけが表示されます。全文は受け取り設定を済ませた方がそれぞれのチャットで読めます。掲載すると、名刺の新着通知を希望した端末に見出しを送ります。</p>
       <div class="between"><h3>現在の掲載内容</h3><button id="owner-announcement-reload" type="button">掲載状況を更新</button></div>
       <div id="owner-announcement-current"></div>
       <p id="owner-announcement-delivery" aria-live="polite"></p>
       <form id="owner-announcement-form">
         <label>見出し（60文字まで）<input id="owner-announcement-title" maxlength="60" required disabled></label>
-        <label>本文（500文字まで）<textarea id="owner-announcement-body" rows="3" maxlength="500" required disabled></textarea></label>
+        <label>チャットで読める本文（500文字まで）<textarea id="owner-announcement-body" rows="3" maxlength="500" required disabled></textarea></label>
+        <div class="announcement-preview" id="owner-announcement-preview" hidden><h3>掲載したときの名刺トップ</h3><strong id="owner-announcement-preview-title"></strong><p id="owner-announcement-preview-body"></p></div>
         <div class="actions"><button type="submit" class="primary" id="owner-announcement-publish" disabled>掲載して通知する</button><button type="button" id="owner-announcement-withdraw" hidden>掲載を取り下げる</button></div>
       </form>
       <p class="feedback" id="owner-announcement-status" role="status" aria-live="polite"></p>

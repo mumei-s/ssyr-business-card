@@ -35,9 +35,9 @@ img { display: block; }
 .announcement-copy { display:grid; min-width:0; gap:.2rem; overflow-wrap:anywhere; }
 #announcement-state { font-size:.78rem; font-weight:700; color:#f0d59b; }
 #announcement-title { font-size:1.08rem; line-height:1.45; }
-.announcement-chevron { margin-inline-start:auto; font-size:1.2rem; }
-#announcement-open[aria-expanded="true"] .announcement-chevron { transform:rotate(180deg); }
-#announcement-body, #announcement-empty { margin:0; padding:.25rem 1rem .9rem; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; }
+#announcement-preview { color:#e0d3bc; font-size:.91rem; }
+.announcement-more { width:fit-content; color:#f0d59b; font-size:.86rem; font-weight:700; text-decoration:underline; text-underline-offset:.2em; }
+#announcement-empty { margin:0; padding:.25rem 1rem .9rem; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; }
 #announcement-empty { padding-top:.85rem; }
 #announcement-preferences { border-top:1px solid #554b3a; }
 #announcement-open[hidden] ~ #announcement-preferences { border-top:0; }

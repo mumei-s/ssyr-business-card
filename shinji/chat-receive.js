@@ -7,7 +7,57 @@
   const start = document.getElementById('card-receive-start');
   const status = document.getElementById('card-receive-status');
   const open = document.getElementById('card-receive-open');
+  const hint = document.getElementById('card-receive-hint');
+  const normalHint = hint.textContent;
+  const normalStart = start.textContent;
+  let pendingNotice = '';
+  let intentVersion = 0;
   let busy = false;
+
+  function setIntent(id = '') {
+    ++intentVersion;
+    pendingNotice = id;
+    hint.textContent = id ? '名前を入力すると、SHINJIとの個別チャットでメッセージの続きを読めます。' : normalHint;
+    start.textContent = id ? '名前を登録して続きを読む' : normalStart;
+  }
+  function continueToChat(threadId) {
+    if (!pendingNotice || !N.validThreadId(threadId)) return;
+    const hash = new URLSearchParams({thread:threadId, announcement:pendingNotice});
+    setIntent();
+    location.assign('./notices.html#' + hash);
+  }
+  function focusName() {
+    showForm();
+    form.scrollIntoView({block:'center'});
+    name.focus({preventScroll:true});
+  }
+  window.addEventListener('ssyr-open-announcement', async event => {
+    const id = event.detail?.id;
+    if (!N.validThreadId(id) || busy) return;
+    setIntent(id);
+    if (!N.getThreads().length) { focusName(); return; }
+    const version = intentVersion;
+    try {
+      const linked = await N.findLinkedReceiver();
+      if (version !== intentVersion || busy) return;
+      if (linked) {
+        N.rememberThread(linked.device, linked.id);
+        continueToChat(linked.id);
+      } else focusName();
+    } catch {
+      if (version !== intentVersion) return;
+      setIntent();
+      status.textContent = 'チャットの受け取り設定を確認できません。通信が戻ったら「続きを読む」を押してください。';
+      status.scrollIntoView({block:'center'});
+    }
+  });
+  window.addEventListener('ssyr-announcement-current', event => {
+    if (pendingNotice && pendingNotice !== event.detail?.id) {
+      setIntent();
+      status.textContent = '掲載内容が変わりました。名刺の上部で最新のメッセージをご確認ください。';
+    }
+  });
+  entry.addEventListener('click', () => setIntent());
   let lastState = '';
 
   function showConnected(threadId, confirmed = true) {
@@ -56,6 +106,7 @@
     try {
       const result = await N.startReceiving(N.readVisitorName(name));
       showConnected(result.contact.id);
+      continueToChat(result.contact.id);
     } catch (error) {
       status.textContent = error.message || '受け取りを開始できませんでした。もう一度お試しください。';
     } finally {

@@ -119,12 +119,11 @@
    }
    return name;
  }
- async function startReceiving(name,muumeiNews=false,preferred=''){
+ async function findLinkedReceiver(preferred=''){
    // A revoked key can still be stored on another tab. Only retire keys the
    // server explicitly reports unlinked; a network error keeps the saved chats.
-   const active=getDevice();
-   const saved=[...new Set([preferred,active,...getThreads().map(t=>t.device)].filter(validToken))];
-   let linked='';
+   const saved=[...new Set([preferred,getDevice(),...getThreads().map(t=>t.device)].filter(validToken))];
+   let linked=null;
    for(let offset=0;offset<saved.length&&!linked;offset+=30){
      const devices=saved.slice(offset,offset+30);
      const check=await call('chat-unread',{devices});
@@ -134,10 +133,15 @@
        if(check.threadIds[i]===null){
          forgetThread(key);
          if(localStorage.getItem(startKey)===key)localStorage.removeItem(startKey);
-       }else if(!linked)linked=key;
+       }else if(!linked)linked={device:key,id:check.threadIds[i]};
      });
    }
-   const device=await startDevice(linked);
+   return linked;
+ }
+ async function startReceiving(name,muumeiNews=false,preferred=''){
+   const active=getDevice();
+   const linked=await findLinkedReceiver(preferred);
+   const device=await startDevice(linked?.device);
    const result=await call('visitor-start',{device,name,muumeiNews});
    if(!result?.contact)throw Error('受け取りの開始を確認できません。もう一度お試しください。');
    rememberThread(device,result.contact.id);
@@ -192,5 +196,5 @@
  }
  const pushLabels={pending:'処理結果未確定',accepted:'通知サービス受付済み',failed:'通知送信失敗',expired:'端末登録期限切れ',disabled:'連絡を保存・通知OFF',unknown:'送信結果未確定'};
  function setBusy(root,busy){for(const b of root.querySelectorAll('button[type=submit]'))b.disabled=busy}
- window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,getThreads,rememberThread,forgetThread,readVisitorName,startReceiving,deviceForInvite,validThreadId,inviteFrom,date,el,messageDeleteButton,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
+ window.SSYRNotice={base,url,$,call,config,wait,requestId,random,validToken,getDevice,setDevice,clearDevice,getThreads,rememberThread,forgetThread,findLinkedReceiver,readVisitorName,startReceiving,deviceForInvite,validThreadId,inviteFrom,date,el,messageDeleteButton,feedback,decode,publicAuthKey,auth,loginVerification,pushLabels,setBusy};
 })();

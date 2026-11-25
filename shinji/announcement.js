@@ -5,9 +5,9 @@
   const open = document.getElementById('announcement-open');
   const heading = document.getElementById('announcement-title');
   const state = document.getElementById('announcement-state');
-  const body = document.getElementById('announcement-body');
+  const preview = document.getElementById('announcement-preview');
   const empty = document.getElementById('announcement-empty');
-  const readKey = 'ssyr-card-announcement-read-v1';
+  const readKey = 'ssyr-card-announcement-chat-read-v1';
   const scope = new URL('./', location.href).href;
   let notice;
   let lastRead = '';
@@ -36,17 +36,30 @@
       }
     }
   }
-  function setExpanded(expanded) {
+  function enterChat() {
     if (!notice || !section) return;
-    body.hidden = !expanded;
-    open.setAttribute('aria-expanded', String(expanded));
-    if (expanded) {
-      lastRead = notice.id;
-      try { localStorage.setItem(readKey, notice.id); } catch {}
-      renderRead();
-      void dismissNotifications(lastRead, notice.id, 0).catch(() => {});
-    }
+    if (location.hash === '#announcement') history.replaceState(history.state, '', location.pathname + location.search);
+    window.dispatchEvent(new CustomEvent('ssyr-open-announcement', {detail:{id:notice.id}}));
   }
+  // Bound legacy full-text responses to the same public excerpt during rollout.
+  function teaser(value, title) {
+    const lines = value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    if (lines[0] === title.trim()) lines.shift();
+    const line = lines[0] || '';
+    const chars = typeof Intl.Segmenter === 'function'
+      ? Array.from(new Intl.Segmenter('ja', {granularity:'grapheme'}).segment(line), part => part.segment)
+      : Array.from(line);
+    const limit = lines.length > 1 ? 5 : Math.min(5, Math.max(0, chars.length - 1));
+    return chars.slice(0, limit).join('').replace(/…+$/, '') + '……';
+  }
+  window.addEventListener('ssyr-announcement-read', event => {
+    const id = event.detail?.id;
+    if (section || !N.validThreadId(id)) return;
+    lastRead = id;
+    try { localStorage.setItem(readKey, id); } catch {}
+    renderRead();
+    void dismissNotifications(id, id, 0).catch(() => {});
+  });
   function showMessage(text) {
     empty.textContent = text;
     empty.hidden = !text;
@@ -60,32 +73,23 @@
       const incoming = result.announcement;
       if (incoming !== null && (!N.validThreadId(incoming?.id) ||
           typeof incoming.title !== 'string' || typeof incoming.body !== 'string')) throw Error();
-      const changed = notice?.id !== incoming?.id;
-      notice = incoming;
+      notice = incoming && {id:incoming.id, title:incoming.title, preview:teaser(incoming.body, incoming.title)};
+      window.dispatchEvent(new CustomEvent('ssyr-announcement-current', {detail:{id:notice?.id || null}}));
       try { lastRead = localStorage.getItem(readKey) || lastRead; } catch {}
       renderRead();
       void dismissNotifications(lastRead, notice?.id, checkedAt).catch(() => {});
       if (!section) return;
-      if (changed) {
-        body.hidden = true;
-        open.setAttribute('aria-expanded', 'false');
-      }
       open.hidden = !notice;
       heading.textContent = notice?.title || '';
-      body.textContent = notice?.body || '';
+      preview.textContent = notice?.preview || '';
       showMessage(!notice && location.hash === '#announcement' ? '現在掲載中のメッセージはありません。' : '');
-      if (openOnLoad && notice) {
-        setExpanded(true);
-        section.scrollIntoView({block:'start'});
-      }
+      if (openOnLoad && notice) enterChat();
       openOnLoad = false;
     } catch {
       if (sequence !== request || !section) return;
       if (openOnLoad || notice) {
         // Do not present a withdrawn item as current if its status cannot be checked.
         open.hidden = true;
-        body.hidden = true;
-        open.setAttribute('aria-expanded', 'false');
         showMessage('メッセージを確認できません。通信が戻ったらもう一度名刺を開いてください。');
       }
     }
@@ -94,7 +98,7 @@
     openOnLoad = true;
     void refresh();
   }
-  open?.addEventListener('click', () => setExpanded(body.hidden));
+  open?.addEventListener('click', enterChat);
   window.addEventListener('hashchange', () => {
     if (!section) return;
     if (location.hash === '#announcement') openLatest();

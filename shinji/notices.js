@@ -5,6 +5,7 @@
  let localBinding='',subscriptionCheck=0,pendingRepair=null;
  let threadChoices=[];
  let messageCount=null,writing=false;
+ let noticeRoute=null,displayedNotice='',noticeAcknowledged=false,deferredNavigation=false;
  const drafts=new Map();
  const ios=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
@@ -49,7 +50,7 @@
    renderComposer();
  }
  function renderComposer(){
-   const acceptedEmpty=!!contact&&messageCount===0;
+   const acceptedEmpty=!!contact&&messageCount===0&&!displayedNotice;
    const optional=acceptedEmpty&&!writing&&!$('chat-body').value;
    $('chat-accepted').hidden=!acceptedEmpty;
    $('message-list').hidden=!messageCount;
@@ -103,11 +104,16 @@
  }
  function forgetCurrentThread(){
    N.forgetThread(device);drafts.delete(device);device='';contact=null;pending=null;
+   if(noticeRoute){clearNotice();location.replace('./#announcement')}
    writing=false;
    $('chat-body').value='';lastSignature='';renderMessages([]);render();
  }
  function activateThread(next,summary){
    if(!summary)throw Error('会話を確認できません。もう一度お試しください。');
+   if(noticeRoute&&summary.id!==noticeRoute.thread){
+     clearNotice();
+     history.replaceState(null,'',location.pathname+location.search);
+   }
    const previous=N.getDevice();
    if(N.validToken(previous)&&previous!==next)N.rememberThread(previous);
    if(N.validToken(device)&&device!==next)N.rememberThread(device,contact?.id);
@@ -121,24 +127,84 @@
    }
    device=next;contact=summary;clearInvite();render();void inspectSubscription();
  }
- async function openSaved(next){
+ async function openSaved(next,expectedThread){
    let r;
    try{r=await N.call('status',{device:next})}
    catch(e){if(e.status===401&&next!==device)N.forgetThread(next);throw e}
-   activateThread(next,r.contact);renderMessages(r.messages||[]);
+   if(expectedThread&&r.contact?.id!==expectedThread)return false;
+   activateThread(next,r.contact);renderMessages(r.messages||[]);return true;
  }
- async function openNotification(id){
+ async function openNotification(id,fromNotice=false){
    const threads=N.getThreads(),known=threads.find(t=>t.id===id);
-   if(known){await openSaved(known.device);return}
+   if(known&&await openSaved(known.device,id))return true;
    for(const thread of threads.filter(t=>!t.id)){
      let r;
      try{r=await N.call('status',{device:thread.device})}
      catch(e){if(e.status===401)continue;throw e}
      N.rememberThread(thread.device,r.contact?.id);
-     if(r.contact?.id===id){activateThread(thread.device,r.contact);renderMessages(r.messages||[]);return}
+     if(r.contact?.id===id){activateThread(thread.device,r.contact);renderMessages(r.messages||[]);return true}
    }
+   if(fromNotice)return false;
    await refresh();throw Error('通知の会話をこのブラウザで確認できませんでした。');
  }
+ function noticeState(text='',retry=false,back=false){
+   displayedNotice='';noticeAcknowledged=false;
+   $('chat-announcement').hidden=!noticeRoute;
+   $('chat-announcement-message').hidden=true;
+   $('chat-announcement-title').textContent='';$('chat-announcement-body').textContent='';
+   $('chat-announcement-status').textContent=text;
+   $('chat-announcement-retry').hidden=!retry;$('chat-announcement-back').hidden=!back;
+   renderComposer();
+ }
+ function clearNotice(){noticeRoute=null;noticeState()}
+ function markVisibleNotice(){
+   if(!displayedNotice||noticeAcknowledged||document.hidden||!noticeRoute||
+      contact?.id!==noticeRoute.thread||location.hash!==noticeRoute.hash)return;
+   const box=$('chat-announcement-message').getBoundingClientRect();
+   if(!box.height||box.bottom<=0||box.top>=innerHeight)return;
+   noticeAcknowledged=true;
+   window.dispatchEvent(new CustomEvent('ssyr-announcement-read',{detail:{id:displayedNotice}}));
+ }
+ function noticeUnavailable(){
+   noticeState('このメッセージの掲載は終了しました。',false,true);
+ }
+ async function openChatNotice(route){
+   noticeState('メッセージを読み込んでいます…');
+   const current=()=>noticeRoute===route&&location.hash===route.hash;
+   try{
+     const linked=await openNotification(route.thread,true);
+     if(!current())return;
+     if(!linked){location.replace('./#announcement');return}
+     const secret=device,result=await N.call('chat-announcement',{device:secret});
+     if(!current()||device!==secret||contact?.id!==route.thread)return;
+     const item=result?.announcement;
+     if(item!==null&&(!N.validThreadId(item?.id)||typeof item.title!=='string'||typeof item.body!=='string'))throw Error();
+     if(!item||item.id!==route.id){noticeUnavailable();return}
+     displayedNotice=item.id;
+     const heading=$('chat-announcement-title');
+     heading.hidden=item.body.split(/\r\n?|\n/,1)[0].trim()===item.title.trim();
+     heading.textContent=heading.hidden?'':item.title;
+     $('chat-announcement-body').textContent=item.body;
+     $('chat-announcement-status').textContent='';$('chat-announcement-message').hidden=false;
+     renderComposer();markVisibleNotice();
+   }catch(error){
+     if(!current())return;
+     if(error.status===401){
+       const key=N.getThreads().find(t=>t.id===route.thread)?.device;
+       if(key)N.forgetThread(key);
+       clearNotice();location.replace('./#announcement');return;
+     }
+     noticeState('メッセージを読み込めませんでした。通信を確認して、もう一度お試しください。',true);
+   }
+ }
+ $('chat-announcement-retry').addEventListener('click',()=>{if(noticeRoute)void run(()=>openChatNotice(noticeRoute))});
+ if('IntersectionObserver' in window){
+   new IntersectionObserver(markVisibleNotice).observe($('chat-announcement-message'));
+ }else window.addEventListener('scroll',markVisibleNotice,{passive:true});
+ document.addEventListener('visibilitychange',markVisibleNotice);
+ window.addEventListener('ssyr-announcement-current',event=>{
+   if(displayedNotice&&event.detail?.id!==displayedNotice)noticeUnavailable();
+ });
  function matchesServerKey(sub){
    const existing=sub?.options?.applicationServerKey;
    if(!existing)return true;
@@ -194,7 +260,7 @@
    if(busy)return;revision++;busy=true;render();feedback('通信中…');
    const slow=setTimeout(()=>feedback('通信に時間がかかっています。送信中の内容は履歴をご確認ください。'),12000);
    try{await task()}catch(e){feedback(e.message||'もう一度お試しください。',true)}
-   finally{clearTimeout(slow);busy=false;render()}
+   finally{clearTimeout(slow);busy=false;render();if(deferredNavigation){deferredNavigation=false;processLocation()}}
  }
  function pendingInvite(){
    const h=new URLSearchParams(location.hash.slice(1)).get('invite');
@@ -273,11 +339,24 @@
  // Render immediately, even while the first read or notification preparation is pending.
  initial=true;render();
  function handleNotification(){
-   const id=new URLSearchParams(location.hash.slice(1)).get('thread');
+   const params=new URLSearchParams(location.hash.slice(1)),id=params.get('thread');
+   if(params.has('announcement')){
+     if(!N.validThreadId(id)||!N.validThreadId(params.get('announcement'))){location.replace('./#announcement');return true}
+     const route={thread:id,id:params.get('announcement'),hash:location.hash};
+     noticeRoute=route;
+     void run(async()=>{await openChatNotice(route);feedback()});return true;
+   }
    if(!N.validThreadId(id))return false;
    void run(async()=>{await openNotification(id);history.replaceState(null,'',location.pathname+location.search);feedback()});return true;
  }
- window.addEventListener('hashchange',()=>{if(!handleNotification()){pendingInvite();render()}});
+ function processLocation(){
+   clearNotice();
+   if(busy){deferredNavigation=true;return}
+   if(!handleNotification()){pendingInvite();render()}
+ }
+ window.addEventListener('hashchange',processLocation);
+ window.addEventListener('pagehide',clearNotice);
+ window.addEventListener('pageshow',event=>{if(event.persisted)processLocation()});
  if(!handleNotification()&&N.validToken(device)){
    const stamp=revision,secret=device;
    void refresh(()=>stamp===revision&&!busy&&device===secret).catch(e=>{if(stamp===revision&&!busy)feedback(e.message,true)});
