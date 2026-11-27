@@ -171,7 +171,7 @@ def check_shore_samples(page):
     expect(pair.get_by_role("button")).to_have_count(2)
     original = page.viewport_size
     page.set_viewport_size({"width": 320, "height": original["height"]})
-    left, right = [tile.bounding_box() for tile in pair.get_by_role("button").all()]
+    left, right = pair.get_by_role("button").evaluate_all("bs => bs.map(b => b.getBoundingClientRect().toJSON())")
     assert abs(left["y"] - right["y"]) <= 1 and left["x"] + left["width"] <= right["x"]
     check_viewport(page)
     for style, label in (("watercolor", "水彩"), ("woodcut", "木版画")):
