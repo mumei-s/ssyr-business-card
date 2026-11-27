@@ -13,12 +13,12 @@
   <meta name="color-scheme" content="dark">
   <link rel="manifest" href="./manifest.webmanifest">
   <title>S's-YR | 川合 伸次 ― デジタル名刺</title>
-  <link rel="stylesheet" href="./assets/site.css?v=business-films-1">
+  <link rel="stylesheet" href="./assets/site.css?v=shore-samples-1">
   <link rel="stylesheet" href="./assets/card.css?v=engraved-2">
 <link rel="stylesheet" href="./assets/contact-import.css?v=direct-4">
-  <link rel="stylesheet" href="./business-chat/chat.css">
+  <link rel="stylesheet" href="./business-chat/chat.css?v=invitation-1">
   <script defer src="./shinji/notice-common.js?v=business-1" data-edition="business"></script>
-  <script defer src="./business-chat/card.js"></script>
+  <script defer src="./business-chat/card.js?v=invitation-1"></script>
   <script src="./assets/contact-import.js?v=direct-4" defer data-contact-name="川合 伸次" data-contact-edition="business"></script>
 
   <link rel="icon" type="image/png" sizes="96x96" href="./shinji/brand-96.png?v=share-2">
@@ -40,6 +40,15 @@
     <div class="business-unread" id="business-chat-unread" hidden>
       <a class="wrap" href="./business-chat/"><span><strong>新着メッセージあり</strong><span id="business-chat-count"></span></span><span>チャットを開く →</span></a>
     </div>
+    <aside id="business-chat-invitation" class="business-invitation" aria-labelledby="business-invitation-title" hidden>
+      <div class="wrap">
+        <div>
+          <p class="invitation-heading"><span>新着</span><strong id="business-invitation-title">個別チャットへのお誘い</strong></p>
+          <p>チラシの配布やイラスト制作など、お仕事のご相談を個別にお受けしています。</p>
+        </div>
+        <a href="./business-chat/">名前を入力してチャットを始める <span aria-hidden="true">→</span></a>
+      </div>
+    </aside>
     <section class="hero" id="card">
       <div class="wrap hero-top">
         <div class="intro">
@@ -112,13 +121,14 @@
             </figcaption>
           </figure>
           <figure id="illustration-video">
-            <video controls playsinline preload="none" width="960" height="540" poster="./assets/business-video/illustration.webp" aria-labelledby="illustration-title" aria-describedby="illustration-description">
-              <source src="./assets/business-video/illustration.mp4" type="video/mp4">
-              <a href="./assets/business-video/illustration.mp4">AIイラスト制作の動画を開く</a>
+            <video controls playsinline preload="none" width="960" height="540" poster="./assets/business-video/illustration.webp?v=style-wheel-1" aria-labelledby="illustration-title" aria-describedby="illustration-description">
+              <source src="./assets/business-video/illustration.mp4?v=style-wheel-1" type="video/mp4">
+              <a href="./assets/business-video/illustration.mp4?v=style-wheel-1">AIイラスト制作の動画を開く</a>
             </video>
             <figcaption>
               <h3 id="illustration-title">AIイラスト制作</h3>
-              <p id="illustration-description">深い青で描いた幻想都市の作例を紹介します。色や雰囲気、SNS・チラシなどの用途に合わせたサイズもご相談ください。</p>
+              <p id="illustration-description">リングを回して画風を選ぶ様子と、同じ海岸を水彩・木版画で描いた作例を紹介します。</p>
+              <a class="sample-jump" href="#shore-samples">2つの作例を見比べる <span aria-hidden="true">↓</span></a>
             </figcaption>
           </figure>
         </div>
@@ -134,6 +144,10 @@
         <button class="media-tile art" data-full="./assets/portfolio-graphic-hd.webp" data-caption="オリジナルのグラフィック・広告表現サンプル" type="button"><img loading="lazy" decoding="async" width="480" height="480" src="./assets/portfolio-graphic.webp" alt="ロゴと印刷物を組み合わせたブランドデザインの作例"><div class="tile-name"><strong>グラフィック表現</strong></div></button>
         <button class="media-tile art" data-full="./assets/portfolio-app-hd.webp" data-caption="ツール・アプリ制作の画面デザイン例" type="button"><img loading="lazy" decoding="async" width="480" height="480" src="./assets/portfolio-app.webp" alt="業務管理ツールの画面構成イメージ"><div class="tile-name"><strong>ツール・アプリ</strong></div></button>
          <button class="media-tile art" data-full="./assets/portfolio-film-hd.webp" data-caption="映像・動画制作の表現コンセプト（イメージ）" type="button"><img loading="lazy" decoding="async" width="480" height="480" src="./assets/portfolio-film.webp" alt="実写撮影・編集機器を使った高精細な映像制作のイメージ"><div class="tile-name"><strong>動画・映像制作</strong></div></button>
+        <div class="shore-pair" id="shore-samples" role="group" aria-label="同じ海岸をふたつの画風で描いた作例">
+          <button id="shore-watercolor" class="media-tile shore-sample" data-full="./assets/business-video/shore-watercolor-full.webp" data-caption="水彩で描いた海岸" type="button"><img loading="lazy" decoding="async" width="460" height="460" src="./assets/business-video/shore-watercolor-thumb.webp" alt="光がにじむ波打ち際と、遠くにかすむ岬"><strong>水彩で描いた海岸</strong></button>
+          <button id="shore-woodcut" class="media-tile shore-sample" data-full="./assets/business-video/shore-woodcut-full.webp" data-caption="木版画で描いた海岸" type="button"><img loading="lazy" decoding="async" width="307" height="460" src="./assets/business-video/shore-woodcut-thumb.webp" alt="濃い藍色と細い彫り跡で表現した、同じ海岸の波と岩場"><strong>木版画で描いた海岸</strong></button>
+        </div>
       </div>
 
       <div class="movie-grid">
