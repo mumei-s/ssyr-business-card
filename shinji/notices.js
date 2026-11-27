@@ -28,12 +28,14 @@
    return !$('claim-private-choice').hidden&&$('claim-private-default').checked&&!$('claim-private-default').disabled
      ? N.requestPushPermission():null;
  }
- function render(){
+ function render(refreshGame=false){
    $('claim-panel').hidden=(!inviteCode&&!!contact)||!initial;
    $('settings-panel').hidden=!initial||!!inviteCode;$('messages').hidden=!initial||!!inviteCode;
    $('claim-title').textContent=inviteCode?'個別チャットへの招待':'SHINJIとの個別チャット';
    $('claim-info').textContent=inviteCode?'「チャットを開く」を押すと、相手からのメッセージを読めます。':'連絡を受け取りたい方は、下のボタンを押してください。メッセージの送信やメールアドレスの入力は不要です。';
    const privateInvite=!!(inviteCode||$('invite').value.trim());
+   const gameRecipient=initial&&!busy&&!privateInvite&&!document.hidden&&N.validThreadId(contact?.id)&&N.validToken(device)?device:'';
+   void window.SSYRChatGame?.setRecipient(gameRecipient,refreshGame===true);
    showInitialPushChoice(privateInvite);
    $('visitor-name-label').hidden=privateInvite;$('visitor-name').required=!privateInvite;
    $('invite-options').hidden=!!inviteCode;$('dismiss-invite').hidden=!inviteCode;
@@ -103,7 +105,7 @@
    if(!N.validToken(device)){contact=null;renderMessages([]);initial=true;render();return}
    try{const r=await N.call('status',{device});if(!accept())return;contact=r.contact;N.rememberThread(device,contact?.id);renderMessages(r.messages||[])}
    catch(e){if(!accept())return;if(e.status===401){forgetCurrentThread()}else throw e}
-   initial=true;render();
+   initial=true;render(true);
    // The chat must not wait for the browser's PushManager to respond.
    void inspectSubscription();
  }
@@ -347,7 +349,10 @@
    try{await refresh(accept)}catch{}finally{quietBusy=false;if(!busy)render()}
  }
  window.addEventListener('focus',quietRefresh);
- document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void quietRefresh()});
+ document.addEventListener('visibilitychange',()=>{
+   if(document.visibilityState==='visible')void quietRefresh();
+   else void window.SSYRChatGame?.setRecipient('');
+ });
  navigator.serviceWorker?.addEventListener?.('message',e=>{if(e.data?.type==='ssyr-chat-update')void quietRefresh()});
  setInterval(quietRefresh,30000);
  $('recover-page').addEventListener('click',()=>{if((busy||$('chat-body').value.trim())&&!confirm('画面を再読み込みします。未送信の入力は消えることがあります。送信中だった場合は履歴をご確認ください。'))return;location.reload()});
@@ -370,7 +375,7 @@
    if(!handleNotification()){pendingInvite();render()}
  }
  window.addEventListener('hashchange',processLocation);
- window.addEventListener('pagehide',clearNotice);
+ window.addEventListener('pagehide',()=>{clearNotice();void window.SSYRChatGame?.setRecipient('')});
  window.addEventListener('pageshow',event=>{if(event.persisted)processLocation()});
  if(!handleNotification()&&N.validToken(device)){
    const stamp=revision,secret=device;

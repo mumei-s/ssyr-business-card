@@ -67,7 +67,7 @@
  const selected=()=>contacts.find(c=>c.id===selectedId);
  let requestedContact='';
  function clearAuthInputs(){for(const id of ['login-password','setup-password','setup-confirm','setup-code'])$(id).value='';setupCode=''}
- function hideConsole(){resetAnnouncement();requestedContact='';$('owner-acceptance-list').replaceChildren();$('owner-acceptances').hidden=true;access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();inviteCopies.clear();saveInviteCopies();closeInvite();pending=null;clearStartRequest();setNewChatForm(false);$('new-chat-form').reset();ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
+ function hideConsole(){resetGamePermission();resetAnnouncement();requestedContact='';$('owner-acceptance-list').replaceChildren();$('owner-acceptances').hidden=true;access='';saveSession('');showReconnect(false);contacts=[];selectedId='';displayedContact='';drafts.clear();inviteCopies.clear();saveInviteCopies();closeInvite();pending=null;clearStartRequest();setNewChatForm(false);$('new-chat-form').reset();ready=false;mode='chats';editing=false;promoting=false;historySignature='';ownerEnabled=false;$('owner-console').hidden=true;$('login-panel').hidden=false;$('setup-panel').hidden=true;clearAuthInputs();$('invite-panel').hidden=true;$('invite-link').value='';$('contact-form').reset();$('send-form').reset();$('contacts').replaceChildren();$('history').replaceChildren();$('selected-panel').hidden=true;$('edit-panel').hidden=true}
  async function run(fn){
    if(busy)return;
    revision++;busy=true;feedback('通信中…');
@@ -79,6 +79,7 @@
    finally{clearTimeout(slow);busy=false;for(const b of buttons)b.disabled=false;updateControls();openRequestedContact()}
  }
  function updateControls(){
+   updateGameControls();
    updateAnnouncementControls();
    const c=selected(),registered=ownerEnabled&&!!ownerSub&&canPush&&Notification.permission==='granted';
    $('muumei-send').disabled=busy||!ready||!contacts.some(c=>c.linked_at&&!c.revoked_at&&c.muumei_news&&c.push_enabled_at);
@@ -92,6 +93,86 @@
    $('owner-push-test').disabled=busy||!registered;
    $('owner-push-guide').textContent=pushPreparing?'通知を準備しています…':registered?'招待の受け取りと新着メッセージを、この端末にも通知します。':canPush?'招待の受け取りはこの管理画面に表示されます。端末でも受け取るには「管理者通知をON」を押してください。':'招待の受け取りはこの管理画面に表示されます。端末通知を使う場合は管理者アプリをホーム画面に追加して開いてください。';
  }
+ const gamePanel=$('owner-game-panel'),gameChoice=$('owner-game-contact'),gameStatus=$('owner-game-status');
+ let gamePermission=null,gameReading=false,gameReadId=0;
+ const linkedForGame=c=>c&&N.validThreadId(c.id)&&c.linked_at&&!c.revoked_at;
+ function gameLabel(id){
+   const c=contacts.find(row=>row.id===id);
+   if(!c)return '会話 '+id.slice(-8);
+   return c.display_name+' · '+(c.revoked_at?'解除済み':'受け取り '+N.date(c.linked_at))+' · '+id.slice(-8);
+ }
+ function updateGameControls(){
+   const locked=busy||gameReading||!access;
+   $('owner-game-reload').disabled=locked;
+   gameChoice.disabled=locked||!gamePermission||gameChoice.options.length<2;
+   const current=gamePermission?.contactId;
+   $('owner-game-allow').disabled=gameChoice.disabled||!gameChoice.value||gameChoice.value===current;
+   $('owner-game-remove').hidden=!current;
+   $('owner-game-remove').disabled=locked||!current;
+ }
+ function renderGameOptions(){
+   const saved=gameChoice.value;
+   const eligible=contacts.filter(linkedForGame);
+   gameChoice.replaceChildren(new Option(eligible.length?'会話を選んでください':'受け取り済みの会話はありません',''),
+     ...eligible.map(c=>new Option(gameLabel(c.id),c.id)));
+   gameChoice.value=eligible.some(c=>c.id===saved)?saved:'';
+   const current=gamePermission?.contactId;
+   $('owner-game-current').textContent=!gamePermission?'':current?'現在の許可先：'+gameLabel(current):'現在、ゲームを許可している会話はありません。';
+   updateGameControls();
+ }
+ function resetGamePermission(){
+   gameReadId++;gameReading=false;gamePermission=null;gamePanel.open=false;
+   gameChoice.replaceChildren(new Option('会話を選んでください',''));
+   $('owner-game-current').textContent='';gameStatus.textContent='';updateGameControls();
+ }
+ function setGamePermission(data){
+   if(!N.validThreadId(data?.revision)||(data.contactId!==null&&!N.validThreadId(data.contactId)))
+     throw Error('ゲームの許可先を確認できませんでした。');
+   gamePermission=data;renderGameOptions();
+ }
+ async function loadGamePermission(){
+   if(!access||gameReading)return false;
+   const session=access,request=++gameReadId;
+   gameReading=true;updateGameControls();gameStatus.textContent='許可先を確認しています…';
+   try{
+     const data=await ownerCall('owner-game-access');
+     if(session!==access||request!==gameReadId)return false;
+     setGamePermission(data);gameStatus.textContent='';return true;
+   }catch(error){
+     if(session!==access||request!==gameReadId)return false;
+     gamePermission=null;renderGameOptions();
+     if(error.status===401||error.status===403){hideConsole();feedback('再ログインしてください。',true)}
+     else gameStatus.textContent=error.message||'許可先を確認できません。「設定を更新」を押してください。';
+     return false;
+   }finally{if(request===gameReadId){gameReading=false;updateGameControls()}}
+ }
+ function chooseGameRecipient(contactId){
+   if(!access||busy||gameReading||!gamePermission)return;
+   if(contactId!==null&&!contacts.some(c=>c.id===contactId&&linkedForGame(c)))return;
+   const {contactId:previous,revision:expectedRevision}=gamePermission;
+   if(previous===contactId)return;
+   let prompt=contactId?'「'+gameLabel(contactId)+'」にゲームを許可しますか？':'「'+gameLabel(previous)+'」のゲームの許可を解除しますか？';
+   if(previous&&contactId)prompt+='\n現在の許可先「'+gameLabel(previous)+'」はプレイできなくなります。';
+   if(!confirm(prompt))return;
+   void run(async()=>{
+     try{
+       setGamePermission(await ownerCall('owner-set-game-access',{contactId,expectedRevision}));
+       gameChoice.value='';gameStatus.textContent=contactId?'ゲームを許可しました。':'ゲームの許可を解除しました。';
+     }catch(error){
+       if(error.status===401||error.status===403)throw error;
+       gameChoice.value='';
+       if(await loadGamePermission())gameStatus.textContent=error.status===409?
+         '別の画面で許可先が変わりました。現在の許可先を確認してください。':
+         (error.message||'変更結果を確認できませんでした。')+' 現在の許可先を確認してください。';
+     }
+     feedback();
+   });
+ }
+ gamePanel.addEventListener('toggle',()=>{if(gamePanel.open)void loadGamePermission()});
+ gameChoice.addEventListener('change',updateGameControls);
+ $('owner-game-reload').addEventListener('click',()=>void loadGamePermission());
+ $('owner-game-allow').addEventListener('click',()=>chooseGameRecipient(gameChoice.value));
+ $('owner-game-remove').addEventListener('click',()=>chooseGameRecipient(null));
  // This panel publishes explicitly to the shared card. Its state is independent of the selected chat.
  const announcementPanel=$('owner-announcement-panel'),announcementForm=$('owner-announcement-form');
  const announcementTitle=$('owner-announcement-title'),announcementBody=$('owner-announcement-body');
@@ -318,7 +399,7 @@
    contacts=next;ownerEnabled=r.ownerPushEnabled===true;
    for(const c of contacts)currentInvite(c);
    if(!selected()||mode==='chats'&&selected().chat_hidden_at)selectedId='';
-   if(!preserve||changed){renderContacts();renderAcceptances()}
+   if(!preserve||changed){renderContacts();renderAcceptances();if(gamePanel.open)renderGameOptions()}
    if(!preserve)showContact(true);else if(changed)showContact(false);else{syncInvite(selected());updateControls()}
    return true;
  }

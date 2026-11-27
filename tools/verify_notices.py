@@ -175,6 +175,8 @@ def check_notices(browser,base):
                 start['contact'].update(acceptance_at=DATE,acceptance_seen_at=None)
                 device_contacts[b['device']] = FIRST_CONTACT
             state['linked']=True;done({'contact':summary()})
+        elif a == 'game-access':
+            done({'allowed':False})
         elif a=='chat-unread':
             counts = []
             thread_ids = [device_contacts.get(device) for device in b['devices']]

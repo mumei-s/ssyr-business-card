@@ -90,6 +90,8 @@ def check_notification_defaults(browser, base):
             records.append(action)
             if action=='card-announcement':
                 respond({'announcement':{'id':notice_id,'title':headline,'body':'次の試合は……'}})
+            elif action == 'game-access':
+                respond({'allowed':False})
             elif action=='chat-unread':
                 ids=[thread_id if key in chat_bindings else None for key in params['devices']]
                 respond({'counts':[0]*len(ids),'threadIds':ids})

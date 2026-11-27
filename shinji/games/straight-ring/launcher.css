@@ -1,0 +1,10 @@
+:root {color-scheme:dark;font-family:system-ui,sans-serif;color:#f2f5f6;background:#15191d;}
+* {box-sizing:border-box;}
+html,body {width:100%;height:100%;margin:0;}
+body {display:grid;place-items:center;}
+[hidden] {display:none !important;}
+main {width:min(100%,32rem);padding:1.5rem;line-height:1.7;}
+h1 {margin:0 0 .5rem;font-size:1.35rem;}
+main a,main button {display:inline-block;padding:.48rem .7rem;color:#b8eee9;}
+main button {margin-right:.5rem;border:1px solid #68918f;background:#20302f;font:inherit;cursor:pointer;}
+iframe {display:block;width:100%;height:100%;border:0;}
