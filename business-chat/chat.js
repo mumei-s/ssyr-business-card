@@ -17,7 +17,7 @@
   const readObserver = 'IntersectionObserver' in window
     ? new IntersectionObserver(entries => {
         for (const entry of entries) {
-          if (entry.isIntersecting && !document.hidden) void acknowledge(entry.target).catch(() => {});
+          if (entry.intersectionRatio >= 1 && !document.hidden) void acknowledge(entry.target).catch(() => {});
         }
       }, {threshold: 1})
     : null;
