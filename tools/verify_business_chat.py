@@ -184,17 +184,23 @@ def check_business_chat(browser, base):
         expect(invitation.get_by_text('個別チャットへのお誘い', exact=True)).to_be_visible()
         expect(invitation).not_to_contain_text('新着メッセージあり')
         expect(page.locator('#business-chat-unread')).to_be_hidden()
-        entry = invitation.get_by_role('link', name='名前を入力してチャットを始める')
+        entry = invitation.get_by_role('link', name='川合に伝わるお名前でチャットを始める')
         expect(entry).to_be_in_viewport()
         assert entry.bounding_box()['y'] < page.locator('#card').bounding_box()['y']
         assert page.evaluate("localStorage.getItem('qa-requests')") is None
         entry.click()
         expect(page).to_have_url(base + 'business-chat/')
-        expect(page.locator('#visitor-name')).to_have_attribute('required', '')
+        name = page.get_by_role('textbox', name='川合に伝わるお名前 必須', exact=True)
+        expect(name).to_have_attribute('required', '')
+        page.locator('#join-chat').click()
+        assert name.evaluate('field => field.validationMessage') == '川合に伝わるお名前を入力してください。'
+        name.fill('　')
+        page.locator('#join-chat').click()
+        expect(page.locator('#feedback')).to_have_text('川合に伝わるお名前を入力してください。')
         assert calls.count('visitor-start') == starts
         assert page.evaluate("localStorage.getItem('qa-requests')") is None
         expect(page.locator('#initial-push')).to_be_checked()
-        page.locator('#visitor-name').fill('山田')
+        name.fill('山田')
         page.locator('#join-chat').click()
         expect(page.locator('#conversation')).to_be_visible()
         check_viewport(page)

@@ -159,10 +159,18 @@
     finally { checking = false; }
   }
 
+  const nameInput = $('visitor-name');
+  const missingName = '川合に伝わるお名前を入力してください。';
+  nameInput.addEventListener('invalid', () => {
+    if (nameInput.validity.valueMissing) nameInput.setCustomValidity(missingName);
+  });
+  nameInput.addEventListener('input', () => nameInput.setCustomValidity(''));
+
   function readName() {
-    const name = $('visitor-name').value.trim();
+    const name = nameInput.value.trim();
     if (!/[^\s\p{Default_Ignorable_Code_Point}\p{Cc}]/u.test(name)) {
-      $('visitor-name').focus(); throw Error('川合にわかるお名前を入力してください。');
+      nameInput.focus();
+      throw Error(missingName);
     }
     const company = $('visitor-company').value.trim();
     const display = company ? company + ' / ' + name : name;
