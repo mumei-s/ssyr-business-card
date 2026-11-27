@@ -10,8 +10,9 @@ self.addEventListener('push',e=>{
  if(!['owner-message','owner-test','owner-acceptance'].includes(p.kind))return;
  e.waitUntil((async()=>{
   const test=p.kind==='owner-test',acceptance=p.kind==='owner-acceptance';
-  const contactId=acceptance&&validContact(p.contactId)?p.contactId:null;
-  const body=test?'管理者用テスト通知です。':acceptance?'個別チャットの招待が受け取られました。':'新しいチャットが届きました。';
+  const contactId=!test&&validContact(p.contactId)?p.contactId:null;
+  let body=test?'管理者用テスト通知です。':acceptance?'個別チャットの招待が受け取られました。':'新しいチャットが届きました。';
+  if(!test&&p.edition==='business')body=acceptance?'事業用名刺で相談チャットが開設されました。':'事業用名刺に相談メッセージが届きました。';
   await self.registration.showNotification("S's-YR 管理者",{body,icon:new URL('brand-96.png',root()).href,tag:test?'owner-test':String(p.id||p.kind),data:{url:ownerPage(),contactId}});
   if(self.navigator.setAppBadge)try{await self.navigator.setAppBadge()}catch{}
   for(const client of await self.clients.matchAll({type:'window',includeUncontrolled:true}))if(isOwner(client.url))client.postMessage({type:'ssyr-owner-update'});

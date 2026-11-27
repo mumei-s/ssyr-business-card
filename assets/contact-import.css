@@ -36,7 +36,7 @@ a.contact-retry {
 .contact-hint, .contact-note { margin: .75rem 0; }
 .contact-note { color: #384252; font-size: .9rem; }
 .contact-methods { display: grid; gap: .55rem; }
-.contact-methods a, .contact-back { display: block; min-height: 44px; padding: .6rem .8rem; text-align: center; color: #202c42; }
+.contact-methods a, .contact-back, .contact-chat { display: block; min-height: 44px; padding: .6rem .8rem; text-align: center; color: #202c42; }
 .contact-methods a { background: #edf1f5; border: 1px solid #687687; font-weight: 650; text-decoration: none; }
 .contact-methods a:first-child { background: #202d44; border-color: #202d44; color: #fff; }
 .contact-methods [hidden] { display: none; }
@@ -44,7 +44,7 @@ a.contact-retry {
 .contact-fields div { display: grid; grid-template-columns: 4em minmax(0,1fr); padding: .42rem 0; border-bottom: 1px solid #a8b0bb; }
 .contact-fields dt { font-weight: 650; }
 .contact-fields dd { margin: 0; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; }
-.contact-back { width: fit-content; margin: .5rem auto 0; text-underline-offset: .22em; }
+.contact-back, .contact-chat { width: fit-content; margin: .5rem auto 0; text-underline-offset: .22em; }
 .contact-page :focus-visible, .contact-retry:focus-visible { outline: 3px solid #1d58a8; outline-offset: 2px; }
 
 /* Only the registration guide changes; the card artwork is untouched. */

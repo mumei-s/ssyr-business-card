@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10100f">
+  <meta name="description" content="S's-YRへのお仕事のご相談を個別チャットで受け付けています。">
+  <title>仕事のご相談・個別チャット | S's-YR</title>
+  <link rel="icon" href="../shinji/brand-96.png" type="image/png" sizes="96x96">
+  <link rel="apple-touch-icon" href="../shinji/logo-spectrum.webp">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="../assets/site.css?v=silver-trim-2">
+  <link rel="stylesheet" href="./chat.css">
+  <script src="../shinji/notice-common.js?v=business-1" data-edition="business" defer></script>
+  <script src="./card.js" defer></script>
+  <script src="./chat.js" defer></script>
+</head>
+<body class="business-chat-page">
+  <header class="business-chat-header">
+    <a href="../" aria-label="S's-YRのデジタル名刺"><img src="../assets/lettering/wordmark.svg" width="361" height="89" alt="S's-YR"></a>
+    <a href="../">名刺に戻る</a>
+  </header>
+  <main class="chat-shell">
+    <h1>個別チャット</h1>
+    <p class="chat-intro">お仕事のご相談を、S's-YR 代表の川合伸次が承ります。</p>
+    <noscript><p>チャットのご利用にはJavaScriptを有効にしてください。<a href="../#contact">ほかのお問い合わせ方法</a></p></noscript>
+    <p id="feedback" role="status" aria-live="polite"></p>
+    <button type="button" class="btn" id="retry-connection" hidden>もう一度接続する</button>
+    <section id="join-panel" class="chat-panel" hidden>
+      <h2>ご相談の受付</h2>
+      <p>メールや電話番号を伝えずにやり取りできます。会話の続きと返信は、同じ端末・ブラウザーから確認できます。</p>
+      <form id="join-form">
+        <label for="visitor-name">川合にわかるお名前 <small>必須</small></label>
+        <input id="visitor-name" autocomplete="name" maxlength="100" required>
+        <label for="visitor-company">会社名・屋号 <small>任意</small></label>
+        <input id="visitor-company" autocomplete="organization" maxlength="95">
+        <label class="push-choice"><input id="initial-push" type="checkbox" checked>返信を端末通知で受け取る</label>
+        <p class="chat-guide" id="push-guide" hidden></p>
+        <button id="join-chat" class="btn primary" type="submit">個別チャットを始める <span aria-hidden="true">→</span></button>
+      </form>
+    </section>
+    <section id="conversation" class="chat-panel" hidden>
+      <div class="chat-heading"><h2>相談履歴</h2><button type="button" id="refresh" class="chat-tool">更新</button></div>
+      <p id="identity"></p>
+      <div id="message-list"></div>
+      <form id="message-form">
+        <label for="chat-body">メッセージ</label>
+        <textarea id="chat-body" rows="3" maxlength="2000" required></textarea>
+        <button type="submit" class="btn primary" id="chat-send">送信する <span aria-hidden="true">→</span></button>
+      </form>
+    </section>
+    <section class="chat-panel" id="notifications" hidden>
+      <div class="chat-heading"><h2>返信の通知</h2><span id="notification-state"></span></div>
+      <p id="notice-guide"></p>
+      <div class="chat-actions">
+        <button type="button" class="btn" id="enable-notifications">端末通知をONにする</button>
+        <button type="button" class="btn" id="stop-notifications" hidden>端末通知をOFFにする</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
