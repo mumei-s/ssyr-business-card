@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101417"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://slamzhgsawfnmwlejgqp.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'"><title>管理者専用電話帳 | S's-YR</title><link rel="apple-touch-icon" href="./logo-spectrum.webp"><link rel="stylesheet" href="./notices.css?v=game-permission-1"><script src="./notice-common.js?v=private-chat-1" defer></script><script src="./invite-qr.js?v=1" defer></script><script src="./owner.js?v=game-permission-1" defer></script>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101417"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://slamzhgsawfnmwlejgqp.supabase.co; object-src 'none'; base-uri 'none'; form-action 'none'"><title>管理者専用電話帳 | S's-YR</title><link rel="apple-touch-icon" href="./logo-spectrum.webp"><link rel="stylesheet" href="./notices.css?v=business-inbox-1"><script src="./notice-common.js?v=private-chat-1" defer></script><script src="./invite-qr.js?v=1" defer></script><script src="./owner.js?v=business-inbox-1" defer></script>
   <link rel="icon" type="image/png" sizes="96x96" href="./brand-96.png?v=share-2">
   <link rel="shortcut icon" href="./brand-96.png?v=share-2" type="image/png">
   <meta property="og:site_name" content="S's-YR">
@@ -44,7 +44,7 @@
   </section>
   <div id="owner-console" hidden>
     <section class="panel" id="owner-acceptances" aria-labelledby="owner-acceptances-title" aria-live="polite" hidden>
-      <h2 id="owner-acceptances-title">招待の受け取り</h2>
+      <h2 id="owner-acceptances-title">新しい相談・招待の受け取り</h2>
       <div id="owner-acceptance-list"></div>
     </section>
     <section class="panel compact-panel" aria-label="管理者通知">
@@ -56,7 +56,7 @@
     </section>
     <details class="panel auth-options" id="owner-game-panel">
       <summary>ひかり専用ゲーム</summary>
-      <p>ひかりさんと確認できた会話を1件選んでください。その会話を受け取ったブラウザーでゲームを開けます。</p>
+      <p>SHINJIの名刺で、ひかりさんと確認できた会話を1件選んでください。その会話を受け取ったブラウザーでゲームを開けます。</p>
       <p id="owner-game-current" aria-live="polite"></p>
       <label>受け取り済みの会話<select id="owner-game-contact" disabled><option value="">会話を選んでください</option></select></label>
       <div class="actions">
@@ -67,8 +67,8 @@
       <p class="muted" id="owner-game-status" role="status"></p>
     </details>
     <details class="panel owner-announcement" id="owner-announcement-panel">
-      <summary>名刺トップのメッセージ</summary>
-      <p>共通QRを開いた方には、見出しと本文の冒頭だけが表示されます。全文は受け取り設定を済ませた方がそれぞれのチャットで読めます。掲載すると、名刺の新着通知を希望した端末に見出しを送ります。</p>
+      <summary>SHINJI名刺トップのメッセージ</summary>
+      <p>SHINJIの名刺を開いた方に、見出しと本文の冒頭が表示されます。全文は受け取り設定を済ませた方がそれぞれのチャットで読めます。掲載すると、名刺の新着通知を希望した端末に見出しを送ります。</p>
       <div class="between"><h3>現在の掲載内容</h3><button id="owner-announcement-reload" type="button">掲載状況を更新</button></div>
       <div id="owner-announcement-current"></div>
       <p id="owner-announcement-delivery" aria-live="polite"></p>
@@ -82,20 +82,22 @@
     </details>
     <section class="panel"><div class="between"><h2 id="list-title">チャット <span id="contact-count"></span></h2><button id="reload" type="button">更新</button></div>
       <div class="tabs-simple" role="group" aria-label="管理画面の切替"><button id="tab-chats" type="button" aria-pressed="true">チャット <span id="unread-count"></span></button><button id="tab-contacts" type="button" aria-pressed="false">電話帳</button></div>
-      <p id="chat-list-guide" class="muted">共通QRから受け取った相手は、自分で入力した呼び名と受け取り日時が「招待の受け取り」に表示されます。呼び名を押すと、その相手に送れます。</p>
-      <div class="actions"><button id="new-chat" type="button" class="primary" aria-expanded="false" aria-controls="new-chat-form">専用リンクで招待する</button></div>
+      <p id="chat-list-guide" class="muted">事業用のご相談とSHINJI宛てのチャットが届きます。相手の名前を押すと、その人に返信できます。</p>
+      <div class="actions"><button id="new-chat" type="button" class="primary" aria-expanded="false" aria-controls="new-chat-form">SHINJIの専用リンクで招待する</button></div>
       <form id="new-chat-form" hidden>
         <label>相手の呼び名（管理用・任意）<input id="new-chat-name" maxlength="100" autocomplete="off"></label>
         <label>最初のメッセージ<textarea id="new-chat-body" rows="3" maxlength="2000" required></textarea></label>
         <div class="actions"><button type="submit" class="primary">メッセージを保存してリンクを作る</button><button type="button" id="cancel-new-chat">閉じる</button></div>
       </form>
       <div class="actions"><button id="new-contact" type="button" class="primary" hidden>＋ 連絡先を追加</button></div>
-      <label>検索<input id="search" type="search" placeholder="名前・メール・電話番号"></label><div id="contacts"></div>
+      <div class="owner-contact-filters"><label>名刺で絞り込み<select id="edition-filter"><option value="">すべての名刺</option><option value="business">S's-YR（事業用）</option><option value="shinji">SHINJI（個人用）</option></select></label>
+      <label>検索<input id="search" type="search" placeholder="名前・メール・電話番号"></label></div><div id="contacts"></div>
     </section>
     <section class="panel" id="edit-panel" hidden><h2 id="edit-title">連絡先を追加</h2>
       <form id="contact-form"><label>名前<input id="contact-name" required maxlength="100" autocomplete="off"></label><label>メール<input id="contact-email" type="email" maxlength="254" autocomplete="off"></label><label>電話番号<input id="contact-phone" type="tel" maxlength="50" autocomplete="off"></label><label>メモ<textarea id="contact-memo" maxlength="500" rows="2"></textarea></label><button class="primary" type="submit">保存する</button></form>
     </section>
     <section class="panel" id="selected-panel" hidden>
+      <p id="selected-edition"></p>
       <div class="between"><h2 id="selected-name"></h2><span class="state" id="selected-state"></span></div>
       <button id="hide-selected" type="button" hidden>解除済みのチャットを一覧から消す</button>
       <div id="invite-handoff" class="invite-handoff" hidden>

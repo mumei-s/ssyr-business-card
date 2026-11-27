@@ -118,6 +118,42 @@ section.block, .works-page main section { padding: clamp(50px, 7vw, 100px) 0; }
 .movie-grid h3 { margin: 9px 0; font-size: clamp(23px, 3vw, 36px); }
 .movie-grid video, .film video { width: 100%; height: auto; aspect-ratio: 16/9; background: #10100f; border: 1px solid #86744d; }
 .technical, .film p + p { margin: 12px 0 0; color: var(--gold); font-size: .8rem; font-weight: 600; }
+.business-videos {
+  padding: clamp(36px, 5vw, 72px) 0;
+  background: #151513;
+  border-top: 1px solid var(--rule);
+}
+.service-film-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin-bottom: 22px;
+}
+.business-videos .service-film-heading h2 {
+  margin: 0;
+  font: 600 clamp(26px, 3vw, 42px)/1.5 var(--serif);
+  letter-spacing: .045em;
+}
+.service-film-heading span { color: var(--gold); font-size: .82rem; white-space: nowrap; }
+.service-film-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(24px, 3vw, 44px);
+}
+.service-film-grid figure { margin: 0; scroll-margin-top: 1rem; }
+.service-film-grid video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16/9;
+  background: var(--ground);
+  border: 1px solid #86744d;
+}
+.service-film-grid video:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.service-film-grid h3 { margin: 12px 0 3px; font: 600 1.25rem/1.55 var(--serif); }
+.service-film-grid p { margin: 0; font-size: .92rem; color: var(--secondary); }
+.service-chat { display: inline-flex; align-items: center; gap: .6em; min-height: 44px; margin-top: 16px; color: var(--gold); text-underline-offset: .3em; }
 footer, .footer { padding-block: 32px; }
 .footer-grid, .footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
 .footer-grid h3 { margin: 0 0 5px; font-size: 1.1rem; }
@@ -136,6 +172,13 @@ dialog button { display: block; margin-left: auto; min-height: 42px; border: 1px
   header a { font-size: .82rem; }
   .top-right { gap: 12px; }
   .top-right .top-pill { display: none; }
+  .topbar .top-right { gap: clamp(6px, 2.5vw, 12px); }
+  .topbar .top-right a:not(.top-pill) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    white-space: nowrap;
+  }
   .hero { padding: 28px 0 44px; }
   .hero-top { display: flex; flex-direction: column; align-items: stretch; gap: 34px; }
   .card-stage { order: -1; }
@@ -148,6 +191,7 @@ dialog button { display: block; margin-left: auto; min-height: 42px; border: 1px
   .action { padding-inline: 4px; gap: 4px; font-size: clamp(11px, 3.1vw, 14px); }
   .action svg { width: 14px; height: 14px; }
   .service-grid, .cols, .movie-grid, .film { grid-template-columns: 1fr; }
+  .service-film-grid { grid-template-columns: 1fr; }
   .media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .footer-grid, .footer { flex-direction: column; align-items: flex-start; }
 }

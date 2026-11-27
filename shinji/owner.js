@@ -60,7 +60,12 @@
  function showReconnect(on){$('owner-reconnect').hidden=!on}
  function setOwnerBadge(n){try{if(n&&navigator.setAppBadge)void navigator.setAppBadge(n).catch(()=>{});else if(!n&&navigator.clearAppBadge)void navigator.clearAppBadge().catch(()=>{})}catch{}}
  const ownerCall=(action,fields={})=>N.call(action,fields,access);
- const status=c=>c.revoked_at?'解除済み':!c.linked_at?(c.owner_started?'受け取り待ち':'未接続'):'受け取り済み';
+ const business=c=>c?.card_edition==='business';
+ const editionLabel=c=>business(c)?"S's-YR（事業用）":'SHINJI（個人用）';
+ const editionFilter=$('edition-filter');
+ const matchesEdition=c=>!editionFilter.value||business(c)===(editionFilter.value==='business');
+ const wantsMuumei=c=>!business(c)&&c.linked_at&&!c.revoked_at&&c.muumei_news&&c.push_enabled_at;
+ const status=c=>c.revoked_at?'解除済み':!c.linked_at?(c.owner_started?'受け取り待ち':'未接続'):business(c)?'相談受付済み':'受け取り済み';
  const pushStatus=c=>c.push_enabled_at?'通知 ON':'通知 OFF';
  const hasAcceptance=c=>!!c.acceptance_at&&!c.acceptance_seen_at&&!c.revoked_at&&!c.chat_hidden_at;
  const canHide=c=>!!c?.revoked_at&&!c.chat_hidden_at;
@@ -74,6 +79,7 @@
    // Keep navigation/recovery reachable; only the foreground action is locked.
    const buttons=Array.from(document.querySelectorAll('button')).filter(b=>!['owner-install-button','recover-page'].includes(b.id));
    for(const b of buttons)b.disabled=true;
+   editionFilter.disabled=true;
    const slow=setTimeout(()=>feedback('通信に時間がかかっています。画面を再読み込みする前に、送信済みの履歴をご確認ください。'),12000);
    try{await fn()}catch(e){if(access&&(e.status===401||e.status===403)){hideConsole();feedback('再ログインしてください。',true)}else feedback(e.message||'もう一度お試しください。',true)}
    finally{clearTimeout(slow);busy=false;for(const b of buttons)b.disabled=false;updateControls();openRequestedContact()}
@@ -82,8 +88,10 @@
    updateGameControls();
    updateAnnouncementControls();
    const c=selected(),registered=ownerEnabled&&!!ownerSub&&canPush&&Notification.permission==='granted';
-   $('muumei-send').disabled=busy||!ready||!contacts.some(c=>c.linked_at&&!c.revoked_at&&c.muumei_news&&c.push_enabled_at);
-   $('reissue').disabled=busy||!c||!!c.linked_at&&!c.revoked_at;
+   editionFilter.disabled=busy;
+   $('muumei-send').disabled=busy||!ready||!contacts.some(wantsMuumei);
+   $('reissue').hidden=business(c);
+   $('reissue').disabled=busy||!c||business(c)||!!c.linked_at&&!c.revoked_at;
    $('revoke').disabled=busy||!c||!!c.revoked_at;
    $('history-prev').disabled=busy||historyPage===0;
    $('history-next').disabled=busy||$('history').dataset.more!=='true';
@@ -95,7 +103,7 @@
  }
  const gamePanel=$('owner-game-panel'),gameChoice=$('owner-game-contact'),gameStatus=$('owner-game-status');
  let gamePermission=null,gameReading=false,gameReadId=0;
- const linkedForGame=c=>c&&N.validThreadId(c.id)&&c.linked_at&&!c.revoked_at;
+ const linkedForGame=c=>c&&!business(c)&&N.validThreadId(c.id)&&c.linked_at&&!c.revoked_at;
  function gameLabel(id){
    const c=contacts.find(row=>row.id===id);
    if(!c)return '会話 '+id.slice(-8);
@@ -301,7 +309,8 @@
    const rows=events.map(c=>{
      const row=el('button',undefined,'contact-row');row.type='button';row.dataset.contactId=c.id;
      const copy=el('span',undefined,'contact-row-text');
-     copy.append(el('strong',c.display_name+' さんが招待を受け取りました'),el('small',N.date(c.acceptance_at)));
+     const event=business(c)?' さんが相談チャットを開設しました':' さんが招待を受け取りました';
+     copy.append(el('strong',c.display_name+event),el('small',editionLabel(c)+' · '+N.date(c.acceptance_at)));
      row.append(copy,el('span','→'));
      row.addEventListener('click',()=>void run(()=>openContact(c.id,'chats')));
      return row;
@@ -311,6 +320,7 @@
  async function openContact(id,view){
    const contact=contacts.find(c=>c.id===id);
    if(!contact||view==='chats'&&contact.chat_hidden_at){feedback('この会話は一覧にありません。',true);return}
+   if(!matchesEdition(contact))editionFilter.value='';
    mode=view;selectedId=id;historyPage=0;historySignature='';editing=view==='contacts';promoting=false;
    showContact();renderContacts();
    await history();
@@ -341,11 +351,14 @@
  function renderContacts(){
    const q=$('search').value.toLowerCase().trim(),list=$('contacts');
    list.replaceChildren();
-   const matches=contacts.filter(c=>mode==='contacts'?isSaved(c):!c.chat_hidden_at&&(c.owner_started||!!c.linked_at||!!c.chat_updated_at||!!c.unread||!!c.revoked_at)).filter(c=>[c.display_name,c.email,c.phone,c.memo].some(v=>String(v||'').toLowerCase().includes(q)));
+   const matches=contacts.filter(matchesEdition).filter(c=>mode==='contacts'?isSaved(c):!c.chat_hidden_at&&(c.owner_started||!!c.linked_at||!!c.chat_updated_at||!!c.unread||!!c.revoked_at)).filter(c=>[c.display_name,c.email,c.phone,c.memo].some(v=>String(v||'').toLowerCase().includes(q)));
    $('contact-count').textContent='('+matches.length+'件)';
    $('tab-chats').setAttribute('aria-pressed',String(mode==='chats'));$('tab-contacts').setAttribute('aria-pressed',String(mode==='contacts'));
-   $('new-contact').hidden=mode!=='contacts';
-   $('new-chat').hidden=mode!=='chats';$('chat-list-guide').hidden=mode!=='chats';
+   const viewingBusiness=editionFilter.value==='business'||business(selected());
+   if(viewingBusiness)setNewChatForm(false);
+   for(const id of ['owner-game-panel','owner-announcement-panel','muumei-panel'])$(id).hidden=viewingBusiness;
+   $('new-contact').hidden=mode!=='contacts'||editionFilter.value==='business';
+   $('new-chat').hidden=mode!=='chats'||viewingBusiness;$('chat-list-guide').hidden=mode!=='chats';
    const unread=contacts.filter(c=>!c.chat_hidden_at&&!c.revoked_at).reduce((n,c)=>n+(Number(c.unread)||0),0);
    $('unread-count').textContent=unread?' '+unread:'';
    if(location.pathname.endsWith('/owner/')||location.pathname.endsWith('/owner/index.html'))setOwnerBadge(unread+contacts.filter(hasAcceptance).length);
@@ -353,8 +366,8 @@
      const row=el('button',undefined,'contact-row'+(selectedId===c.id?' selected':''));
      row.type='button';const txt=el('span',undefined,'contact-row-text');
      const detail=isSaved(c)?(c.email||c.phone):'';
-     const linkState=c.revoked_at?'解除 '+N.date(c.revoked_at):c.linked_at?'受け取り '+N.date(c.linked_at)+' · '+pushStatus(c):'';
-     txt.append(el('strong',c.display_name),el('small',[detail,linkState].filter(Boolean).join(' · ')||'チャットのみ'));
+     const linkState=c.revoked_at?'解除 '+N.date(c.revoked_at):c.linked_at?(business(c)?'受付 ':'受け取り ')+N.date(c.linked_at)+' · '+pushStatus(c):'';
+     txt.append(el('strong',c.display_name),el('small',[editionLabel(c),detail,linkState].filter(Boolean).join(' · ')));
      const unreadHere=!c.revoked_at&&!c.chat_hidden_at&&c.unread;
      const badge=el('span',unreadHere?'未読 '+c.unread:status(c),'state'+(unreadHere||c.linked_at&&!c.revoked_at?' on':''));
      row.append(txt,badge);
@@ -381,6 +394,7 @@
    $('edit-title').textContent=promoting?'電話帳に追加':c?'連絡先を編集':'連絡先を追加';
    if(fill){$('contact-name').value=c?.display_name||'';$('contact-email').value=c?.email||'';$('contact-phone').value=c?.phone||'';$('contact-memo').value=c?.memo||''}
    if(c){
+     $('selected-edition').textContent=editionLabel(c);
      $('selected-name').textContent=c.display_name;$('selected-state').textContent=status(c)+(c.linked_at&&!c.revoked_at?' · '+pushStatus(c):'');$('send-panel').hidden=!c.linked_at||!!c.revoked_at;
      $('hide-selected').hidden=mode!=='chats'||!canHide(c);
      $('promote-contact').hidden=isSaved(c);
@@ -409,12 +423,12 @@
    $('show-invite').setAttribute('aria-expanded','false');$('show-invite').textContent='専用QRを表示';
  }
  function syncInvite(contact){
-   const canInvite=contact&&!contact.linked_at&&!contact.revoked_at;
+   const canInvite=contact&&!business(contact)&&!contact.linked_at&&!contact.revoked_at;
    $('invite-handoff').hidden=!canInvite;
    if(displayedInvite&&(!canInvite||displayedInvite!==currentInvite(contact)))closeInvite();
  }
  function showInvite(contact,value){
-   if(!contact||contact.id!==selectedId||!N.validToken(value))throw Error('専用リンクの発行結果を確認してください。');
+   if(!contact||business(contact)||contact.id!==selectedId||!N.validToken(value))throw Error('専用リンクの発行結果を確認してください。');
    const until=Date.parse(contact.invite_expires_at)||Date.now()+7*86400000;
    const copy={token:value,until};
    inviteCopies.set(contact.id,copy);saveInviteCopies();displayedInvite=copy;
@@ -428,7 +442,7 @@
  }
  async function issueInvite(){
    const contact=selected();
-   if(!contact||contact.linked_at&&!contact.revoked_at)return;
+   if(!contact||business(contact)||contact.linked_at&&!contact.revoked_at)return;
    if(Date.parse(contact.invite_expires_at)>Date.now()&&
       !confirm('新しい専用QRとリンクを発行しますか？ 以前のQRとリンクは使えなくなります。'))return;
    const result=await ownerCall('owner-invite',{contactId:contact.id});
@@ -441,7 +455,7 @@
    choose.type='button';group.append(choose);
    choose.addEventListener('click',()=>{
      group.replaceChildren(choose);
-     const recipients=contacts.filter(c=>c.id!==selectedId&&c.linked_at&&!c.revoked_at);
+     const recipients=contacts.filter(c=>business(c)===business(selected())&&c.id!==selectedId&&c.linked_at&&!c.revoked_at);
      if(!recipients.length){
        group.append(el('p','相手が名刺で「SHINJIからの連絡を受け取る」を押すと、ここで選べます。'));
        return;
@@ -631,6 +645,12 @@
    catch(e){hideConsole();feedback('この画面からログアウトしました。通信状態をご確認ください。',true)}
  }));
  $('search').addEventListener('input',renderContacts);
+ editionFilter.addEventListener('change',()=>{
+   if(selected()&&!matchesEdition(selected())){
+     selectedId='';historyPage=0;editing=false;promoting=false;showContact();
+   }
+   setNewChatForm(false);renderContacts();
+ });
  $('reload').addEventListener('click',()=>void run(async()=>{await reload();if(selectedId)await history();if(canPush&&(!ownerWorker||!ownerKey))await prepareOwnerPush();await launchState();feedback('更新しました。')}));
  $('new-contact').addEventListener('click',()=>{if(busy)return;revision++;mode='contacts';selectedId='';pending=null;historyPage=0;editing=true;promoting=false;$('invite-panel').hidden=true;showContact();renderContacts();$('edit-panel').scrollIntoView({block:'start'});$('contact-name').focus()});
  $('contact-form').addEventListener('submit',e=>{e.preventDefault();void run(async()=>{
@@ -707,7 +727,7 @@
  window.addEventListener('online',resumeSession);
  resumeSession();
  $('muumei-send').addEventListener('click',()=>{
-   const targets=contacts.filter(c=>c.linked_at&&!c.revoked_at&&c.muumei_news&&c.push_enabled_at);
+   const targets=contacts.filter(wantsMuumei);
    if(!ready||!targets.length||!confirm(targets.length+'件の希望者へMUUMEIの正式公開案内を送りますか？'))return;
    void run(async()=>{
      let accepted=0,other=0,duplicates=0;

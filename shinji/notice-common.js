@@ -2,7 +2,9 @@
  'use strict';
  const base='https://slamzhgsawfnmwlejgqp.supabase.co';
  const url=base+'/functions/v1/ssyr-card';
- const deviceKey='ssyr-card-device-v1';
+ const business=document.currentScript?.dataset.edition==='business';
+ const deviceKey=business?'ssyr-business-device-v1':'ssyr-card-device-v1';
+ const businessScope=business?new URL('../business-chat/',document.currentScript.src):null;
  const $=id=>document.getElementById(id);
  class ApiError extends Error{constructor(status,message){super(message);this.status=status}}
  // Browser APIs (permissions, SW registration, clipboard and push subscription)
@@ -29,18 +31,26 @@
    }catch(e){if(e instanceof ApiError)throw e;if(controller.signal.aborted)throw new ApiError(0,'接続が時間内に完了しませんでした。もう一度お試しください。');throw new ApiError(0,'通信に失敗しました。もう一度お試しください。')}
    finally{clearTimeout(timer)}
  }
- const call=(action,fields={},access)=>{
+ let businessSettings;
+ function config(){
+   if(!business)return jsonRequest(url,{},8000);
+   if(!businessSettings)businessSettings=jsonRequest(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'business-config',edition:'business'})},8000)
+     .then(data=>{if(data.ok!==true||data.edition!=='business')throw Error('事業用チャットに接続できませんでした。');return data})
+     .catch(error=>{businessSettings=null;throw error});
+   return businessSettings;
+ }
+ const call=async(action,fields={},access)=>{
+   if(business)await config();
    const slow=['owner-send','chat-send','owner-push-test','test','card-owner-login','card-owner-setup'].includes(action);
-   return jsonRequest(url,{method:'POST',headers:{'Content-Type':'application/json',...(access?{Authorization:'Bearer '+access}:{})},body:JSON.stringify({action,...fields})},slow?27000:10000);
+   return jsonRequest(url,{method:'POST',headers:{'Content-Type':'application/json',...(access?{Authorization:'Bearer '+access}:{})},body:JSON.stringify({action,...fields,...(business?{edition:'business'}:{})})},slow?27000:10000);
  };
- const config=()=>jsonRequest(url,{},8000);
  const requestId=()=>{if(typeof crypto.randomUUID==='function')return crypto.randomUUID();const b=crypto.getRandomValues(new Uint8Array(16));b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;const s=Array.from(b,x=>x.toString(16).padStart(2,'0')).join('');return s.slice(0,8)+'-'+s.slice(8,12)+'-'+s.slice(12,16)+'-'+s.slice(16,20)+'-'+s.slice(20)};
  const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
  const validToken=v=>typeof v==='string'&&/^[a-f0-9]{64}$/.test(v);
  function getDevice(){try{return localStorage.getItem(deviceKey)||''}catch{return ''}}
  function setDevice(v){localStorage.setItem(deviceKey,v);if(localStorage.getItem(deviceKey)!==v)throw Error('端末の保存設定をご確認ください。')}
  function clearDevice(){try{localStorage.removeItem(deviceKey)}catch{}}
- const threadPrefix='ssyr-card-thread-v1:';
+ const threadPrefix=business?'ssyr-business-thread-v1:':'ssyr-card-thread-v1:';
  const validThreadId=id=>typeof id==='string'&&/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(id);
  function getThreads(){
    try{
@@ -75,7 +85,7 @@
    if(!validToken(device)){if(!reserve)return '';device=random();localStorage.setItem(key,device)}
    return device;
  }
- const startKey='ssyr-card-start-pending-v1';
+ const startKey=business?'ssyr-business-start-pending-v1':'ssyr-card-start-pending-v1';
  function reserveStartDevice(preferred){
    const existing=[preferred,getDevice(),...getThreads().map(t=>t.device)].find(validToken);
    if(existing)return existing;
@@ -92,7 +102,7 @@
    if(navigator.locks?.request)return navigator.locks.request(startKey,()=>reserveStartDevice(preferred));
    if(!window.indexedDB)return reserveStartDevice(preferred);
    return new Promise((resolve,reject)=>{
-     const opened=indexedDB.open('ssyr-card-registration',1);
+     const opened=indexedDB.open(business?'ssyr-business-registration':'ssyr-card-registration',1);
      opened.onupgradeneeded=()=>opened.result.createObjectStore('reservation');
      opened.onerror=()=>reject(Error('このブラウザーの端末保存を確認してください。'));
      opened.onsuccess=()=>{
@@ -148,7 +158,7 @@
    rememberThread(device,result.contact.id);
    if(!validToken(getDevice())||getDevice()===active)setDevice(device);
    if(localStorage.getItem(startKey)===device)localStorage.removeItem(startKey);
-   window.dispatchEvent(new Event('ssyr-chat-unread-changed'));
+   window.dispatchEvent(new Event(business?'ssyr-business-unread-changed':'ssyr-chat-unread-changed'));
    return {device,contact:result.contact,newlyLinked};
  }
  function inviteFrom(value){const s=String(value||'').trim();if(validToken(s))return s;try{const u=new URL(s);if(u.origin==='https://mumei-s.github.io'&&u.pathname==='/ssyr-business-card/shinji/notices.html'){const t=new URLSearchParams(u.hash.slice(1)).get('invite');if(validToken(t))return t}}catch{}return ''}
@@ -192,9 +202,10 @@
  }
  function preparePush(){
    if(!workerTask)workerTask=(async()=>{
-     const [settings,reg]=await Promise.all([config(),wait(navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'}),10000)]);
+     const scope=businessScope||new URL('./',location.href);
+     const [settings,reg]=await Promise.all([config(),wait(navigator.serviceWorker.register(new URL('sw.js',scope).href,{scope:scope.href,updateViaCache:'none'}),10000)]);
      const key=settings.ok===true&&typeof settings.vapidPublicKey==='string'&&decode(settings.vapidPublicKey);
-     if(!key||key.length!==65||key[0]!==4||reg.scope!==new URL('./',location.href).href)throw Error('名刺の通知設定を確認してください。');
+     if(!key||key.length!==65||key[0]!==4||reg.scope!==scope.href)throw Error('名刺の通知設定を確認してください。');
      for(let i=0;i<16&&!reg.active;i++)await new Promise(resolve=>setTimeout(resolve,250));
      if(!reg.active)throw Error('通知の準備をもう一度お試しください。');
      return {reg,key};
@@ -226,7 +237,7 @@
    })().finally(()=>{subscriptionTask=null});
    return subscriptionTask;
  }
- const chatPushKey=device=>'ssyr-chat-push-off-v1:'+device;
+ const chatPushKey=device=>(business?'ssyr-business-push-off-v1:':'ssyr-chat-push-off-v1:')+device;
  function withPushChoice(device,task){
    return navigator.locks?.request?navigator.locks.request(chatPushKey(device),task):task();
  }

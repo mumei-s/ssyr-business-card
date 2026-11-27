@@ -102,7 +102,7 @@ def check_card(page):
     front_button.click()
     expect(front).to_be_visible()
     expect(back).to_be_hidden()
-    for item in (page.locator("#services h2"), page.locator("#works .media-grid img").first, page.locator("video")):
+    for item in (page.locator("#services h2"), page.locator("#works .media-grid img").first, page.locator(".movie-grid video")):
         item.scroll_into_view_if_needed()
         expect(item).to_be_in_viewport()
 
@@ -121,7 +121,7 @@ def check_page(page):
     )
     full = gallery.locator("[data-full]").evaluate_all("tiles => tiles.map(t => t.dataset.full)")
     assert ART.issubset({Path(urlsplit(path).path).name for path in full}), "Missing gallery originals"
-    movie = page.locator("video")
+    movie = page.locator(".movie-grid video, .film video")
     expect(movie).to_have_count(1)
     expect(movie).to_have_attribute("preload", "none")
     assert movie.get_attribute("autoplay") is None
@@ -131,6 +131,36 @@ def check_page(page):
         im.verify()
     src = movie.get_attribute("src") or movie.locator("source").get_attribute("src")
     return ROOT / urlsplit(src).path
+
+
+def check_service_movies(page):
+    expect(page.locator("#business-videos video")).to_have_count(2)
+    for section, name in (("posting", "ポスティング"), ("illustration", "イラスト")):
+        figure = page.locator(f"#{section}-video")
+        expect(figure).to_contain_text(name)
+        movie = figure.locator("video")
+        expect(movie).to_have_attribute("preload", "none")
+        for attribute in ("controls", "playsinline"):
+            assert movie.get_attribute(attribute) is not None
+        assert movie.get_attribute("autoplay") is None
+        assert movie.evaluate("v => v.readyState") == 0, "Do not download videos before playback"
+        src = movie.get_attribute("src") or movie.locator("source").get_attribute("src")
+        assert Path(urlsplit(src).path).name == section + ".mp4"
+        with Image.open(ROOT / urlsplit(movie.get_attribute("poster")).path) as poster:
+            poster.verify()
+        # Start the native player and seek near the end to prove both parts decode.
+        movie.evaluate("v => v.play()")
+        movie.evaluate("""async v => {
+            v.pause();
+            await new Promise((resolve, reject) => {
+                v.addEventListener('seeked', resolve, {once:true});
+                v.addEventListener('error', reject, {once:true});
+                v.currentTime = v.duration * .88;
+            });
+        }""")
+        duration, width, height = movie.evaluate("v => [v.duration, v.videoWidth, v.videoHeight]")
+        assert 5 < duration < 90 and width >= 640 and width > height
+    check_viewport(page)
 
 
 def check_video(video):
@@ -226,8 +256,10 @@ def main():
         page.goto(base)
         check_card(page)
         movie = check_page(page)
+        check_service_movies(page)
         page.goto(base + "works.html")
         assert movie == check_page(page), "The two pages serve different showreels"
+        check_service_movies(page)
         check_routes(page, base, PUBLIC_URL)
         assert not page_errors, page_errors
         check_contact_routes(browser, base)
@@ -241,6 +273,8 @@ def main():
         check_chat_game(browser, base)
         from verify_owner_install import check_owner_install
         check_owner_install(browser, base)
+        from verify_business_chat import check_business_chat
+        check_business_chat(browser, base)
         browser.close()
     check_video(movie)
     print("Validated card switching, device-specific registration, gallery originals and tap-to-load video")

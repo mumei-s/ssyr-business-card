@@ -13,9 +13,12 @@
   <meta name="color-scheme" content="dark">
   <link rel="manifest" href="./manifest.webmanifest">
   <title>S's-YR | 川合 伸次 ― デジタル名刺</title>
-  <link rel="stylesheet" href="./assets/site.css?v=silver-trim-2">
+  <link rel="stylesheet" href="./assets/site.css?v=business-films-1">
   <link rel="stylesheet" href="./assets/card.css?v=engraved-2">
 <link rel="stylesheet" href="./assets/contact-import.css?v=direct-4">
+  <link rel="stylesheet" href="./business-chat/chat.css">
+  <script defer src="./shinji/notice-common.js?v=business-1" data-edition="business"></script>
+  <script defer src="./business-chat/card.js"></script>
   <script src="./assets/contact-import.js?v=direct-4" defer data-contact-name="川合 伸次" data-contact-edition="business"></script>
 
   <link rel="icon" type="image/png" sizes="96x96" href="./shinji/brand-96.png?v=share-2">
@@ -31,9 +34,12 @@
 <body>
   <header class="topbar wrap">
     <div class="wordmark"><img src="./assets/lettering/wordmark.svg" width="361" height="89" alt="S's-YR"><img class="brand-reading" src="./assets/lettering/wordmark-kana.svg" width="289" height="37" alt="エスズ ワイアール"></div>
-    <nav class="top-right" aria-label="メインナビゲーション"><a href="#services">事業内容</a><a href="#works">制作・事例</a><a class="top-pill" href="#contact">お問い合わせ</a></nav>
+    <nav class="top-right" aria-label="メインナビゲーション"><a href="#services">事業内容</a><a href="#business-videos">紹介動画</a><a href="#works">制作・事例</a><a class="top-pill" href="#contact">お問い合わせ</a></nav>
   </header>
   <main>
+    <div class="business-unread" id="business-chat-unread" hidden>
+      <a class="wrap" href="./business-chat/"><span><strong>新着メッセージあり</strong><span id="business-chat-count"></span></span><span>チャットを開く →</span></a>
+    </div>
     <section class="hero" id="card">
       <div class="wrap hero-top">
         <div class="intro">
@@ -75,6 +81,7 @@
             <a class="action primary" href="tel:08091190044"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.8v3a2.2 2.2 0 0 1-2.4 2.2A19.5 19.5 0 0 1 2 4.4 2.2 2.2 0 0 1 4.2 2h3a2.2 2.2 0 0 1 2.1 1.9l.4 3a2 2 0 0 1-.6 1.7L7.3 10.4a16 16 0 0 0 6.3 6.3l1.8-1.8a2 2 0 0 1 1.7-.6l3 .4a2.2 2.2 0 0 1 1.9 2.1z"/></svg>電話する</a>
             <a class="action" href="mailto:ss526s-syr@yahoo.co.jp?subject=S%27s-YR%E3%81%B8%E3%81%AE%E3%81%8A%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m3 6 9 7 9-7"/></svg>メール</a>
             <a class="action" href="./contact.html" data-add-contact><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20v-1a6.5 6.5 0 0 1 12.5-2.5M18.5 8v7m-3.5-3.5h7"/></svg>電話帳に登録</a>
+            <a class="action business-chat-link" id="business-chat-link" href="./business-chat/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v13H9l-5 4v-4H3z"/><path d="M7 9h10m-10 4h6"/></svg>個別チャットで相談する <span aria-hidden="true">→</span></a>
           </div>
         </div>
       </div>
@@ -83,10 +90,41 @@
       <div class="section-head"><div><div class="number">01 — BUSINESS</div><h2>営業品目</h2><p>現場の実務からデジタルの制作まで、幅広いご相談に対応します。</p></div></div>
       <div class="service-grid">
         <article class="service"><div class="icon-row">CONSTRUCTION</div><h3>工事・施工</h3><p>工場設備から住宅・店舗まで、施工・営繕に関するご相談。</p><ul><li>工場内設備工事・営繕</li><li>溶接・鍛冶・鉄骨工事</li><li>住宅・店舗の設計・施工</li><li>塗装・解体・リフォーム</li></ul></article>
-        <article class="service"><div class="icon-row">OPERATIONS</div><h3>業務・施設サポート</h3><p>現場の人手と運用を支えるための業務サポート。</p><ul><li>各種業務請負</li><li>工場内作業・応援出向</li><li>人材・求人に関する支援</li><li>ハウス・施設清掃</li></ul></article>
+        <article class="service"><div class="icon-row">OPERATIONS</div><h3>業務・施設サポート</h3><p>現場の人手と運用を支えるための業務サポート。</p><ul><li>チラシのポスティング</li><li>各種業務請負</li><li>工場内作業・応援出向</li><li>人材・求人に関する支援</li><li>ハウス・施設清掃</li></ul></article>
         <article class="service"><div class="icon-row">CREATIVE &amp; AI</div><h3>AI・デジタル制作</h3><p>アイデアを画像・動画・使えるデジタルツールへ。</p><ul><li>AIイラスト・動画作成</li><li>ツール・アプリ作成</li><li>動画編集・文書作成</li><li>広告・マーケティング支援</li></ul></article>
       </div>
     </div></section>
+    <section class="business-videos" id="business-videos" aria-labelledby="service-videos-title">
+      <div class="wrap">
+        <div class="service-film-heading">
+          <h2 id="service-videos-title">サービス紹介動画</h2>
+          <span>各15秒・無音</span>
+        </div>
+        <div class="service-film-grid">
+          <figure id="posting-video">
+            <video controls playsinline preload="none" width="960" height="540" poster="./assets/business-video/posting.webp" aria-labelledby="posting-title" aria-describedby="posting-description">
+              <source src="./assets/business-video/posting.mp4" type="video/mp4">
+              <a href="./assets/business-video/posting.mp4">ポスティングの動画を開く</a>
+            </video>
+            <figcaption>
+              <h3 id="posting-title">ポスティング</h3>
+              <p id="posting-description">お店の告知や求人のチラシを、地域のポストへ届けます。配りたい地域・時期・部数をご相談ください。</p>
+            </figcaption>
+          </figure>
+          <figure id="illustration-video">
+            <video controls playsinline preload="none" width="960" height="540" poster="./assets/business-video/illustration.webp" aria-labelledby="illustration-title" aria-describedby="illustration-description">
+              <source src="./assets/business-video/illustration.mp4" type="video/mp4">
+              <a href="./assets/business-video/illustration.mp4">AIイラスト制作の動画を開く</a>
+            </video>
+            <figcaption>
+              <h3 id="illustration-title">AIイラスト制作</h3>
+              <p id="illustration-description">深い青で描いた幻想都市の作例を紹介します。色や雰囲気、SNS・チラシなどの用途に合わせたサイズもご相談ください。</p>
+            </figcaption>
+          </figure>
+        </div>
+        <a class="service-chat" href="./business-chat/">お仕事についてチャットで相談する <span aria-hidden="true">→</span></a>
+      </div>
+    </section>
     <section class="block portfolio" id="works"><div class="wrap">
       <div class="section-head"><div><div class="number">02 — VISUAL GALLERY</div><h2>仕事と制作のイメージ</h2><p>工事現場のイメージ写真と、イラスト・広告・アプリ・映像の制作例。</p></div></div>
       <div class="media-grid">

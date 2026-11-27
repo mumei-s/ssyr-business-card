@@ -1,0 +1,62 @@
+.business-chat-link { grid-column: 1 / -1; }
+.business-chat-link span { margin-left: 5px; color: var(--gold); }
+.business-unread { background: #e2cfaa; color: #251f13; }
+.business-unread a {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+  gap: 6px 16px; padding-block: 12px; text-decoration: none; font-size: .9rem;
+}
+.business-unread a:hover { text-decoration: underline; }
+#business-chat-count { margin-left: .75em; }
+.business-chat-page [hidden], .business-unread[hidden] { display: none; }
+.business-chat-header, .chat-shell { width: min(720px, calc(100% - 40px)); margin: 0 auto; }
+.business-chat-header { padding-block: 18px; border-bottom: 1px solid var(--rule); }
+.business-chat-header img { width: 104px; height: auto; filter: brightness(0) invert(82%); }
+.business-chat-header > a:last-child { color: var(--secondary); text-decoration: underline; text-underline-offset: 4px; }
+.chat-shell { padding: clamp(30px, 6vw, 68px) 0 max(50px, env(safe-area-inset-bottom)); }
+.chat-shell h1, .chat-shell h2, .chat-shell h3, .chat-shell p { margin-top: 0; }
+.chat-shell h1 { margin-bottom: 6px; font: 600 clamp(2rem, 5vw, 3rem)/1.45 var(--serif); letter-spacing: .04em; }
+.chat-intro, .chat-panel > p, .chat-guide { color: var(--secondary); }
+#feedback:not(:empty) { padding: 10px 14px; background: #211f19; border-left: 3px solid var(--gold); }
+#feedback.error { border-color: #dfa196; }
+.chat-panel {
+  margin-top: 22px; padding: clamp(19px, 4vw, 34px);
+  border: 1px solid var(--rule); background: #191915;
+}
+.chat-panel h2 { margin-bottom: 10px; font: 600 1.42rem/1.5 var(--serif); }
+.chat-panel h3 { margin: .3em 0; font-size: 1rem; }
+.chat-panel form { display: grid; gap: 8px; }
+.chat-panel label { font-weight: 600; margin-top: 8px; }
+.chat-panel label small { margin-left: 4px; font-size: .74rem; color: var(--gold); }
+.chat-panel input:not([type=checkbox]), .chat-panel textarea {
+  width: 100%; min-height: 44px; padding: 11px 13px; border: 1px solid #837763;
+  background: #10110f; color: #f4f0e8; border-radius: 2px; font: inherit; font-size: 1rem; line-height: 1.5;
+}
+.chat-panel textarea { resize: vertical; }
+.chat-panel :is(input, textarea, button):focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.chat-panel input[type=checkbox] { width: 1.12rem; height: 1.12rem; flex: none; accent-color: var(--gold); }
+.chat-panel .push-choice { display: flex; align-items: center; gap: 7px; margin: 10px 0 1px; }
+.chat-guide { margin: 0; font-size: .88rem; }
+.chat-panel form .btn { justify-self: start; margin-top: 10px; padding-inline: 24px; }
+.chat-panel .btn:disabled, .chat-panel button:disabled { cursor: default; opacity: .6; }
+.chat-heading, .chat-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.chat-heading h2 { margin: 0; }
+.chat-tool, .message-meta button {
+  padding: 4px 10px; min-height: 32px; border: 1px solid #8a7c65; border-radius: 2px;
+  background: transparent; color: var(--ink); font-size: .85rem;
+}
+#identity, #notification-state { color: var(--gold); font-size: .88rem; }
+#identity { margin-top: 4px; overflow-wrap: anywhere; }
+#message-list { max-height: 60vh; overflow-y: auto; display: grid; gap: 12px; padding: 2px; margin-block: 16px; }
+.empty-chat { padding-block: 16px; border-block: 1px solid var(--rule); color: var(--secondary); font-size: .92rem; }
+.bubble { max-width: 90%; padding: 12px 16px; border: 1px solid #4b4941; border-radius: 6px; overflow-wrap: anywhere; }
+.bubble.mine { justify-self: end; background: #302b20; border-color: #695b41; }
+.bubble.theirs { justify-self: start; background: #22231f; }
+.sender { font-size: .82rem; letter-spacing: .03em; color: var(--gold); }
+.bubble .message-body { white-space: pre-wrap; margin: 3px 0 9px; }
+.message-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--secondary); font-size: .75rem; }
+.chat-shell #notice-guide { margin: 8px 0 12px; font-size: .92rem; }
+@media (max-width: 460px) {
+  .business-chat-page .btn { width: 100%; }
+  .chat-panel { padding: 17px; }
+  .chat-shell, .business-chat-header { width: calc(100% - 28px); }
+}
