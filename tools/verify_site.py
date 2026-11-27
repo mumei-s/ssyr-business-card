@@ -10,7 +10,7 @@ import re
 import shutil
 import subprocess
 from threading import Thread
-from urllib.parse import parse_qs, unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urljoin, urlsplit
 
 from PIL import Image
 from playwright.sync_api import expect, sync_playwright
@@ -163,6 +163,37 @@ def check_service_movies(page):
     check_viewport(page)
 
 
+def check_shore_samples(page):
+    pair = page.locator("#shore-samples")
+    jump = page.locator("#illustration-video a[href='#shore-samples']")
+    jump.click()
+    expect(pair).to_be_in_viewport()
+    expect(pair.get_by_role("button")).to_have_count(2)
+    original = page.viewport_size
+    page.set_viewport_size({"width": 320, "height": original["height"]})
+    left, right = pair.get_by_role("button").evaluate_all("bs => bs.map(b => b.getBoundingClientRect().toJSON())")
+    assert abs(left["y"] - right["y"]) <= 1 and left["x"] + left["width"] <= right["x"]
+    check_viewport(page)
+    for style, label in (("watercolor", "水彩"), ("woodcut", "木版画")):
+        tile = pair.locator(f"#shore-{style}")
+        expect(tile).to_contain_text(label)
+        thumb = tile.locator("img")
+        thumb.evaluate("img => img.decode()")
+        assert thumb.evaluate("img => getComputedStyle(img).objectFit") == "contain"
+        full = tile.get_attribute("data-full")
+        assert Path(urlsplit(full).path).name == f"shore-{style}-full.webp"
+        tile.click()
+        dialog = page.get_by_role("dialog")
+        expect(dialog).to_be_visible()
+        art = dialog.locator("img")
+        art.evaluate("img => img.decode()")
+        assert art.evaluate("img => img.currentSrc") == urljoin(page.url, full)
+        assert art.evaluate("img => Math.min(img.naturalWidth, img.naturalHeight)") >= 900
+        dialog.get_by_role("button", name=re.compile("閉じる")).click()
+        expect(dialog).to_be_hidden()
+    page.set_viewport_size(original)
+
+
 def check_video(video):
     info = json.loads(subprocess.check_output([
         "ffprobe", "-v", "error", "-show_streams", "-show_chapters", "-of", "json", str(video)
@@ -257,9 +288,11 @@ def main():
         check_card(page)
         movie = check_page(page)
         check_service_movies(page)
+        check_shore_samples(page)
         page.goto(base + "works.html")
         assert movie == check_page(page), "The two pages serve different showreels"
         check_service_movies(page)
+        check_shore_samples(page)
         check_routes(page, base, PUBLIC_URL)
         assert not page_errors, page_errors
         check_contact_routes(browser, base)

@@ -52,6 +52,7 @@ def check_business_chat(browser, base):
     customers = {}
     messages = {personal['id']: []}
     subscriptions = {}
+    unread_unavailable = False
     calls = []
     errors = []
     contexts = []
@@ -106,6 +107,9 @@ def check_business_chat(browser, base):
             send({'ok': True, 'edition': 'business', 'version': 1, 'vapidPublicKey': vapid})
             return
         if action == 'chat-unread':
+            if unread_unavailable:
+                send({'error': '一時的に利用できません'}, 503)
+                return
             rows = [customers.get(key) for key in data['devices']]
             ids = [row['id'] if row else None for row in rows]
             counts = [sum(m['direction'] == 'outbound' and not m['read_at'] for m in messages.get(id_, [])) for id_ in ids]
@@ -171,25 +175,56 @@ def check_business_chat(browser, base):
         return page
 
     def join(page):
+        starts = calls.count('visitor-start')
+        sent = calls.count('chat-send')
         page.goto(base)
+        invitation = page.locator('#business-chat-invitation')
+        expect(invitation).to_be_visible()
+        expect(invitation.get_by_text('新着', exact=True)).to_be_visible()
+        expect(invitation.get_by_text('個別チャットへのお誘い', exact=True)).to_be_visible()
+        expect(invitation).not_to_contain_text('新着メッセージあり')
         expect(page.locator('#business-chat-unread')).to_be_hidden()
-        page.locator('#business-chat-link').click()
+        entry = invitation.get_by_role('link', name='名前を入力してチャットを始める')
+        expect(entry).to_be_in_viewport()
+        assert entry.bounding_box()['y'] < page.locator('#card').bounding_box()['y']
+        assert page.evaluate("localStorage.getItem('qa-requests')") is None
+        entry.click()
+        expect(page).to_have_url(base + 'business-chat/')
         expect(page.locator('#visitor-name')).to_have_attribute('required', '')
+        assert calls.count('visitor-start') == starts
+        assert page.evaluate("localStorage.getItem('qa-requests')") is None
         expect(page.locator('#initial-push')).to_be_checked()
         page.locator('#visitor-name').fill('山田')
         page.locator('#join-chat').click()
         expect(page.locator('#conversation')).to_be_visible()
         check_viewport(page)
+        assert calls.count('visitor-start') == starts + 1 and calls.count('chat-send') == sent
         return page.evaluate("localStorage.getItem('ssyr-business-device-v1')")
 
     try:
+        disabled = browser.new_context(java_script_enabled=False)
+        contexts.append(disabled)
+        static_page = disabled.new_page()
+        static_page.route('https://**/*', lambda r: r.abort())
+        static_page.goto(base)
+        expect(static_page.locator('#business-chat-invitation')).to_be_hidden()
+
         reader = new_page('denied')
         first_device = join(reader)
         reader.locator('#chat-body').fill('チラシの配布を相談したいです')
         reader.locator('#chat-send').click()
         expect(reader.locator('#message-list')).to_contain_text('チラシの配布を相談したいです')
         assert not subscriptions
-        reader.goto(base)
+
+        # Losing connectivity or the unread-count cache must not resurrect an invitation.
+        unread_unavailable = True
+        reader.evaluate("localStorage.removeItem('ssyr-business-unread-v1')")
+        with reader.expect_response(lambda response: response.url == API and response.status == 503):
+            reader.goto(base)
+        expect(reader.locator('#business-chat-invitation')).to_be_hidden()
+        expect(reader.locator('#business-chat-unread')).to_be_hidden()
+        expect(reader.locator('#business-chat-link')).to_be_visible()
+        unread_unavailable = False
 
         other = new_page('grant')
         other_device = join(other)
@@ -207,7 +242,13 @@ def check_business_chat(browser, base):
         expect(owner.locator('#selected-name')).to_have_text('山田')
         expect(owner.locator('#history')).to_contain_text('チラシの配布')
         select = owner.locator('#edition-filter')
+        expect(select).to_have_value('')
+        business_group = owner.get_by_role('region', name="S's-YR（事業用）", exact=True)
+        personal_group = owner.get_by_role('region', name='SHINJI（個人用）', exact=True)
+        expect(business_group.locator('.contact-row')).to_have_count(2)
+        expect(personal_group.locator('.contact-row')).to_have_count(1)
         select.select_option('business')
+        expect(owner.locator('.chat-edition-group')).to_have_count(0)
         expect(owner.locator('#contacts .contact-row')).to_have_count(2)
         expect(owner.locator('#new-chat')).to_be_hidden()
         expect(owner.locator('#reissue')).to_be_hidden()
@@ -226,9 +267,15 @@ def check_business_chat(browser, base):
         expect(owner.locator('#owner-game-contact')).to_be_enabled()
         eligible = owner.locator('#owner-game-contact option').evaluate_all('rows => rows.map(r => r.value).filter(Boolean)')
         assert eligible == [personal['id']]
+        owner.evaluate("""id => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', {
+            data: {type: 'ssyr-owner-open', contactId: id}
+        }))""", first_id)
+        expect(select).to_have_value('business')
+        expect(owner.locator('#selected-edition')).to_contain_text('事業用')
 
         reader.reload()
         expect(reader.locator('#business-chat-count')).to_contain_text('1')
+        expect(reader.locator('#business-chat-invitation')).to_be_hidden()
         reader.locator('#business-chat-unread a').click()
         reply = reader.locator('#message-list').get_by_text('配布地域をお知らせください。', exact=True)
         expect(reply).to_be_visible()
@@ -244,6 +291,7 @@ def check_business_chat(browser, base):
         expect(reply).to_be_visible()
         reader.goto(base)
         expect(reader.locator('#business-chat-unread')).to_be_hidden()
+        expect(reader.locator('#business-chat-invitation')).to_be_hidden()
         other.reload()
         expect(other.locator('#conversation')).to_be_visible()
         expect(other.locator('#message-list')).not_to_contain_text('配布地域')
@@ -252,6 +300,24 @@ def check_business_chat(browser, base):
         check_business_push(owner, base, 'shinji/owner/', first_id, owner=True)
         assert not subscriptions
         assert calls.count('visitor-start') == 2 and calls.count('owner-send') == 1
+
+        # The server has genuinely revoked the second enrollment. Re-entry creates
+        # a fresh business conversation without affecting the personal credential.
+        del customers[other_device]
+        other.goto(base)
+        rejoin = other.locator('#business-chat-invitation a')
+        expect(rejoin).to_be_visible()
+        expect(other.locator('#business-chat-unread')).to_be_hidden()
+        rejoin.click()
+        expect(other.locator('#join-panel')).to_be_visible()
+        other.locator('#visitor-name').fill('山田')
+        other.locator('#initial-push').uncheck()
+        other.locator('#join-chat').click()
+        expect(other.locator('#conversation')).to_be_visible()
+        new_device = other.evaluate("localStorage.getItem('ssyr-business-device-v1')")
+        assert new_device in customers and new_device != other_device
+        assert other.evaluate("localStorage.getItem('ssyr-card-device-v1')") == legacy_device
+        assert calls.count('visitor-start') == 3 and calls.count('chat-send') == 1
         assert not errors, errors
     finally:
         for context in contexts:

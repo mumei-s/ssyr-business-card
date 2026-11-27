@@ -7,7 +7,16 @@
 }
 .business-unread a:hover { text-decoration: underline; }
 #business-chat-count { margin-left: .75em; }
-.business-chat-page [hidden], .business-unread[hidden] { display: none; }
+.business-invitation { background: #23231f; border-top: 1px solid #514c3c; }
+.business-invitation .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; padding-block: 15px; }
+.business-invitation p { margin: 0; color: var(--secondary); font-size: .85rem; }
+.business-invitation .invitation-heading { display: flex; gap: 9px; align-items: center; color: var(--ink); font-size: 1.05rem; margin-bottom: 3px; }
+.invitation-heading span { color: #211e17; background: var(--gold); padding: 1px 7px; font-size: .72rem; font-weight: 700; }
+.business-invitation a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--gold); font-weight: 650; font-size: .85rem; text-underline-offset: 4px; }
+@media (max-width: 680px) {
+  .business-invitation .wrap { align-items: flex-start; flex-direction: column; gap: 0; padding-block: 12px 3px; }
+}
+.business-chat-page [hidden], .business-unread[hidden], .business-invitation[hidden] { display: none; }
 .business-chat-header, .chat-shell { width: min(720px, calc(100% - 40px)); margin: 0 auto; }
 .business-chat-header { padding-block: 18px; border-bottom: 1px solid var(--rule); }
 .business-chat-header img { width: 104px; height: auto; filter: brightness(0) invert(82%); }

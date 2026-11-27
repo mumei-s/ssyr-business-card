@@ -320,7 +320,7 @@
  async function openContact(id,view){
    const contact=contacts.find(c=>c.id===id);
    if(!contact||view==='chats'&&contact.chat_hidden_at){feedback('この会話は一覧にありません。',true);return}
-   if(!matchesEdition(contact))editionFilter.value='';
+   if(!matchesEdition(contact))editionFilter.value=business(contact)?'business':'shinji';
    mode=view;selectedId=id;historyPage=0;historySignature='';editing=view==='contacts';promoting=false;
    showContact();renderContacts();
    await history();
@@ -362,7 +362,20 @@
    const unread=contacts.filter(c=>!c.chat_hidden_at&&!c.revoked_at).reduce((n,c)=>n+(Number(c.unread)||0),0);
    $('unread-count').textContent=unread?' '+unread:'';
    if(location.pathname.endsWith('/owner/')||location.pathname.endsWith('/owner/index.html'))setOwnerBadge(unread+contacts.filter(hasAcceptance).length);
+   const groups=new Map();
+   if(mode==='chats'&&!editionFilter.value){
+     const businessContact=matches.find(business),personalContact=matches.find(c=>!business(c));
+     if(businessContact&&personalContact){
+       for(const first of [businessContact,personalContact]){
+         const section=el('section',undefined,'chat-edition-group'),heading=el('h3',editionLabel(first));
+         heading.id=business(first)?'business-chats-heading':'personal-chats-heading';
+         section.setAttribute('aria-labelledby',heading.id);section.append(heading);list.append(section);
+         groups.set(business(first),section);
+       }
+     }
+   }
    for(const c of matches){
+     const container=groups.get(business(c))||list;
      const row=el('button',undefined,'contact-row'+(selectedId===c.id?' selected':''));
      row.type='button';const txt=el('span',undefined,'contact-row-text');
      const detail=isSaved(c)?(c.email||c.phone):'';
@@ -375,8 +388,8 @@
      if(mode==='chats'&&canHide(c)){
        const group=el('div',undefined,'revoked-chat-row'),remove=el('button','一覧から消す','hide-revoked');
        remove.type='button';remove.dataset.contactId=c.id;remove.addEventListener('click',()=>hideRevoked(c));
-       group.append(row,remove);list.append(group);
-     }else list.append(row);
+       group.append(row,remove);container.append(group);
+     }else container.append(row);
    }
    if(!list.childElementCount)list.append(el('p',mode==='chats'?'新しいチャットはありません。':'電話帳に連絡先を追加できます。','muted'));
  }
