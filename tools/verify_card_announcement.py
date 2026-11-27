@@ -91,6 +91,8 @@ def check_card_announcement(browser, base):
                 done({'error':'全文を取得できませんでした。'},503)
             else:
                 done({'announcement':item})
+        elif action == 'game-access':
+            done({'allowed':False})
         elif action == 'chat-unread':
             thread_ids = [active_devices.get(device) for device in fields['devices']]
             done({'counts':[private_unread if tid else 0 for tid in thread_ids], 'threadIds':thread_ids})

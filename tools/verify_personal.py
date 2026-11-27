@@ -205,56 +205,17 @@ def check_card_controls(page):
     expect(page.locator('a[href$="owner.html"]')).to_have_count(0)
     intro = page.locator('.muumei-introduction')
     expect(intro).to_be_visible()
-    assert '準備中' not in intro.inner_text()
+    expect(intro.locator('.muumei-kicker')).to_contain_text('準備中')
     expect(intro.get_by_role('link', name='サンプルを体験する')).to_have_attribute('href', 'https://mumei-s.github.io/muumei-public/review/')
-    expect(intro.locator('#muumei-official')).to_have_attribute('href', 'https://mumei-s.github.io/muumei-public/')
-    intro.locator('img').evaluate('img => img.decode()')
-    for asset in ('muumei-marble.webp', 'muumei-lounge.webp', 'muumei-entry.js'):
-        assert page.request.get(urljoin(page.url, asset)).ok
-    # The preview stays available; the official entry changes only on an affirmative official release.
-    config_url = 'https://mumei-s.github.io/muumei-public/muumei-config.json'
-    page.route(config_url, lambda route: route.fulfill(json={'ready': True, 'appUrl': 'https://mumei-s.github.io/muumei-public'}, headers={'Access-Control-Allow-Origin': '*'}))
-    page.reload()
     expect(intro.locator('#muumei-official')).to_have_attribute('href', 'https://mumei-s.github.io/muumei-public/entry/private/')
-    expect(intro.locator('#muumei-official')).to_contain_text('招待・会員登録へ')
-    expect(intro.get_by_role('link', name='サンプルを体験する')).to_be_visible()
-    page.unroute(config_url)
-    page.reload()
-    expect(intro.locator('#muumei-official')).to_have_attribute('href', 'https://mumei-s.github.io/muumei-public/')
-    panel = page.locator('#straight-ring-showcase')
-    link = panel.locator('#straight-ring-play')
-    release_url = urljoin(page.url, './games/straight-ring/release.json')
-    game_url = urljoin(page.url, './games/straight-ring/index.html')
-    ready_release = {'version': 1, 'ready': True, 'entry': 'index.html', 'verifiedCommit': 'a' * 40}
-    page.route(release_url, lambda route: route.fulfill(json={**ready_release, 'ready': False}))
-    page.reload(wait_until='networkidle')
-    expect(panel).to_be_hidden()
-    assert link.get_attribute('href') is None
-    page.unroute(release_url)
-    page.route(release_url, lambda route: route.fulfill(json=ready_release))
-    page.route(game_url, lambda route: route.fulfill(status=404))
-    page.reload(wait_until='networkidle')
-    expect(panel).to_be_hidden()
-    assert link.get_attribute('href') is None
-    page.unroute(game_url)
-    page.route(game_url, lambda route: route.fulfill(status=200, headers={'content-type':'text/html; charset=utf-8'}))
-    page.reload()
-    expect(panel).to_be_visible()
-    expect(link).to_have_attribute('href', game_url)
-    check_viewport(page)
-    page.unroute(game_url)
-    page.unroute(release_url)
-    page.reload(wait_until='networkidle')
-    release = page.request.get(release_url).json()
-    if release['ready']:
-        assert release['version'] == 1 and release['entry'] == 'index.html'
-        assert re.fullmatch(r'[0-9a-f]{40}', release['verifiedCommit'])
-        expect(panel).to_be_visible()
-        expect(link).to_have_attribute('href', game_url)
-        check_viewport(page)
-    else:
-        expect(panel).to_be_hidden()
-        assert link.get_attribute('href') is None
+    expect(intro.locator('#muumei-official')).to_contain_text('招待・会員登録')
+    intro.locator('img').evaluate('img => img.decode()')
+    for asset in ('muumei-marble.webp', 'muumei-lounge.webp'):
+        assert page.request.get(urljoin(page.url, asset)).ok
+    # Both the shared card and its static fallback omit the private game.
+    expect(page.locator('#straight-ring-showcase, a[href*="games/straight-ring"]')).to_have_count(0)
+    public_html = page.request.get(page.url).text()
+    assert 'games/straight-ring' not in public_html and 'game-entry.js' not in public_html
     manifest_url = page.locator('link[rel="manifest"]').evaluate('el => el.href')
     manifest = page.request.get(manifest_url).json()
     assert manifest['scope'] == './' and manifest['start_url'] == './' and manifest['display'] == 'standalone'

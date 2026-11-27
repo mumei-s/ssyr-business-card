@@ -27,6 +27,9 @@ if notice is not None:
     assert isinstance(notice['body'], str) and notice['body'].endswith('……')
 assert request({'action':'chat-announcement'})[0] == 401
 print('PASS anonymous shared QR teaser and registered-only full text')
+assert request({'action':'owner-game-access'})[0] == 401
+game_code, locked_game, _ = request({'action':'game-open'})
+assert game_code in (401,403) and 'key' not in locked_game
 assert request({'action':'owner-list'})[0]==401
 assert request({'action':'status','device':'invalid'})[0]==401
 assert request({'action':'owner-send','contactId':'invalid'})[0]==401

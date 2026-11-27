@@ -237,6 +237,8 @@ def main():
         check_card_announcement(browser, base)
         from verify_notification_defaults import check_notification_defaults
         check_notification_defaults(browser, base)
+        from verify_chat_game import check_chat_game
+        check_chat_game(browser, base)
         from verify_owner_install import check_owner_install
         check_owner_install(browser, base)
         browser.close()

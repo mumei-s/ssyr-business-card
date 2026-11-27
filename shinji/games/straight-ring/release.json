@@ -2,5 +2,7 @@
   "version": 1,
   "ready": true,
   "entry": "index.html",
-  "verifiedCommit": "677750daeb641240c6eac3dc060f4aef54ef88ab"
+  "verifiedCommit": "677750daeb641240c6eac3dc060f4aef54ef88ab",
+  "access": "assigned-chat",
+  "payloadSha256": "a8bfd012e872e9d7119af4faa022623519ff7df501ab7136639aa3ae09e31a4c"
 }
